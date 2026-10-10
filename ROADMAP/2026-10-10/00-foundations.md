@@ -112,6 +112,11 @@ Write ADRs in `docs/adr/NNNN-title.md` for:
 
 **Done when:** ADRs are merged with status `accepted`.
 
+Status (2026-10-10): ADRs 0001, 0002, 0003 and 0005 accepted, which unblocks
+C1, C2 and W1. By owner decision, ADR 0004 (desktop UI) stays `proposed`
+until its prototype meets the targets, before A1 starts; the server stack
+was split into ADR 0006 (`proposed`), to be accepted before P2 starts.
+
 ### F4 — Hardware test lab inventory
 
 List the controllers physically available, their supported modes and

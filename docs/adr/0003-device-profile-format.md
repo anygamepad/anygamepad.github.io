@@ -1,6 +1,6 @@
 # 0003 — Device profile file format and schema tooling
 
-- Status: proposed
+- Status: accepted (2026-10-10)
 - Date: 2026-10-10
 - Roadmap: F3 (ADR 3); used by D1-D4, P4
 

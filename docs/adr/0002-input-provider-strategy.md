@@ -1,6 +1,6 @@
 # 0002 — Input provider strategy
 
-- Status: proposed
+- Status: accepted (2026-10-10)
 - Date: 2026-10-10
 - Roadmap: F3 (ADR 2); used by C2, C4-C6, C11-C14
 
