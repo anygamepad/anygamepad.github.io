@@ -45,7 +45,7 @@ gantt
 
 ### D2 — SDL GameControllerDB importer
 
-Bootstrap coverage by converting SDL GameControllerDB entries into omnipad
+Bootstrap coverage by converting SDL GameControllerDB entries into anygamepad
 profiles (marked `source = "sdl-gamecontrollerdb"`, `verified = false`).
 Keep attribution and license notice.
 

@@ -25,9 +25,9 @@ a data loop to keep improving detection over time.
 
 | # | Deliverable | Detail |
 |---|-------------|--------|
-| 1 | **Rust library** (`omnipad` crate) that Rust games embed to get normalized gamepad input, isolating them from device/mode/OS quirks. | [01-core-library.md](01-core-library.md), [02-device-database.md](02-device-database.md) |
+| 1 | **Rust library** (`anygamepad` crate) that Rust games embed to get normalized gamepad input, isolating them from device/mode/OS quirks. | [01-core-library.md](01-core-library.md), [02-device-database.md](02-device-database.md) |
 | 2 | **Desktop app** (Windows, Linux, macOS) that detects controllers and exposes a **virtual controller** of a selectable type (Xbox 360, DualShock 4, DualSense, Switch Pro Controller, ...), similar to DS4Windows but multi-target and multi-OS. Performance-first native UI with an **always-on-top widget**. | [05-desktop-app.md](05-desktop-app.md) |
-| 3 | **Web app** similar to hardwaretester.com/gamepad, built on the **omnipad library compiled to WebAssembly**, backed by a database that **collects reports of detected controllers**. | [04-web-app.md](04-web-app.md), [03-collection-pipeline.md](03-collection-pipeline.md) |
+| 3 | **Web app** similar to hardwaretester.com/gamepad, built on the **anygamepad library compiled to WebAssembly**, backed by a database that **collects reports of detected controllers**. | [04-web-app.md](04-web-app.md), [03-collection-pipeline.md](03-collection-pipeline.md) |
 | 4 | **Collection mode** in the desktop app, which gathers richer reports than the browser can (raw HID descriptors, OS driver info). | [05-desktop-app.md](05-desktop-app.md), [03-collection-pipeline.md](03-collection-pipeline.md) |
 
 Cross-cutting groundwork lives in [00-foundations.md](00-foundations.md).
@@ -72,7 +72,7 @@ flowchart LR
     API --> DB[(Reports DB)]
     DB --> CUR[Curation tooling]
     CUR -->|reviewed profile PRs| PROF[Device profile database]
-    PROF -->|embedded in| LIB[omnipad library]
+    PROF -->|embedded in| LIB[anygamepad library]
     LIB --> DESK
     LIB -->|WASM build| WEB
     LIB --> GAMES[Rust games]
@@ -366,7 +366,7 @@ flowchart LR
 | Privacy of collected data (serial numbers, Bluetooth MAC addresses, IPs). | Legal exposure (GDPR), loss of trust. | Strip identifiers client-side and server-side, explicit consent, retention policy (P3). |
 | WebAssembly constraints: Gamepad API is poll-only (must be driven from `requestAnimationFrame`), WebHID is Chromium-only, browsers remap pads differently, and embedding profiles grows the `.wasm` bundle. | Web tester behaves differently from native, slow page load. | Browser is an identity dimension in profiles (C2, D1); bundle size budget in CI (W1); WebHID features are opt-in. |
 | Hardware availability for testing many controllers on three OSes. | Profiles verified only on one OS. | Hardware lab inventory (F4) and crowd-sourced reports. |
-| Crate name: `rustpad` is taken on crates.io, so the library is published as `omnipad` (free on crates.io and npm on 2026-10-10). | Someone else takes `omnipad` before the first release. | Publish placeholder releases early (F1). |
+| Crate name: `rustpad` is taken on crates.io and `omnipad` is taken on GitHub, so the library is published as `anygamepad` (free on crates.io and npm on 2026-10-10). | Someone else takes `anygamepad` before the first release. | Publish placeholder releases early (F1). |
 | Always-on-top widget (A11): Wayland has no standard always-on-top for regular windows, and exclusive full-screen games cover every window on all OSes. | Widget hidden in some setups. | Layer-shell where available, documented fallbacks; recommend borderless windowed mode in games. |
 | Multiple providers (native, SDL3, gilrs) opening the same device: duplicates, exclusive-access conflicts, competing handshakes (e.g. two drivers configuring a Switch Pro Controller). SDL3 is also a C dependency (build and cross-compilation complexity). | Duplicate or broken input. | Arbitration layer (C12) lets one provider own each device; SDL hints disable SDL HIDAPI drivers for devices a native driver owns; SDL3 provider is an optional feature. |
 

@@ -11,7 +11,8 @@ itself differently on Windows, Linux and macOS or over USB vs Bluetooth.
 rustpad hides all of that behind one canonical gamepad model.
 
 The repository and project are named rustpad; the library crates are published
-as `omnipad` / `omnipad-*` (`rustpad` is taken on crates.io).
+as `anygamepad` / `anygamepad-*` (`rustpad` is taken on crates.io,
+`omnipad` on GitHub).
 
 Deliverables:
 

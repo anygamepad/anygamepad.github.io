@@ -33,22 +33,22 @@ gantt
 
   ```text
   crates/
-    omnipad/          # public facade crate used by games
-    omnipad-model/    # canonical gamepad model types
-    omnipad-db/       # device profile format and embedded database
-    omnipad-report/   # device report schema shared by apps and server
-    omnipad-virtual/  # virtual controller outputs (desktop app only)
-    omnipad-wasm/     # wasm-bindgen JS/TS bindings used by the web app
+    anygamepad/          # public facade crate used by games
+    anygamepad-model/    # canonical gamepad model types
+    anygamepad-db/       # device profile format and embedded database
+    anygamepad-report/   # device report schema shared by apps and server
+    anygamepad-virtual/  # virtual controller outputs (desktop app only)
+    anygamepad-wasm/     # wasm-bindgen JS/TS bindings used by the web app
   apps/
     desktop/
     web/
     server/
   data/
-    profiles/         # curated device profiles
-  docs/adr/           # architecture decision records
+    profiles/            # curated device profiles
+  docs/adr/              # architecture decision records
   ```
 
-  Crates use the `omnipad` name and prefix (`rustpad` is taken on crates.io;
+  Crates use the `anygamepad` name and prefix (`rustpad` is taken on crates.io;
   the repository and project keep the name rustpad).
 
 - Choose and add the license (proposal: `MIT OR Apache-2.0`, the Rust
@@ -57,7 +57,7 @@ gantt
 - CI on Linux, Windows and macOS: `cargo fmt --check`, `cargo clippy
   -- -D warnings`, `cargo test`, plus a `wasm32-unknown-unknown` build and
   `wasm-bindgen-test` tests in a headless browser.
-- Reserve the names early with placeholder releases: `omnipad` on crates.io
+- Reserve the names early with placeholder releases: `anygamepad` on crates.io
   and on npm (for the WASM package).
 
 **Done when:** an empty workspace builds and passes CI on the three OSes.
@@ -104,7 +104,7 @@ Write ADRs in `docs/adr/NNNN-title.md` for:
    review), Tauri (rejected: webview memory/CPU cost, and transparent overlay
    windows are fragile on Linux). Validate with a small prototype measuring
    idle CPU, memory and latency on the three OSes before accepting the ADR.
-5. Web stack and server stack. Already decided: the web app uses the omnipad
+5. Web stack and server stack. Already decided: the web app uses the anygamepad
    library compiled to WebAssembly. To decide: frontend framework and bundler
    (an egui gamepad visualization could also be embedded in the page as a WASM
    canvas to share it with the desktop app); server proposal is Rust

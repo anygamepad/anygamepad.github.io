@@ -33,9 +33,9 @@ gantt
 
 ### P1 — Device report schema
 
-Shared crate `omnipad-report` (plus generated JSON Schema) describing a
+Shared crate `anygamepad-report` (plus generated JSON Schema) describing a
 report. The web app builds reports with this same crate running in WebAssembly
-(TypeScript types come from the `omnipad-wasm` bindings, C11), so web and
+(TypeScript types come from the `anygamepad-wasm` bindings, C11), so web and
 desktop reports are produced by identical code:
 
 - Source (web or desktop), app/browser version, OS and version.
