@@ -10,6 +10,10 @@ building happen inside the library; the web frontend only renders state and
 handles user interaction. This makes the web app a real consumer of the
 library: what users see in the browser is exactly what a Rust game would get.
 
+**Hosting:** the web app is a static site published on GitHub Pages at
+<https://anygamepad.github.io> (the user/organization site served by this
+repository). Only the ingestion API (P2) needs a server (P5).
+
 ## Schedule
 
 ```mermaid
@@ -54,7 +58,9 @@ gantt
 
 Frontend project (framework chosen in F3), build pipeline that compiles the
 library's JS bindings crate (`anygamepad-wasm`) with `wasm-bindgen`, preview
-deployments from CI, bundle size budget for the `.wasm` file.
+deployments from CI, bundle size budget for the `.wasm` file. Deployment to
+GitHub Pages through a GitHub Actions workflow that publishes only the built
+`apps/web` output (not the repository contents).
 
 ### W2 — Live tester on the core web backend
 
@@ -92,5 +98,6 @@ consent (P3), submit to the ingestion API (P2).
 
 ### W7 — Public launch
 
-Production deployment on the hosting from P5. Reaching this milestone (M2)
+Production deployment of the web app on GitHub Pages
+(<https://anygamepad.github.io>), talking to the ingestion API hosted in P5. Reaching this milestone (M2)
 starts the data collection loop.

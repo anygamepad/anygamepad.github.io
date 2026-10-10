@@ -69,4 +69,6 @@ generate profile PRs for `data/profiles/` that a maintainer reviews.
 
 ### P5 — Hosting, backups, monitoring
 
-Deployment target, automated backups, uptime and error monitoring.
+Deployment target for the ingestion API and PostgreSQL (the web frontend is
+static and lives on GitHub Pages, see W7), automated backups, uptime and error
+monitoring. CORS allows the `https://anygamepad.github.io` origin.
