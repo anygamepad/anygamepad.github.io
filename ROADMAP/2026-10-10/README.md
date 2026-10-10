@@ -1,0 +1,316 @@
+# rustpad roadmap — 2026-10-10
+
+Status: **active** (first roadmap of the project).
+
+## Vision
+
+Gamepads lie about themselves. The same physical controller can expose a
+different identity and a different input layout depending on:
+
+- **Its mode**: many controllers switch between XInput, DirectInput, Nintendo
+  Switch Pro Controller, DualShock 4/DualSense emulation, vendor modes
+  (GuliKit, 8BitDo, ...), each with a different VID/PID and HID report layout.
+- **The host OS**: Windows (XInput/HID/GameInput), Linux (evdev nodes created by
+  `xpad`, `hid-playstation`, `hid-nintendo`, generic HID), and macOS (IOKit HID,
+  GameController framework) each expose the device differently.
+- **The transport**: USB, Bluetooth Classic and BLE often produce different
+  report formats for the same device.
+
+rustpad normalizes all of this into **one canonical gamepad model**, and builds
+a data loop to keep improving detection over time.
+
+## Deliverables
+
+| # | Deliverable | Detail |
+|---|-------------|--------|
+| 1 | **Rust library** (`rustpad` crate) that Rust games embed to get normalized gamepad input, isolating them from device/mode/OS quirks. | [01-core-library.md](01-core-library.md), [02-device-database.md](02-device-database.md) |
+| 2 | **Desktop app** (Windows, Linux, macOS) that detects controllers and exposes a **virtual controller** of a selectable type (Xbox 360, DualShock 4, DualSense, Switch Pro Controller, ...), similar to DS4Windows but multi-target and multi-OS. | [05-desktop-app.md](05-desktop-app.md) |
+| 3 | **Web app** similar to hardwaretester.com/gamepad, backed by a database that **collects reports of detected controllers**. | [04-web-app.md](04-web-app.md), [03-collection-pipeline.md](03-collection-pipeline.md) |
+| 4 | **Collection mode** in the desktop app, which gathers richer reports than the browser can (raw HID descriptors, OS driver info). | [05-desktop-app.md](05-desktop-app.md), [03-collection-pipeline.md](03-collection-pipeline.md) |
+
+Cross-cutting groundwork lives in [00-foundations.md](00-foundations.md).
+
+## The data loop
+
+```mermaid
+flowchart LR
+    U[Users] -->|test controller| WEB[Web tester]
+    U -->|collection mode| DESK[Desktop app]
+    WEB -->|device report| API[Ingestion API]
+    DESK -->|device report| API
+    API --> DB[(Reports DB)]
+    DB --> CUR[Curation tooling]
+    CUR -->|reviewed profile PRs| PROF[Device profile database]
+    PROF -->|embedded in| LIB[rustpad library]
+    LIB --> DESK
+    LIB -->|WASM build| WEB
+    LIB --> GAMES[Rust games]
+```
+
+Every iteration of the project should feed collected reports back into the
+curated profile database, so detection gets better with each release.
+
+## Planning assumptions
+
+- Schedule starts on **2026-10-12**; durations are **calendar days** of focused
+  work per task.
+- Workstreams (core, web/collection, desktop) are assumed to progress **in
+  parallel**. With a single contributor the dates stretch, but the dependency
+  graph (what blocks what) stays valid. Use the graph, not the dates, to decide
+  what to pick up next.
+- The critical path ends at milestone M4 (desktop 0.1.0). Projected end:
+  **2027-01-20**.
+
+## Master schedule
+
+Task IDs are referenced by every detailed roadmap file. `after X Y` means the
+task is **blocked** until X and Y are done. Critical-path tasks are marked
+`crit`.
+
+```mermaid
+gantt
+    dateFormat YYYY-MM-DD
+    axisFormat %b %d
+    title rustpad master schedule (critical path in red)
+    section Foundations
+    F1 Cargo workspace, licensing, CI matrix :f1, 2026-10-12, 5d
+    F2 Prior-art research spike :crit, f2, 2026-10-12, 10d
+    F3 Architecture decision records :crit, f3, after f2, 5d
+    F4 Hardware test lab inventory :f4, after f2, 5d
+    section Core library
+    C1 Canonical gamepad model :crit, c1, after f1 f3, 10d
+    C2 Device identity and fingerprint model :c2, after f3, 7d
+    C4 Linux input backend (evdev + hidraw) :crit, c4, after c1 c2, 20d
+    C5 Windows input backend (HID + XInput) :c5, after c1 c2, 30d
+    C6 macOS input backend (IOKit HID) :c6, after c1 c2, 25d
+    C3 Mapping engine :c3, after c1 d1, 20d
+    C7 Native protocol drivers (DualSense, DS4, Switch Pro) :c7, after c4, 30d
+    C9 Public API, docs, examples, WASM target :c9, after c3, 15d
+    C8 Mode and clone detection heuristics :c8, after c3 c4 d3, 20d
+    C10 Library 0.1.0 release :c10, after c5 c6 c7 c8 c9 d4, 5d
+    section Device database
+    D1 Device profile format and JSON Schema :d1, after c2, 10d
+    D2 SDL GameControllerDB importer :d2, after d1, 7d
+    D3 Initial curated profiles (top devices) :d3, after d1 c4 f4, 20d
+    D4 Profile embedding and runtime overrides :d4, after d1 c3, 7d
+    section Collection pipeline
+    P1 Device report schema (shared crate) :p1, after c2 d1, 7d
+    P2 Ingestion API and PostgreSQL storage :p2, after p1, 20d
+    P3 Privacy, consent, data retention policy :p3, after p1, 10d
+    P4 Curation tooling (reports to profile PRs) :p4, after p2 d1, 20d
+    P5 Hosting, backups, monitoring :p5, after p2, 10d
+    section Web app
+    W1 Gamepad API live tester :w1, after f1, 15d
+    W2 WebHID raw mode (descriptors, raw reports) :w2, after w1, 15d
+    W3 Guided mapping wizard :w3, after w1 c1, 15d
+    W5 Report submission and consent flow :w5, after w3 p2 p3, 10d
+    W4 Normalized preview via core WASM build :w4, after w1 c9, 10d
+    W6 Public launch of the web tester :w6, after w5 p5, 5d
+    section Desktop app
+    A1 App shell (UI toolkit, tray, settings) :a1, after f3, 15d
+    A4 Virtual pad abstraction and emulated profiles :a4, after c1, 10d
+    A2 Device list and live view :a2, after a1 c4, 15d
+    A5 Linux virtual output (uinput + UHID) :crit, a5, after a4 c4, 20d
+    A8 macOS virtual output (IOHIDUserDevice) :a8, after a4 c6, 25d
+    A7 Windows virtual output via ViGEmBus (X360, DS4) :a7, after a4 c5, 15d
+    A3 Collection mode :a3, after a2 w3 p2 p3, 15d
+    A6 Physical device hiding (grab/HidHide/seize) :crit, a6, after a5 c5 c6, 15d
+    A9 Packaging and code signing :crit, a9, after a3 a6 a7 a8, 15d
+    A10 Desktop app 0.1.0 release :crit, a10, after a9 c10, 5d
+    section Milestones
+    M1 Core reads devices on Linux :milestone, m1, after c3 c4, 0d
+    M2 Web tester live and collecting :milestone, m2, after w6, 0d
+    M3 Library 0.1.0 :milestone, m3, after c10, 0d
+    M4 Desktop app 0.1.0 :milestone, crit, m4, after a10, 0d
+```
+
+### Critical path
+
+F2 -> F3 -> C1 -> C4 -> A5 -> A6 -> A9 -> A10 -> M4
+
+Any delay on these tasks delays the desktop 0.1.0 release. Everything else has
+slack (see the `Slack` column in each detailed file).
+
+## Dependency graph (who blocks whom)
+
+An arrow `X --> Y` means **X blocks Y**. Red nodes are on the critical path.
+
+```mermaid
+flowchart LR
+    subgraph foundations[Foundations]
+        f1[F1]
+        f2[F2]
+        f3[F3]
+        f4[F4]
+    end
+    subgraph core[Core library]
+        c1[C1]
+        c2[C2]
+        c3[C3]
+        c4[C4]
+        c5[C5]
+        c6[C6]
+        c7[C7]
+        c8[C8]
+        c9[C9]
+        c10[C10]
+    end
+    subgraph database[Device database]
+        d1[D1]
+        d3[D3]
+        d4[D4]
+        d2[D2]
+    end
+    subgraph collection[Collection pipeline]
+        p1[P1]
+        p2[P2]
+        p3[P3]
+        p4[P4]
+        p5[P5]
+    end
+    subgraph web[Web app]
+        w1[W1]
+        w2[W2]
+        w3[W3]
+        w4[W4]
+        w5[W5]
+        w6[W6]
+    end
+    subgraph desktop[Desktop app]
+        a1[A1]
+        a2[A2]
+        a3[A3]
+        a4[A4]
+        a5[A5]
+        a6[A6]
+        a7[A7]
+        a8[A8]
+        a9[A9]
+        a10[A10]
+    end
+    subgraph milestones[Milestones]
+        m1{{M1}}
+        m2{{M2}}
+        m3{{M3}}
+        m4{{M4}}
+    end
+    f2 --> f3
+    f2 --> f4
+    f1 --> c1
+    f3 --> c1
+    f3 --> c2
+    c2 --> d1
+    c1 --> c3
+    d1 --> c3
+    c1 --> c4
+    c2 --> c4
+    c1 --> c5
+    c2 --> c5
+    c1 --> c6
+    c2 --> c6
+    c4 --> c7
+    d1 --> d3
+    c4 --> d3
+    f4 --> d3
+    c3 --> c8
+    c4 --> c8
+    d3 --> c8
+    c3 --> c9
+    d1 --> d4
+    c3 --> d4
+    c5 --> c10
+    c6 --> c10
+    c7 --> c10
+    c8 --> c10
+    c9 --> c10
+    d4 --> c10
+    d1 --> d2
+    c2 --> p1
+    d1 --> p1
+    p1 --> p2
+    p1 --> p3
+    p2 --> p4
+    d1 --> p4
+    p2 --> p5
+    f1 --> w1
+    w1 --> w2
+    w1 --> w3
+    c1 --> w3
+    w1 --> w4
+    c9 --> w4
+    w3 --> w5
+    p2 --> w5
+    p3 --> w5
+    w5 --> w6
+    p5 --> w6
+    f3 --> a1
+    a1 --> a2
+    c4 --> a2
+    a2 --> a3
+    w3 --> a3
+    p2 --> a3
+    p3 --> a3
+    c1 --> a4
+    a4 --> a5
+    c4 --> a5
+    a5 --> a6
+    c5 --> a6
+    c6 --> a6
+    a4 --> a7
+    c5 --> a7
+    a4 --> a8
+    c6 --> a8
+    a3 --> a9
+    a6 --> a9
+    a7 --> a9
+    a8 --> a9
+    a9 --> a10
+    c10 --> a10
+    c3 --> m1
+    c4 --> m1
+    w6 --> m2
+    c10 --> m3
+    a10 --> m4
+    classDef crit fill:#fdd,stroke:#c00,stroke-width:2px
+    class f2,f3,c1,c4,a5,a6,a9,a10,m4 crit
+```
+
+## Milestones
+
+| Milestone | Blocked by | Target date |
+|-----------|------------|-------------|
+| M1 Core reads devices on Linux | C3, C4 | 2026-12-03 |
+| M2 Web tester live and collecting | W6 | 2026-12-25 |
+| M3 Library 0.1.0 | C10 | 2027-01-10 |
+| M4 Desktop app 0.1.0 | A10 | 2027-01-20 |
+
+## Top risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Windows virtual controller drivers: ViGEmBus is retired (no longer maintained) and only emulates Xbox 360 and DualShock 4. A custom driver needs kernel/UMDF development plus EV signing and Microsoft attestation. | No DualSense/Switch Pro emulation on Windows in 0.1. | Ship ViGEmBus-based output first (A7); investigate an own VHF/UMDF driver after 0.1 (see "Beyond 0.1"). |
+| macOS virtual HID devices require the restricted `com.apple.developer.hid.virtual.device` entitlement (or DriverKit entitlements). | macOS virtual output may be blocked by Apple approval. | Request the entitlement as soon as A9 starts; ship macOS as input/collection-only if not granted. |
+| Clone controllers that impersonate genuine VID/PIDs (e.g. a third-party pad in Switch mode reporting as `057e:2009`). | Wrong profile, wrong calibration, failed handshakes. | Fingerprinting beyond VID/PID (C8), community reports. |
+| Privacy of collected data (serial numbers, Bluetooth MAC addresses, IPs). | Legal exposure (GDPR), loss of trust. | Strip identifiers client-side and server-side, explicit consent, retention policy (P3). |
+| Hardware availability for testing many controllers on three OSes. | Profiles verified only on one OS. | Hardware lab inventory (F4) and crowd-sourced reports. |
+| Crate name `rustpad` may already be taken on crates.io / conflicts with other projects named rustpad. | Cannot publish under that name. | Check availability during F1; decide final crate name before C10. |
+
+## Beyond 0.1 (not scheduled yet)
+
+- Own Windows virtual HID driver (VHF/UMDF2) to emulate DualSense and Switch Pro
+  Controller; signing and attestation pipeline.
+- Second data-loop iteration: use collected reports to extend the curated
+  profiles and re-release the library.
+- Remapping UI, per-game profiles, macros, gyro-to-mouse/stick in the desktop app.
+- Bindings for other languages (C ABI, then C#/Godot/Unity) once the Rust API is
+  stable.
+- Steam Deck / handheld built-in controller support.
+
+## Files in this roadmap
+
+- [00-foundations.md](00-foundations.md)
+- [01-core-library.md](01-core-library.md)
+- [02-device-database.md](02-device-database.md)
+- [03-collection-pipeline.md](03-collection-pipeline.md)
+- [04-web-app.md](04-web-app.md)
+- [05-desktop-app.md](05-desktop-app.md)
