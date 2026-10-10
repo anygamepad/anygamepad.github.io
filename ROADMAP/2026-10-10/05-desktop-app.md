@@ -6,8 +6,11 @@ DS4Windows, but not limited to one target type or one OS), and has a
 **collection mode** that submits device reports.
 
 The web app has priority: the desktop workstream starts after the web tester
-is live (M2). If Tauri is chosen (F3), the desktop UI reuses the web app's
-frontend components.
+is live (M2).
+
+UI requirements: **performance first** and an **always-on-top widget**. The
+recommended toolkit is egui (see ADR 4 in
+[00-foundations.md](00-foundations.md#f3--architecture-decision-records)).
 
 ## Schedule
 
@@ -36,7 +39,8 @@ gantt
     A2 Device list and live view :crit, a2, after a1 c4, 15d
     A3 Collection mode :crit, a3, after a2 w4 p2 p3, 15d
     A6 Physical device hiding (grab/HidHide/seize) :crit, a6, after a5 c5 c6, 15d
-    A9 Packaging and code signing :crit, a9, after a3 a6 a7 a8, 15d
+    A11 Always-on-top input widget (overlay) :a11, after a2, 10d
+    A9 Packaging and code signing :crit, a9, after a3 a6 a7 a8 a11, 15d
     A10 Desktop app 0.1.0 release :crit, a10, after a9 c10, 5d
 ```
 
@@ -45,20 +49,22 @@ gantt
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
 | A1 | **App shell (UI toolkit, tray, settings)** | 15 | F3, M2 | A2 | 2027-01-10 | 2027-01-25 | 0 |
-| A2 | **Device list and live view** | 15 | A1, C4 | A3 | 2027-01-25 | 2027-02-09 | 0 |
+| A2 | **Device list and live view** | 15 | A1, C4 | A3, A11 | 2027-01-25 | 2027-02-09 | 0 |
 | A3 | **Collection mode** | 15 | A2, W4, P2, P3 | A9 | 2027-02-09 | 2027-02-24 | 0 |
 | A4 | **Virtual pad abstraction and emulated profiles** | 10 | C1, M2 | A5, A7, A8 | 2027-01-10 | 2027-01-20 | 0 |
 | A5 | **Linux virtual output (uinput + UHID)** | 20 | A4, C4 | A6 | 2027-01-20 | 2027-02-09 | 0 |
 | A6 | **Physical device hiding (grab/HidHide/seize)** | 15 | A5, C5, C6 | A9 | 2027-02-09 | 2027-02-24 | 0 |
 | A7 | Windows virtual output via ViGEmBus (X360, DS4) | 15 | A4, C5 | A9 | 2027-01-20 | 2027-02-04 | 20 |
 | A8 | macOS virtual output (IOHIDUserDevice) | 25 | A4, C6 | A9 | 2027-01-20 | 2027-02-14 | 10 |
-| A9 | **Packaging and code signing** | 15 | A3, A6, A7, A8 | A10 | 2027-02-24 | 2027-03-11 | 0 |
+| A9 | **Packaging and code signing** | 15 | A3, A6, A7, A8, A11 | A10 | 2027-02-24 | 2027-03-11 | 0 |
 | A10 | **Desktop app 0.1.0 release** | 5 | A9, C10 | M4 | 2027-03-11 | 2027-03-16 | 0 |
+| A11 | Always-on-top input widget (overlay) | 10 | A2 | A9 | 2027-02-09 | 2027-02-19 | 5 |
 
 ### A1 — App shell
 
 UI toolkit chosen in F3, system tray, settings persistence, logging, update
-check.
+check. Performance budget: repaint only when input or state changes, near-zero
+CPU when idle, input-to-pixel latency of at most one frame.
 
 ### A2 — Device list and live view
 
@@ -112,3 +118,18 @@ signed and notarized macOS `.dmg`.
 ### A10 — Desktop app 0.1.0 release
 
 Milestone M4: release builds for the three OSes.
+
+### A11 — Always-on-top input widget
+
+A small, separate window that stays above other windows and shows live
+controller state (e.g. for streaming, testing or checking battery): borderless,
+optionally transparent and click-through, resizable, with selectable devices
+and skins. Platform limits to handle and document:
+
+- Wayland: regular clients cannot force always-on-top; use the layer-shell
+  protocol where the compositor supports it (wlroots-based, KDE), fall back to
+  XWayland or user-set "always on top" on GNOME.
+- macOS: floating window level plus collection behaviour to stay visible on all
+  Spaces and over full-screen apps.
+- Windows and all OSes: games in exclusive full-screen mode cover any window;
+  only borderless/windowed games show the widget.

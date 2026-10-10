@@ -4,7 +4,7 @@ A gamepad tester in the spirit of hardwaretester.com/gamepad that also collects
 device reports. **Top priority of the project**: its launch (M2) gates the
 desktop app.
 
-**The web app runs the rustpad Rust library compiled to WebAssembly.** All
+**The web app runs the omnipad Rust library compiled to WebAssembly.** All
 device access (Gamepad API, WebHID), normalization, profile matching and report
 building happen inside the library; the web frontend only renders state and
 handles user interaction. This makes the web app a real consumer of the
@@ -53,7 +53,7 @@ gantt
 ### W1 — Web app scaffolding and WASM build pipeline
 
 Frontend project (framework chosen in F3), build pipeline that compiles the
-library's JS bindings crate (`rustpad-wasm`) with `wasm-bindgen`, preview
+library's JS bindings crate (`omnipad-wasm`) with `wasm-bindgen`, preview
 deployments from CI, bundle size budget for the `.wasm` file.
 
 ### W2 — Live tester on the core web backend

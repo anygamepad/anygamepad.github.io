@@ -33,12 +33,12 @@ gantt
 
   ```text
   crates/
-    rustpad/          # public facade crate used by games
-    rustpad-model/    # canonical gamepad model types
-    rustpad-db/       # device profile format and embedded database
-    rustpad-report/   # device report schema shared by apps and server
-    rustpad-virtual/  # virtual controller outputs (desktop app only)
-    rustpad-wasm/     # wasm-bindgen JS/TS bindings used by the web app
+    omnipad/          # public facade crate used by games
+    omnipad-model/    # canonical gamepad model types
+    omnipad-db/       # device profile format and embedded database
+    omnipad-report/   # device report schema shared by apps and server
+    omnipad-virtual/  # virtual controller outputs (desktop app only)
+    omnipad-wasm/     # wasm-bindgen JS/TS bindings used by the web app
   apps/
     desktop/
     web/
@@ -48,8 +48,8 @@ gantt
   docs/adr/           # architecture decision records
   ```
 
-  Crate names are provisional: `rustpad` is taken on crates.io, so the final
-  prefix is chosen here (see the risks in the [overview](README.md#top-risks)).
+  Crates use the `omnipad` name and prefix (`rustpad` is taken on crates.io;
+  the repository and project keep the name rustpad).
 
 - Choose and add the license (proposal: `MIT OR Apache-2.0`, the Rust
   ecosystem default; compatible with importing the zlib-licensed SDL
@@ -57,7 +57,8 @@ gantt
 - CI on Linux, Windows and macOS: `cargo fmt --check`, `cargo clippy
   -- -D warnings`, `cargo test`, plus a `wasm32-unknown-unknown` build and
   `wasm-bindgen-test` tests in a headless browser.
-- Choose the published crate name (`rustpad` is taken).
+- Reserve the names early with placeholder releases: `omnipad` on crates.io
+  and on npm (for the WASM package).
 
 **Done when:** an empty workspace builds and passes CI on the three OSes.
 
@@ -92,13 +93,21 @@ Write ADRs in `docs/adr/NNNN-title.md` for:
    [overview](README.md#input-provider-strategy)); the ADR fixes priorities
    and Cargo features.
 3. Device profile file format (TOML vs JSON) and schema tooling.
-4. Desktop UI toolkit. Recommendation: **Tauri 2**, reusing the web app's
-   frontend components (device view, wizard) with Tauri commands instead of the
-   WASM bindings as data source. Alternatives considered: egui, Slint, iced.
-5. Web stack and server stack. Already decided: the web app uses the rustpad
-   library compiled to WebAssembly. To decide: frontend framework (a TypeScript
-   framework is preferred if the desktop app uses Tauri, so components can be
-   shared) and bundler; server proposal is Rust
+4. Desktop UI toolkit. Requirements: **performance first** (low input-to-pixel
+   latency, low idle CPU and memory) and an **always-on-top widget** (A11).
+   Recommendation: **egui** (`eframe` with the `wgpu` renderer): pure Rust in
+   the same process as the library (no IPC, no webview), immediate mode suited
+   to live input at high refresh rates, multiple native windows (viewports),
+   and per-window always-on-top, transparency, no decorations and mouse
+   pass-through through winit. Alternatives: iced (similar, less mature
+   multi-window), Slint (good performance, but its licensing options need
+   review), Tauri (rejected: webview memory/CPU cost, and transparent overlay
+   windows are fragile on Linux). Validate with a small prototype measuring
+   idle CPU, memory and latency on the three OSes before accepting the ADR.
+5. Web stack and server stack. Already decided: the web app uses the omnipad
+   library compiled to WebAssembly. To decide: frontend framework and bundler
+   (an egui gamepad visualization could also be embedded in the page as a WASM
+   canvas to share it with the desktop app); server proposal is Rust
    `axum` + `sqlx` + PostgreSQL.
 
 **Done when:** ADRs are merged with status `accepted`.

@@ -10,13 +10,17 @@ vendor modes such as GuliKit or 8BitDo), and the same controller can identify
 itself differently on Windows, Linux and macOS or over USB vs Bluetooth.
 rustpad hides all of that behind one canonical gamepad model.
 
+The repository and project are named rustpad; the library crates are published
+as `omnipad` / `omnipad-*` (`rustpad` is taken on crates.io).
+
 Deliverables:
 
 1. **Rust library** that Rust games import to get normalized gamepad input,
    isolating them from device, mode, transport and OS quirks.
 2. **Desktop app** (Windows, Linux, macOS) that detects controllers and exposes
    a virtual controller of a selectable type (Xbox 360, DualShock 4, DualSense,
-   Switch Pro Controller, ...), similar to DS4Windows.
+   Switch Pro Controller, ...), similar to DS4Windows. Its UI is
+   performance-first and includes an always-on-top widget.
 3. **Web app** similar to hardwaretester.com/gamepad, built on the Rust
    library compiled to WebAssembly and connected to a database that collects
    reports of detected controllers. Those reports are used to improve

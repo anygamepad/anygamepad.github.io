@@ -1,7 +1,6 @@
 # 01 — Core library
 
-The `rustpad` crate (final published name to be chosen in F1): what Rust games
-import. It hides devices, modes, transports and OS differences behind one
+The `omnipad` crate: what Rust games import. It hides devices, modes, transports and OS differences behind one
 canonical gamepad model.
 
 Input comes from several **providers** (native, web, SDL3, gilrs) arbitrated
@@ -140,7 +139,7 @@ it.
 - Web input backend for `wasm32-unknown-unknown` using `web-sys`: Gamepad API
   (polled from `requestAnimationFrame`, connect/disconnect events) and WebHID
   (Chromium, opt-in, user gesture required).
-- `rustpad-wasm` crate: `wasm-bindgen` API and generated TypeScript types for
+- `omnipad-wasm` crate: `wasm-bindgen` API and generated TypeScript types for
   the web frontend (device list, raw and canonical state, wizard, reports).
 - Rust games compiled to WASM get the same backend for free.
 
