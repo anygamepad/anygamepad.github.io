@@ -62,3 +62,33 @@ pub struct Rgb {
     /// Blue.
     pub b: u8,
 }
+
+/// A command for one of a device's [`Output`]s.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub enum OutputCommand {
+    /// Sets the body motors ([`Output::Rumble`]); zero stops them.
+    Rumble(Rumble),
+    /// Sets the trigger motors ([`Output::TriggerRumble`]).
+    TriggerRumble(TriggerRumble),
+    /// Sets the lightbar color ([`Output::Lightbar`]).
+    Lightbar(Rgb),
+    /// Shows a player number, from 1 ([`Output::PlayerLeds`]); 0 turns the
+    /// indicator off. Each device draws the number its own way.
+    PlayerNumber(u8),
+}
+
+impl OutputCommand {
+    /// The output this command drives.
+    pub const fn output(&self) -> Output {
+        match self {
+            Self::Rumble(_) => Output::Rumble,
+            Self::TriggerRumble(_) => Output::TriggerRumble,
+            Self::Lightbar(_) => Output::Lightbar,
+            Self::PlayerNumber(_) => Output::PlayerLeds,
+        }
+    }
+}

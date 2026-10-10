@@ -13,6 +13,10 @@
 //! - Touch points are normalized to `[0.0, 1.0]`. See [`TouchPoint`].
 //! - Everything a device has is listed in its [`Capabilities`].
 //!
+//! Below the canonical model, [`identity`] describes which device a provider
+//! sees (shared with profiles and reports) and [`raw`] describes the raw
+//! elements a provider reads before a profile maps them.
+//!
 //! Every enum has a stable snake_case name ([`Button::as_str`], ...), which is
 //! how profiles, reports and the web bindings refer to it.
 //!
@@ -42,9 +46,13 @@ mod axis;
 mod button;
 mod capabilities;
 mod device;
+mod hash;
+pub mod identity;
 mod label;
 pub mod motion;
 mod output;
+pub mod raw;
+pub mod sdl;
 mod state;
 mod touch;
 
@@ -54,7 +62,7 @@ pub use capabilities::Capabilities;
 pub use device::{Power, PowerState, Transport};
 pub use label::{ButtonLabel, FaceLayout};
 pub use motion::{MotionSample, STANDARD_GRAVITY, Sensor, SensorSet, Vec3};
-pub use output::{Output, OutputSet, Rgb, Rumble, TriggerRumble};
+pub use output::{Output, OutputCommand, OutputSet, Rgb, Rumble, TriggerRumble};
 pub use state::GamepadState;
 pub use touch::{MAX_TOUCH_POINTS, TouchPoint, TouchpadInfo};
 

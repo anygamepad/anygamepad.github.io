@@ -8,6 +8,8 @@
 //! the project is in its first development phase.
 #![forbid(unsafe_code)]
 
+pub mod provider;
+
 pub use anygamepad_db as db;
 pub use anygamepad_model as model;
 

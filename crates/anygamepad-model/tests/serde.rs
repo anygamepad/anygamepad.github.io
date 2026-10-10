@@ -126,3 +126,147 @@ fn json_schema_lists_names() {
     assert_eq!(button["type"], "string");
     assert_eq!(button["anyOf"][0]["enum"].as_array().unwrap().len(), 25);
 }
+
+mod identity {
+    use anygamepad_model::identity::{
+        Backend, Browser, BrowserEngine, DescriptorHash, DeviceIdentity, Fingerprint, Os,
+        ProviderKind,
+    };
+    use anygamepad_model::raw::{Hat, RawAxisInfo, RawLayout, RawSource, RawState};
+    use anygamepad_model::sdl::SdlGuid;
+    use anygamepad_model::{Button, OutputCommand, Rgb, Transport};
+
+    fn identity() -> DeviceIdentity {
+        let browser = Browser {
+            engine: BrowserEngine::Blink,
+            major_version: Some(141),
+        };
+        let mut identity = DeviceIdentity::from_gamepad_api(
+            "Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)",
+            "standard",
+            browser,
+            Os::Windows,
+        );
+        identity.transport = Transport::Bluetooth;
+        identity.descriptor_hash = Some(DescriptorHash(u64::MAX));
+        identity
+    }
+
+    #[test]
+    fn identity_json() {
+        let identity = identity();
+        let json = serde_json::to_value(&identity).unwrap();
+        assert_eq!(json["provider"], "web");
+        assert_eq!(json["backend"], "gamepad_api");
+        assert_eq!(json["os"], "windows");
+        assert_eq!(json["transport"], "bluetooth");
+        assert_eq!(json["vendor_id"], 0x054c);
+        assert_eq!(json["browser"]["engine"], "blink");
+        // 64-bit values are strings, so JavaScript reads them exactly.
+        assert_eq!(json["descriptor_hash"], "ffffffffffffffff");
+        assert_eq!(
+            serde_json::from_value::<DeviceIdentity>(json).unwrap(),
+            identity
+        );
+
+        let bytes = postcard::to_allocvec(&identity).unwrap();
+        assert_eq!(
+            postcard::from_bytes::<DeviceIdentity>(&bytes).unwrap(),
+            identity
+        );
+    }
+
+    #[test]
+    fn fingerprint_and_guid_strings() {
+        let fingerprint = identity().fingerprint();
+        let json = serde_json::to_string(&fingerprint).unwrap();
+        assert_eq!(json, format!("\"{fingerprint}\""));
+        assert_eq!(
+            serde_json::from_str::<Fingerprint>(&json).unwrap(),
+            fingerprint
+        );
+
+        let guid: SdlGuid = "030000004c050000c405000011010000".parse().unwrap();
+        let json = serde_json::to_string(&guid).unwrap();
+        assert_eq!(json, "\"030000004c050000c405000011010000\"");
+        assert_eq!(serde_json::from_str::<SdlGuid>(&json).unwrap(), guid);
+        assert!(serde_json::from_str::<SdlGuid>("\"0300\"").is_err());
+        let bytes = postcard::to_allocvec(&guid).unwrap();
+        assert_eq!(postcard::from_bytes::<SdlGuid>(&bytes).unwrap(), guid);
+    }
+
+    #[test]
+    fn raw_layout_and_state_json() {
+        let layout = RawLayout {
+            buttons: vec![RawSource::Evdev(0x130), RawSource::Button(Button::South)],
+            axes: vec![RawAxisInfo {
+                source: RawSource::Hid {
+                    page: 0x01,
+                    usage: 0x30,
+                },
+                min: 0.0,
+                max: 255.0,
+            }],
+            hats: vec![RawSource::Index(0)],
+            ..RawLayout::default()
+        };
+        let json = serde_json::to_value(&layout).unwrap();
+        assert_eq!(json["buttons"][0]["evdev"], 0x130);
+        assert_eq!(json["buttons"][1]["button"], "south");
+        assert_eq!(json["axes"][0]["source"]["hid"]["usage"], 0x30);
+        assert_eq!(serde_json::from_value::<RawLayout>(json).unwrap(), layout);
+
+        let mut state = RawState::for_layout(&layout);
+        state.buttons[0] = 1.0;
+        state.hats[0] = Hat::from_hid(2);
+        let bytes = postcard::to_allocvec(&state).unwrap();
+        assert_eq!(postcard::from_bytes::<RawState>(&bytes).unwrap(), state);
+    }
+
+    #[test]
+    fn output_command_json() {
+        let command = OutputCommand::Lightbar(Rgb {
+            r: 255,
+            g: 0,
+            b: 64,
+        });
+        assert_eq!(
+            serde_json::to_string(&command).unwrap(),
+            r#"{"lightbar":{"r":255,"g":0,"b":64}}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&OutputCommand::PlayerNumber(2)).unwrap(),
+            r#"{"player_number":2}"#
+        );
+    }
+
+    #[test]
+    fn provider_and_backend_names() {
+        assert_eq!(
+            serde_json::to_string(&ProviderKind::Sdl3).unwrap(),
+            "\"sdl3\""
+        );
+        assert_eq!(
+            serde_json::from_str::<Backend>("\"windows_hid\"").unwrap(),
+            Backend::WindowsHid
+        );
+    }
+
+    #[cfg(feature = "schemars")]
+    #[test]
+    fn identity_schema() {
+        let schema = schemars::schema_for!(DeviceIdentity);
+        let text = serde_json::to_string(&schema).unwrap();
+        for name in [
+            "gamepad_api",
+            "hidraw",
+            "blink",
+            "macos",
+            "^[0-9a-fA-F]{16}$",
+        ] {
+            assert!(text.contains(name), "{name} missing");
+        }
+        let schema = schemars::schema_for!(RawLayout);
+        assert!(serde_json::to_string(&schema).unwrap().contains("evdev"));
+    }
+}
