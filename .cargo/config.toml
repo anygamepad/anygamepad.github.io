@@ -1,0 +1,5 @@
+# `cargo test --target wasm32-unknown-unknown` runs tests in a headless browser.
+# Install the runner with `cargo install wasm-bindgen-cli --version <x>`, where
+# <x> is the `wasm-bindgen` version in Cargo.lock.
+[target.wasm32-unknown-unknown]
+runner = "wasm-bindgen-test-runner"
