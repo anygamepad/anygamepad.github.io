@@ -53,7 +53,7 @@ desktop reports are produced by identical code:
 ### P2 — Ingestion API and PostgreSQL storage
 
 Rust `axum` service (shares types with the library), PostgreSQL storage
-([ADR 0006](../../docs/adr/0006-server-stack.md), accepted before P2 starts),
+([ADR 0006](../../docs/adr/0006-server-stack.md)),
 schema validation, deduplication by fingerprint, rate limiting, and an
 anonymous submission token.
 

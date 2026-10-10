@@ -1,6 +1,6 @@
 # 0006 — Server stack
 
-- Status: proposed
+- Status: accepted (2026-10-10)
 - Date: 2026-10-10
 - Roadmap: F3 (ADR 5, server part); used by P2, P5
 
