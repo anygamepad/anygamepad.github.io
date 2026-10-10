@@ -1,0 +1,26 @@
+[package]
+name = "anygamepad-wasm"
+description = "WebAssembly (wasm-bindgen) bindings of anygamepad for the web app."
+readme = "README.md"
+keywords = ["gamepad", "controller", "wasm"]
+categories = ["game-development", "wasm"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anygamepad.workspace = true
+wasm-bindgen.workspace = true
+
+[dev-dependencies]
+wasm-bindgen-test.workspace = true

@@ -1,0 +1,16 @@
+[package]
+name = "anygamepad-report"
+description = "Device report schema shared by the anygamepad apps and server."
+readme = "README.md"
+keywords = ["gamepad", "controller", "input"]
+categories = ["game-development", "hardware-support"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true

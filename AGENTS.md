@@ -4,15 +4,18 @@ Instructions for any agent (human or AI) working in this repository.
 
 ## Project
 
-rustpad normalizes gamepad input. Many controllers expose several modes
+anygamepad normalizes gamepad input. Many controllers expose several modes
 (XInput, DirectInput, Switch Pro Controller, DualShock 4/DualSense emulation,
 vendor modes such as GuliKit or 8BitDo), and the same controller can identify
 itself differently on Windows, Linux and macOS or over USB vs Bluetooth.
-rustpad hides all of that behind one canonical gamepad model.
+anygamepad hides all of that behind one canonical gamepad model.
 
-The repository and project are named rustpad; the library crates are published
-as `anygamepad` / `anygamepad-*` (`rustpad` is taken on crates.io,
-`omnipad` on GitHub).
+The project, its repository (`anygamepad/anygamepad.github.io`) and its
+library crates (`anygamepad` / `anygamepad-*`) are all named anygamepad. The
+project was first called rustpad (taken on crates.io), then omnipad (taken on
+GitHub); older RECORD files use those names.
+
+The web app is published on GitHub Pages at <https://anygamepad.github.io>.
 
 Deliverables:
 

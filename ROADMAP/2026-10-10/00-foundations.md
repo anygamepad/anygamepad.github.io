@@ -48,8 +48,8 @@ gantt
   docs/adr/              # architecture decision records
   ```
 
-  Crates use the `anygamepad` name and prefix (`rustpad` is taken on crates.io;
-  the repository and project keep the name rustpad).
+  The project, repository and crates are all named anygamepad (`rustpad` is
+  taken on crates.io, `omnipad` on GitHub).
 
 - Choose and add the license (proposal: `MIT OR Apache-2.0`, the Rust
   ecosystem default; compatible with importing the zlib-licensed SDL
