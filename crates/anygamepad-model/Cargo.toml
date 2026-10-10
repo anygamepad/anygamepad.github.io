@@ -14,3 +14,18 @@ authors.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+# Serialize the model with serde: snake_case names in human-readable formats
+# (TOML, JSON), compact indices in binary formats (postcard).
+serde = ["dep:serde"]
+# JSON Schema of the serde representation (implies `serde`).
+schemars = ["dep:schemars", "serde"]
+
+[dependencies]
+schemars = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+postcard.workspace = true
+serde_json.workspace = true

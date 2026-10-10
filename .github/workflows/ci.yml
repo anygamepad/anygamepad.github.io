@@ -36,6 +36,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
+      # Optional features (serde, schemars) of the model crate.
+      - run: cargo clippy -p anygamepad-model --all-targets --all-features --locked -- -D warnings
+      - run: cargo test -p anygamepad-model --all-features --locked
 
   wasm:
     runs-on: ubuntu-latest
@@ -46,6 +49,7 @@ jobs:
       # anygamepad-virtual is desktop-only.
       - run: cargo clippy --workspace --exclude anygamepad-virtual --all-targets --target wasm32-unknown-unknown --locked -- -D warnings
       - run: cargo build --workspace --exclude anygamepad-virtual --target wasm32-unknown-unknown --locked
+      - run: cargo clippy -p anygamepad-model --all-features --target wasm32-unknown-unknown --locked -- -D warnings
       # wasm-bindgen-test-runner must match the wasm-bindgen version in Cargo.lock.
       - id: wasm-bindgen
         run: echo "version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')" >> "$GITHUB_OUTPUT"
@@ -64,3 +68,4 @@ jobs:
       - uses: actions/checkout@v5
       - run: rustup toolchain install 1.85 --profile minimal
       - run: cargo +1.85 check --workspace --locked
+      - run: cargo +1.85 check -p anygamepad-model --all-features --locked
