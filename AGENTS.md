@@ -17,10 +17,17 @@ Deliverables:
 2. **Desktop app** (Windows, Linux, macOS) that detects controllers and exposes
    a virtual controller of a selectable type (Xbox 360, DualShock 4, DualSense,
    Switch Pro Controller, ...), similar to DS4Windows.
-3. **Web app** similar to hardwaretester.com/gamepad, connected to a database
-   that collects reports of detected controllers. Those reports are used to
-   improve controller detection in later iterations.
+3. **Web app** similar to hardwaretester.com/gamepad, built on the Rust
+   library compiled to WebAssembly and connected to a database that collects
+   reports of detected controllers. Those reports are used to improve
+   controller detection in later iterations.
 4. **Collection mode** in the desktop app that gathers device reports too.
+
+Priority: the web app comes before the desktop app.
+
+The library aggregates several input providers (native backends, web backend,
+SDL3, gilrs) and arbitrates between them per device, to support as many
+gamepads as possible.
 
 The current plan is in the most recent directory under `ROADMAP/`.
 
@@ -68,7 +75,8 @@ Conversation with the user may happen in any language.
   files and commit messages.
 - A roadmap version is a snapshot. To re-plan, create a new dated directory
   (copying and editing the previous one) instead of rewriting history. Small
-  corrections (typos, status updates) may be applied in place. When a new
+  corrections (typos, status updates), and re-plans made on the same day the
+  version was created, may be applied in place; record them in a RECORD file. When a new
   version is created, mark the previous `README.md` status as
   `superseded by ROADMAP/<new date>/`.
 

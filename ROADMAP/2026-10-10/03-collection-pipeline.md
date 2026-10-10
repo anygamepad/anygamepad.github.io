@@ -11,8 +11,8 @@ gantt
     axisFormat %b %d
     title Collection pipeline (critical path in red)
     section Upstream blockers
-    C2 done :milestone, c2, 2026-11-03, 0d
-    D1 done :milestone, d1, 2026-11-13, 0d
+    C2 done :milestone, crit, c2, 2026-11-06, 0d
+    D1 done :milestone, d1, 2026-11-16, 0d
     section Collection pipeline
     P1 Device report schema (shared crate) :p1, after c2 d1, 7d
     P2 Ingestion API and PostgreSQL storage :p2, after p1, 20d
@@ -25,23 +25,27 @@ gantt
 
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
-| P1 | Device report schema (shared crate) | 7 | C2, D1 | P2, P3 | 2026-11-13 | 2026-11-20 | 6 |
-| P2 | Ingestion API and PostgreSQL storage | 20 | P1 | P4, P5, W5, A3 | 2026-11-20 | 2026-12-10 | 6 |
-| P3 | Privacy, consent, data retention policy | 10 | P1 | W5, A3 | 2026-11-20 | 2026-11-30 | 16 |
-| P4 | Curation tooling (reports to profile PRs) | 20 | P2, D1 | - | 2026-12-10 | 2026-12-30 | 21 |
-| P5 | Hosting, backups, monitoring | 10 | P2 | W6 | 2026-12-10 | 2026-12-20 | 26 |
+| P1 | Device report schema (shared crate) | 7 | C2, D1 | P2, P3, W6 | 2026-11-16 | 2026-11-23 | 13 |
+| P2 | Ingestion API and PostgreSQL storage | 20 | P1 | P4, P5, W6, A3 | 2026-11-23 | 2026-12-13 | 13 |
+| P3 | Privacy, consent, data retention policy | 10 | P1 | W6, A3 | 2026-11-23 | 2026-12-03 | 23 |
+| P4 | Curation tooling (reports to profile PRs) | 20 | P2, D1 | - | 2026-12-13 | 2027-01-02 | 73 |
+| P5 | Hosting, backups, monitoring | 10 | P2 | W7 | 2026-12-13 | 2026-12-23 | 13 |
 
 ### P1 — Device report schema
 
-Shared crate `rustpad-report` (plus generated JSON Schema / TypeScript types)
-describing a report:
+Shared crate `rustpad-report` (plus generated JSON Schema) describing a
+report. The web app builds reports with this same crate running in WebAssembly
+(TypeScript types come from the `rustpad-wasm` bindings, C11), so web and
+desktop reports are produced by identical code:
 
 - Source (web or desktop), app/browser version, OS and version.
 - Identity fields (C2): VID/PID, version, bus, names as reported by each API
   (e.g. the browser Gamepad `id` string, which differs between browsers).
+- Per-provider view (desktop): how native, SDL3 and gilrs each see the device
+  (C12).
 - Raw data when available: HID report descriptor, sample input reports,
   button/axis counts, browser `mapping` value.
-- User-confirmed mapping from the guided wizard (W3) and the mode the user says
+- User-confirmed mapping from the guided wizard (W4) and the mode the user says
   the controller is in.
 - **Never** serial numbers, Bluetooth MAC addresses or any personal data:
   stripped on the client and validated again on the server.

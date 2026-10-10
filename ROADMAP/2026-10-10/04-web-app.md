@@ -1,8 +1,14 @@
 # 04 — Web app
 
 A gamepad tester in the spirit of hardwaretester.com/gamepad that also collects
-device reports. It has no dependency on the core library to get started (W1
-only needs the workspace), so it can ship early and start gathering data.
+device reports. **Top priority of the project**: its launch (M2) gates the
+desktop app.
+
+**The web app runs the rustpad Rust library compiled to WebAssembly.** All
+device access (Gamepad API, WebHID), normalization, profile matching and report
+building happen inside the library; the web frontend only renders state and
+handles user interaction. This makes the web app a real consumer of the
+library: what users see in the browser is exactly what a Rust game would get.
 
 ## Schedule
 
@@ -13,61 +19,78 @@ gantt
     title Web app (critical path in red)
     section Upstream blockers
     F1 done :milestone, f1, 2026-10-17, 0d
-    C1 done :milestone, crit, c1, 2026-11-06, 0d
-    P3 done :milestone, p3, 2026-11-30, 0d
-    P2 done :milestone, p2, 2026-12-10, 0d
-    C9 done :milestone, c9, 2026-12-18, 0d
-    P5 done :milestone, p5, 2026-12-20, 0d
+    F3 done :milestone, crit, f3, 2026-10-27, 0d
+    D2 done :milestone, d2, 2026-11-23, 0d
+    P1 done :milestone, p1, 2026-11-23, 0d
+    C11 done :milestone, crit, c11, 2026-11-26, 0d
+    P3 done :milestone, p3, 2026-12-03, 0d
+    C3 done :milestone, c3, 2026-12-06, 0d
+    D4 done :milestone, d4, 2026-12-13, 0d
+    P2 done :milestone, p2, 2026-12-13, 0d
+    P5 done :milestone, p5, 2026-12-23, 0d
     section Web app
-    W1 Gamepad API live tester :w1, after f1, 15d
-    W2 WebHID raw mode (descriptors, raw reports) :w2, after w1, 15d
-    W3 Guided mapping wizard :w3, after w1 c1, 15d
-    W5 Report submission and consent flow :w5, after w3 p2 p3, 10d
-    W4 Normalized preview via core WASM build :w4, after w1 c9, 10d
-    W6 Public launch of the web tester :w6, after w5 p5, 5d
+    W1 Web app scaffolding and WASM build pipeline :w1, after f1 f3, 7d
+    W2 Live tester on the core web backend :crit, w2, after w1 c11, 15d
+    W3 WebHID raw mode (descriptors, raw reports) :w3, after w2, 10d
+    W4 Guided mapping wizard (shared with desktop) :crit, w4, after w2, 15d
+    W5 Normalized view (mapping engine + profiles) :w5, after w2 c3 d2 d4, 10d
+    W6 Report submission and consent flow :crit, w6, after w4 p1 p2 p3, 10d
+    W7 Public launch of the web tester :crit, w7, after w5 w6 p5, 5d
 ```
 
 ## Tasks
 
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
-| W1 | Gamepad API live tester | 15 | F1 | W2, W3, W4 | 2026-10-17 | 2026-11-01 | 30 |
-| W2 | WebHID raw mode (descriptors, raw reports) | 15 | W1 | - | 2026-11-01 | 2026-11-16 | 65 |
-| W3 | Guided mapping wizard | 15 | W1, C1 | W5, A3 | 2026-11-06 | 2026-11-21 | 25 |
-| W4 | Normalized preview via core WASM build | 10 | W1, C9 | - | 2026-12-18 | 2026-12-28 | 23 |
-| W5 | Report submission and consent flow | 10 | W3, P2, P3 | W6 | 2026-12-10 | 2026-12-20 | 26 |
-| W6 | Public launch of the web tester | 5 | W5, P5 | M2 | 2026-12-20 | 2026-12-25 | 26 |
+| W1 | Web app scaffolding and WASM build pipeline | 7 | F1, F3 | W2 | 2026-10-27 | 2026-11-03 | 23 |
+| W2 | **Live tester on the core web backend** | 15 | W1, C11 | W3, W4, W5 | 2026-11-26 | 2026-12-11 | 0 |
+| W3 | WebHID raw mode (descriptors, raw reports) | 10 | W2 | - | 2026-12-11 | 2026-12-21 | 85 |
+| W4 | **Guided mapping wizard (shared with desktop)** | 15 | W2 | W6, A3 | 2026-12-11 | 2026-12-26 | 0 |
+| W5 | Normalized view (mapping engine + profiles) | 10 | W2, C3, D2, D4 | W7 | 2026-12-13 | 2026-12-23 | 13 |
+| W6 | **Report submission and consent flow** | 10 | W4, P1, P2, P3 | W7 | 2026-12-26 | 2027-01-05 | 0 |
+| W7 | **Public launch of the web tester** | 5 | W5, W6, P5 | M2 | 2027-01-05 | 2027-01-10 | 0 |
 
-### W1 — Gamepad API live tester
+### W1 — Web app scaffolding and WASM build pipeline
 
-Live view of buttons and axes for every connected pad, raw `id` string,
-`mapping` value, timestamps/polling rate, vibration test via
-`vibrationActuator`. Works on Chromium, Firefox and Safari.
+Frontend project (framework chosen in F3), build pipeline that compiles the
+library's JS bindings crate (`rustpad-wasm`) with `wasm-bindgen`, preview
+deployments from CI, bundle size budget for the `.wasm` file.
 
-### W2 — WebHID raw mode
+### W2 — Live tester on the core web backend
 
-Chromium-only opt-in mode (requires a user gesture) that reads VID/PID, HID
-report descriptors and raw input reports — the same data the desktop collector
-gets, without installing anything.
+Live view of buttons and axes for every connected pad, driven by the library's
+web backend (C11): browser `id` string, browser `mapping` value, raw values,
+polling rate, vibration test. Must work on Chromium, Firefox and Safari.
 
-### W3 — Guided mapping wizard
+### W3 — WebHID raw mode
+
+Chromium-only opt-in mode (requires a user gesture) that uses the library's
+WebHID access to read VID/PID, HID report descriptors and raw input reports —
+the same data the desktop collector gets, without installing anything. Because
+the native protocol drivers (C7) are transport-agnostic, they can later run
+over WebHID too (e.g. full DualSense or Switch Pro reports in the browser).
+
+### W4 — Guided mapping wizard
 
 "Press the bottom face button", "Move the left stick up", ... records what the
-user confirms, producing a user-verified mapping expressed in canonical model
-terms (C1).
+user confirms and produces a user-verified mapping in canonical model terms
+(C1). The wizard's state machine lives in the library so the desktop collection
+mode (A3) reuses the same logic; the web app only provides the UI.
 
-### W4 — Normalized preview via core WASM build
+### W5 — Normalized view
 
-Run the mapping engine compiled to WASM (C9) to show how rustpad would
-normalize the connected pad, and highlight where it disagrees with what the
-user confirmed in the wizard.
+Show the canonical output produced by the mapping engine (C3) and the embedded
+profiles (D4, bootstrapped with the SDL GameControllerDB import D2) next to the
+raw values, and highlight where it disagrees with what the user confirmed in
+the wizard.
 
-### W5 — Report submission and consent flow
+### W6 — Report submission and consent flow
 
-Preview exactly what will be sent, explicit consent (P3), submit to the
-ingestion API (P2).
+The library builds the device report (P1) inside WASM, so web and desktop
+reports come from the same code. Preview exactly what will be sent, explicit
+consent (P3), submit to the ingestion API (P2).
 
-### W6 — Public launch
+### W7 — Public launch
 
 Production deployment on the hosting from P5. Reaching this milestone (M2)
 starts the data collection loop.

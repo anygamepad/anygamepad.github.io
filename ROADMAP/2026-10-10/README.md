@@ -15,6 +15,8 @@ different identity and a different input layout depending on:
   GameController framework) each expose the device differently.
 - **The transport**: USB, Bluetooth Classic and BLE often produce different
   report formats for the same device.
+- **The browser**: the Gamepad API applies its own per-browser remapping, so
+  Chromium, Firefox and Safari can disagree about the same pad on the same OS.
 
 rustpad normalizes all of this into **one canonical gamepad model**, and builds
 a data loop to keep improving detection over time.
@@ -25,10 +27,39 @@ a data loop to keep improving detection over time.
 |---|-------------|--------|
 | 1 | **Rust library** (`rustpad` crate) that Rust games embed to get normalized gamepad input, isolating them from device/mode/OS quirks. | [01-core-library.md](01-core-library.md), [02-device-database.md](02-device-database.md) |
 | 2 | **Desktop app** (Windows, Linux, macOS) that detects controllers and exposes a **virtual controller** of a selectable type (Xbox 360, DualShock 4, DualSense, Switch Pro Controller, ...), similar to DS4Windows but multi-target and multi-OS. | [05-desktop-app.md](05-desktop-app.md) |
-| 3 | **Web app** similar to hardwaretester.com/gamepad, backed by a database that **collects reports of detected controllers**. | [04-web-app.md](04-web-app.md), [03-collection-pipeline.md](03-collection-pipeline.md) |
+| 3 | **Web app** similar to hardwaretester.com/gamepad, built on the **rustpad library compiled to WebAssembly**, backed by a database that **collects reports of detected controllers**. | [04-web-app.md](04-web-app.md), [03-collection-pipeline.md](03-collection-pipeline.md) |
 | 4 | **Collection mode** in the desktop app, which gathers richer reports than the browser can (raw HID descriptors, OS driver info). | [05-desktop-app.md](05-desktop-app.md), [03-collection-pipeline.md](03-collection-pipeline.md) |
 
 Cross-cutting groundwork lives in [00-foundations.md](00-foundations.md).
+
+## Priorities
+
+1. **Web app first.** The web tester (milestone M2) is the top priority: it
+   starts the data collection loop and is the first real consumer of the
+   library (through WebAssembly). Library work the web needs (C1, C2, C3, C11,
+   D1, D2, D4) and the collection pipeline come first.
+2. **Library 0.1.0** (M3): native providers (C4-C6, C13, C14) and protocol
+   drivers progress in parallel, since the library is a deliverable on its own.
+3. **Desktop app** (M4): its first tasks (A1, A4) are blocked by M2, so desktop
+   work starts once the web tester is live, and reuses what the web built.
+
+## Input provider strategy
+
+To support as many gamepads as possible, the library does not pick a single
+input stack: it aggregates several **providers** and arbitrates between them
+per physical device (C12).
+
+| Provider | Platforms | Why |
+|----------|-----------|-----|
+| rustpad native (C4-C7) | Linux, Windows, macOS | Full control: modes, clones, own profiles, protocol drivers. |
+| rustpad web (C11) | Browser (WASM) | Gamepad API + WebHID; SDL3 does not target `wasm32-unknown-unknown`. |
+| SDL3 (C13) | Linux, Windows, macOS | Widest existing coverage (SDL HIDAPI drivers + GameControllerDB). |
+| gilrs (C14) | Linux, Windows, macOS | Pure-Rust fallback for games that cannot link C libraries. |
+
+Each provider is a Cargo feature. Only one provider owns a given physical
+device at a time (no duplicates, no competing handshakes); profiles can state
+which provider handles a device best. In collection mode, every provider's view
+of the device is recorded, so disagreements between them become data.
 
 ## The data loop
 
@@ -54,12 +85,13 @@ curated profile database, so detection gets better with each release.
 
 - Schedule starts on **2026-10-12**; durations are **calendar days** of focused
   work per task.
-- Workstreams (core, web/collection, desktop) are assumed to progress **in
-  parallel**. With a single contributor the dates stretch, but the dependency
-  graph (what blocks what) stays valid. Use the graph, not the dates, to decide
-  what to pick up next.
-- The critical path ends at milestone M4 (desktop 0.1.0). Projected end:
-  **2027-01-20**.
+- Core/database/collection and web workstreams are assumed to progress **in
+  parallel**; the desktop workstream starts after M2 (see Priorities). With a
+  single contributor the dates stretch, but the dependency graph (what blocks
+  what) stays valid. Use the graph, not the dates, to decide what to pick up
+  next.
+- The critical path runs through the web launch (M2) and ends at milestone M4
+  (desktop 0.1.0). Projected end: **2027-03-16**.
 
 ## Master schedule
 
@@ -79,15 +111,19 @@ gantt
     F4 Hardware test lab inventory :f4, after f2, 5d
     section Core library
     C1 Canonical gamepad model :crit, c1, after f1 f3, 10d
-    C2 Device identity and fingerprint model :c2, after f3, 7d
-    C4 Linux input backend (evdev + hidraw) :crit, c4, after c1 c2, 20d
+    C2 Device identity, fingerprint and provider trait :crit, c2, after f3, 10d
+    C4 Linux input backend (evdev + hidraw) :c4, after c1 c2, 20d
     C5 Windows input backend (HID + XInput) :c5, after c1 c2, 30d
     C6 macOS input backend (IOKit HID) :c6, after c1 c2, 25d
+    C11 Web backend (Gamepad API + WebHID) and JS bindings :crit, c11, after c1 c2, 20d
+    C13 SDL3 provider (incl. SDL HIDAPI drivers) :c13, after c1 c2, 15d
+    C14 gilrs provider (pure-Rust fallback) :c14, after c1 c2, 10d
     C3 Mapping engine :c3, after c1 d1, 20d
     C7 Native protocol drivers (DualSense, DS4, Switch Pro) :c7, after c4, 30d
-    C9 Public API, docs, examples, WASM target :c9, after c3, 15d
+    C12 Multi-provider arbitration (dedup, priority) :c12, after c4 c13, 15d
+    C9 Public API, docs and examples :c9, after c3, 15d
     C8 Mode and clone detection heuristics :c8, after c3 c4 d3, 20d
-    C10 Library 0.1.0 release :c10, after c5 c6 c7 c8 c9 d4, 5d
+    C10 Library 0.1.0 release :c10, after c5 c6 c7 c8 c9 c11 c12 c14 d4, 5d
     section Device database
     D1 Device profile format and JSON Schema :d1, after c2, 10d
     D2 SDL GameControllerDB importer :d2, after d1, 7d
@@ -100,36 +136,43 @@ gantt
     P4 Curation tooling (reports to profile PRs) :p4, after p2 d1, 20d
     P5 Hosting, backups, monitoring :p5, after p2, 10d
     section Web app
-    W1 Gamepad API live tester :w1, after f1, 15d
-    W2 WebHID raw mode (descriptors, raw reports) :w2, after w1, 15d
-    W3 Guided mapping wizard :w3, after w1 c1, 15d
-    W5 Report submission and consent flow :w5, after w3 p2 p3, 10d
-    W4 Normalized preview via core WASM build :w4, after w1 c9, 10d
-    W6 Public launch of the web tester :w6, after w5 p5, 5d
+    W1 Web app scaffolding and WASM build pipeline :w1, after f1 f3, 7d
+    W2 Live tester on the core web backend :crit, w2, after w1 c11, 15d
+    W3 WebHID raw mode (descriptors, raw reports) :w3, after w2, 10d
+    W4 Guided mapping wizard (shared with desktop) :crit, w4, after w2, 15d
+    W5 Normalized view (mapping engine + profiles) :w5, after w2 c3 d2 d4, 10d
+    W6 Report submission and consent flow :crit, w6, after w4 p1 p2 p3, 10d
+    W7 Public launch of the web tester :crit, w7, after w5 w6 p5, 5d
     section Desktop app
-    A1 App shell (UI toolkit, tray, settings) :a1, after f3, 15d
-    A4 Virtual pad abstraction and emulated profiles :a4, after c1, 10d
-    A2 Device list and live view :a2, after a1 c4, 15d
+    A1 App shell (UI toolkit, tray, settings) :crit, a1, after f3 m2, 15d
+    A4 Virtual pad abstraction and emulated profiles :crit, a4, after c1 m2, 10d
     A5 Linux virtual output (uinput + UHID) :crit, a5, after a4 c4, 20d
-    A8 macOS virtual output (IOHIDUserDevice) :a8, after a4 c6, 25d
     A7 Windows virtual output via ViGEmBus (X360, DS4) :a7, after a4 c5, 15d
-    A3 Collection mode :a3, after a2 w3 p2 p3, 15d
+    A8 macOS virtual output (IOHIDUserDevice) :a8, after a4 c6, 25d
+    A2 Device list and live view :crit, a2, after a1 c4, 15d
+    A3 Collection mode :crit, a3, after a2 w4 p2 p3, 15d
     A6 Physical device hiding (grab/HidHide/seize) :crit, a6, after a5 c5 c6, 15d
     A9 Packaging and code signing :crit, a9, after a3 a6 a7 a8, 15d
     A10 Desktop app 0.1.0 release :crit, a10, after a9 c10, 5d
     section Milestones
-    M1 Core reads devices on Linux :milestone, m1, after c3 c4, 0d
-    M2 Web tester live and collecting :milestone, m2, after w6, 0d
+    M1 Core runs in the browser :milestone, m1, after c3 c11 d4, 0d
+    M2 Web tester live and collecting :milestone, crit, m2, after w7, 0d
     M3 Library 0.1.0 :milestone, m3, after c10, 0d
     M4 Desktop app 0.1.0 :milestone, crit, m4, after a10, 0d
 ```
 
 ### Critical path
 
-F2 -> F3 -> C1 -> C4 -> A5 -> A6 -> A9 -> A10 -> M4
+Zero-slack chains (they share most tasks):
 
-Any delay on these tasks delays the desktop 0.1.0 release. Everything else has
-slack (see the `Slack` column in each detailed file).
+1. F2 -> F3 -> C1 -> C11 -> W2 -> W4 -> W6 -> W7 -> M2 -> A1 -> A2 -> A3 -> A9 -> A10 -> M4
+2. F2 -> F3 -> C1 -> C11 -> W2 -> W4 -> W6 -> W7 -> M2 -> A4 -> A5 -> A6 -> A9 -> A10 -> M4
+3. F2 -> F3 -> C2 -> C11 -> W2 -> W4 -> W6 -> W7 -> M2 -> A1 -> A2 -> A3 -> A9 -> A10 -> M4
+4. F2 -> F3 -> C2 -> C11 -> W2 -> W4 -> W6 -> W7 -> M2 -> A4 -> A5 -> A6 -> A9 -> A10 -> M4
+
+Any delay on these tasks delays the web launch (M2) and therefore the desktop
+0.1.0 release. Everything else has slack (see the `Slack` column in each
+detailed file).
 
 ## Dependency graph (who blocks whom)
 
@@ -153,6 +196,10 @@ flowchart LR
         c7[C7]
         c8[C8]
         c9[C9]
+        c11[C11]
+        c13[C13]
+        c12[C12]
+        c14[C14]
         c10[C10]
     end
     subgraph database[Device database]
@@ -175,6 +222,7 @@ flowchart LR
         w4[W4]
         w5[W5]
         w6[W6]
+        w7[W7]
     end
     subgraph desktop[Desktop app]
         a1[A1]
@@ -189,8 +237,8 @@ flowchart LR
         a10[A10]
     end
     subgraph milestones[Milestones]
-        m1{{M1}}
         m2{{M2}}
+        m1{{M1}}
         m3{{M3}}
         m4{{M4}}
     end
@@ -216,6 +264,14 @@ flowchart LR
     c4 --> c8
     d3 --> c8
     c3 --> c9
+    c1 --> c11
+    c2 --> c11
+    c1 --> c13
+    c2 --> c13
+    c4 --> c12
+    c13 --> c12
+    c1 --> c14
+    c2 --> c14
     d1 --> d4
     c3 --> d4
     c5 --> c10
@@ -223,6 +279,9 @@ flowchart LR
     c7 --> c10
     c8 --> c10
     c9 --> c10
+    c11 --> c10
+    c12 --> c10
+    c14 --> c10
     d4 --> c10
     d1 --> d2
     c2 --> p1
@@ -233,24 +292,33 @@ flowchart LR
     d1 --> p4
     p2 --> p5
     f1 --> w1
+    f3 --> w1
     w1 --> w2
-    w1 --> w3
-    c1 --> w3
-    w1 --> w4
-    c9 --> w4
-    w3 --> w5
-    p2 --> w5
-    p3 --> w5
-    w5 --> w6
-    p5 --> w6
+    c11 --> w2
+    w2 --> w3
+    w2 --> w4
+    w2 --> w5
+    c3 --> w5
+    d2 --> w5
+    d4 --> w5
+    w4 --> w6
+    p1 --> w6
+    p2 --> w6
+    p3 --> w6
+    w5 --> w7
+    w6 --> w7
+    p5 --> w7
+    w7 --> m2
     f3 --> a1
+    m2 --> a1
     a1 --> a2
     c4 --> a2
     a2 --> a3
-    w3 --> a3
+    w4 --> a3
     p2 --> a3
     p3 --> a3
     c1 --> a4
+    m2 --> a4
     a4 --> a5
     c4 --> a5
     a5 --> a6
@@ -267,22 +335,22 @@ flowchart LR
     a9 --> a10
     c10 --> a10
     c3 --> m1
-    c4 --> m1
-    w6 --> m2
+    c11 --> m1
+    d4 --> m1
     c10 --> m3
     a10 --> m4
     classDef crit fill:#fdd,stroke:#c00,stroke-width:2px
-    class f2,f3,c1,c4,a5,a6,a9,a10,m4 crit
+    class f2,f3,c1,c2,c11,w2,w4,w6,w7,m2,a1,a2,a3,a4,a5,a6,a9,a10,m4 crit
 ```
 
 ## Milestones
 
 | Milestone | Blocked by | Target date |
 |-----------|------------|-------------|
-| M1 Core reads devices on Linux | C3, C4 | 2026-12-03 |
-| M2 Web tester live and collecting | W6 | 2026-12-25 |
+| M1 Core runs in the browser | C3, C11, D4 | 2026-12-13 |
+| M2 Web tester live and collecting | W7 | 2027-01-10 |
 | M3 Library 0.1.0 | C10 | 2027-01-10 |
-| M4 Desktop app 0.1.0 | A10 | 2027-01-20 |
+| M4 Desktop app 0.1.0 | A10 | 2027-03-16 |
 
 ## Top risks
 
@@ -292,8 +360,10 @@ flowchart LR
 | macOS virtual HID devices require the restricted `com.apple.developer.hid.virtual.device` entitlement (or DriverKit entitlements). | macOS virtual output may be blocked by Apple approval. | Request the entitlement as soon as A9 starts; ship macOS as input/collection-only if not granted. |
 | Clone controllers that impersonate genuine VID/PIDs (e.g. a third-party pad in Switch mode reporting as `057e:2009`). | Wrong profile, wrong calibration, failed handshakes. | Fingerprinting beyond VID/PID (C8), community reports. |
 | Privacy of collected data (serial numbers, Bluetooth MAC addresses, IPs). | Legal exposure (GDPR), loss of trust. | Strip identifiers client-side and server-side, explicit consent, retention policy (P3). |
+| WebAssembly constraints: Gamepad API is poll-only (must be driven from `requestAnimationFrame`), WebHID is Chromium-only, browsers remap pads differently, and embedding profiles grows the `.wasm` bundle. | Web tester behaves differently from native, slow page load. | Browser is an identity dimension in profiles (C2, D1); bundle size budget in CI (W1); WebHID features are opt-in. |
 | Hardware availability for testing many controllers on three OSes. | Profiles verified only on one OS. | Hardware lab inventory (F4) and crowd-sourced reports. |
-| Crate name `rustpad` may already be taken on crates.io / conflicts with other projects named rustpad. | Cannot publish under that name. | Check availability during F1; decide final crate name before C10. |
+| Crate name `rustpad` is **taken** on crates.io (an unrelated padding-oracle tool, checked 2026-10-10). | Cannot publish under that name. | Pick a new crate name in F1. Free on 2026-10-10: `omnipad`, `anypad`, `unipad`, `padkit`, `canonpad`, `padnorm`. |
+| Multiple providers (native, SDL3, gilrs) opening the same device: duplicates, exclusive-access conflicts, competing handshakes (e.g. two drivers configuring a Switch Pro Controller). SDL3 is also a C dependency (build and cross-compilation complexity). | Duplicate or broken input. | Arbitration layer (C12) lets one provider own each device; SDL hints disable SDL HIDAPI drivers for devices a native driver owns; SDL3 provider is an optional feature. |
 
 ## Beyond 0.1 (not scheduled yet)
 

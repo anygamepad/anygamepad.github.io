@@ -5,6 +5,10 @@ library, offers a **virtual controller** of a selectable type (like
 DS4Windows, but not limited to one target type or one OS), and has a
 **collection mode** that submits device reports.
 
+The web app has priority: the desktop workstream starts after the web tester
+is live (M2). If Tauri is chosen (F3), the desktop UI reuses the web app's
+frontend components.
+
 ## Schedule
 
 ```mermaid
@@ -15,21 +19,22 @@ gantt
     section Upstream blockers
     F3 done :milestone, crit, f3, 2026-10-27, 0d
     C1 done :milestone, crit, c1, 2026-11-06, 0d
-    W3 done :milestone, w3, 2026-11-21, 0d
-    C4 done :milestone, crit, c4, 2026-11-26, 0d
-    P3 done :milestone, p3, 2026-11-30, 0d
+    C4 done :milestone, c4, 2026-11-26, 0d
     C6 done :milestone, c6, 2026-12-01, 0d
+    P3 done :milestone, p3, 2026-12-03, 0d
     C5 done :milestone, c5, 2026-12-06, 0d
-    P2 done :milestone, p2, 2026-12-10, 0d
+    P2 done :milestone, p2, 2026-12-13, 0d
+    W4 done :milestone, crit, w4, 2026-12-26, 0d
     C10 done :milestone, c10, 2027-01-10, 0d
+    M2 done :milestone, crit, m2, 2027-01-10, 0d
     section Desktop app
-    A1 App shell (UI toolkit, tray, settings) :a1, after f3, 15d
-    A4 Virtual pad abstraction and emulated profiles :a4, after c1, 10d
-    A2 Device list and live view :a2, after a1 c4, 15d
+    A1 App shell (UI toolkit, tray, settings) :crit, a1, after f3 m2, 15d
+    A4 Virtual pad abstraction and emulated profiles :crit, a4, after c1 m2, 10d
     A5 Linux virtual output (uinput + UHID) :crit, a5, after a4 c4, 20d
-    A8 macOS virtual output (IOHIDUserDevice) :a8, after a4 c6, 25d
     A7 Windows virtual output via ViGEmBus (X360, DS4) :a7, after a4 c5, 15d
-    A3 Collection mode :a3, after a2 w3 p2 p3, 15d
+    A8 macOS virtual output (IOHIDUserDevice) :a8, after a4 c6, 25d
+    A2 Device list and live view :crit, a2, after a1 c4, 15d
+    A3 Collection mode :crit, a3, after a2 w4 p2 p3, 15d
     A6 Physical device hiding (grab/HidHide/seize) :crit, a6, after a5 c5 c6, 15d
     A9 Packaging and code signing :crit, a9, after a3 a6 a7 a8, 15d
     A10 Desktop app 0.1.0 release :crit, a10, after a9 c10, 5d
@@ -39,16 +44,16 @@ gantt
 
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
-| A1 | App shell (UI toolkit, tray, settings) | 15 | F3 | A2 | 2026-10-27 | 2026-11-11 | 20 |
-| A2 | Device list and live view | 15 | A1, C4 | A3 | 2026-11-26 | 2026-12-11 | 5 |
-| A3 | Collection mode | 15 | A2, W3, P2, P3 | A9 | 2026-12-11 | 2026-12-26 | 5 |
-| A4 | Virtual pad abstraction and emulated profiles | 10 | C1 | A5, A7, A8 | 2026-11-06 | 2026-11-16 | 10 |
-| A5 | **Linux virtual output (uinput + UHID)** | 20 | A4, C4 | A6 | 2026-11-26 | 2026-12-16 | 0 |
-| A6 | **Physical device hiding (grab/HidHide/seize)** | 15 | A5, C5, C6 | A9 | 2026-12-16 | 2026-12-31 | 0 |
-| A7 | Windows virtual output via ViGEmBus (X360, DS4) | 15 | A4, C5 | A9 | 2026-12-06 | 2026-12-21 | 10 |
-| A8 | macOS virtual output (IOHIDUserDevice) | 25 | A4, C6 | A9 | 2026-12-01 | 2026-12-26 | 5 |
-| A9 | **Packaging and code signing** | 15 | A3, A6, A7, A8 | A10 | 2026-12-31 | 2027-01-15 | 0 |
-| A10 | **Desktop app 0.1.0 release** | 5 | A9, C10 | M4 | 2027-01-15 | 2027-01-20 | 0 |
+| A1 | **App shell (UI toolkit, tray, settings)** | 15 | F3, M2 | A2 | 2027-01-10 | 2027-01-25 | 0 |
+| A2 | **Device list and live view** | 15 | A1, C4 | A3 | 2027-01-25 | 2027-02-09 | 0 |
+| A3 | **Collection mode** | 15 | A2, W4, P2, P3 | A9 | 2027-02-09 | 2027-02-24 | 0 |
+| A4 | **Virtual pad abstraction and emulated profiles** | 10 | C1, M2 | A5, A7, A8 | 2027-01-10 | 2027-01-20 | 0 |
+| A5 | **Linux virtual output (uinput + UHID)** | 20 | A4, C4 | A6 | 2027-01-20 | 2027-02-09 | 0 |
+| A6 | **Physical device hiding (grab/HidHide/seize)** | 15 | A5, C5, C6 | A9 | 2027-02-09 | 2027-02-24 | 0 |
+| A7 | Windows virtual output via ViGEmBus (X360, DS4) | 15 | A4, C5 | A9 | 2027-01-20 | 2027-02-04 | 20 |
+| A8 | macOS virtual output (IOHIDUserDevice) | 25 | A4, C6 | A9 | 2027-01-20 | 2027-02-14 | 10 |
+| A9 | **Packaging and code signing** | 15 | A3, A6, A7, A8 | A10 | 2027-02-24 | 2027-03-11 | 0 |
+| A10 | **Desktop app 0.1.0 release** | 5 | A9, C10 | M4 | 2027-03-11 | 2027-03-16 | 0 |
 
 ### A1 — App shell
 
@@ -63,7 +68,7 @@ their backends (C5, C6) land.
 
 ### A3 — Collection mode
 
-Reuses the guided wizard flow (W3) and the report schema (P1). Adds data the
+Reuses the guided wizard logic from the library (W4) and the report schema (P1). Adds data the
 browser cannot see: OS driver in use, full HID descriptors on every OS,
 evdev capabilities on Linux. Submits with explicit consent (P3) to the API (P2).
 
