@@ -62,9 +62,11 @@ gantt
 
 ### A1 — App shell
 
-UI toolkit chosen in F3, system tray, settings persistence, logging, update
-check. Performance budget: repaint only when input or state changes, near-zero
-CPU when idle, input-to-pixel latency of at most one frame.
+UI toolkit chosen in F3 ([ADR 0004](../../docs/adr/0004-desktop-ui-toolkit.md),
+accepted once its prototype meets the targets), system tray, settings
+persistence, logging, update check. Performance budget: repaint only when
+input or state changes, near-zero CPU when idle, input-to-pixel latency of at
+most one frame.
 
 ### A2 — Device list and live view
 

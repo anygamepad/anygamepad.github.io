@@ -56,7 +56,8 @@ gantt
 
 ### W1 — Web app scaffolding and WASM build pipeline
 
-Frontend project (framework chosen in F3), build pipeline that compiles the
+Frontend project (Vite + TypeScript + jq79, see
+[ADR 0005](../../docs/adr/0005-web-stack.md)), build pipeline that compiles the
 library's JS bindings crate (`anygamepad-wasm`) with `wasm-bindgen`, preview
 deployments from CI, bundle size budget for the `.wasm` file. Deployment to
 GitHub Pages through a GitHub Actions workflow that publishes only the built

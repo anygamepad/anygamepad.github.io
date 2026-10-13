@@ -1,6 +1,6 @@
 # 0001 — Canonical model naming
 
-- Status: proposed
+- Status: accepted (2026-10-10)
 - Date: 2026-10-10
 - Roadmap: F3 (ADR 1); used by C1
 
