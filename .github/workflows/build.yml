@@ -1,19 +1,32 @@
-name: CI
+name: Build
+
+# Tests and builds, on every push and pull request. The release workflow calls
+# it with the version being released, applied to the tree before anything is
+# built; the builds of that run are the release's assets. Pushes to main also
+# deploy the web app to GitHub Pages.
 
 on:
   push:
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: Version (X.Y.Z) applied to the tree before building; empty keeps the committed one
+        type: string
+        default: ""
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # The workflow name keeps a release's nested run apart from push runs.
+  group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
+  VERSION: ${{ inputs.version }}
 
 jobs:
   fmt:
@@ -22,6 +35,8 @@ jobs:
       - uses: actions/checkout@v5
       - run: rustup toolchain install
       - run: cargo fmt --all --check
+      - name: Every file has the same version
+        run: node scripts/version.mjs check
 
   native:
     name: native (${{ matrix.os }})
@@ -32,6 +47,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
+      - name: Apply the release version
+        if: inputs.version
+        shell: bash
+        run: node scripts/version.mjs set "$VERSION"
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
@@ -46,6 +65,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Apply the release version
+        if: inputs.version
+        run: node scripts/version.mjs set "$VERSION"
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       # anygamepad-virtual is desktop-only.
@@ -78,7 +100,77 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Apply the release version
+        if: inputs.version
+        run: node scripts/version.mjs set "$VERSION"
       - run: rustup toolchain install 1.85 --profile minimal --target wasm32-unknown-unknown
       - run: cargo +1.85 check --workspace --locked
       - run: cargo +1.85 check -p anygamepad-model --all-features --locked
       - run: cargo +1.85 check --workspace --exclude anygamepad-virtual --target wasm32-unknown-unknown --locked
+
+  # The web app and its WebAssembly bindings: the build artifacts.
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+      - name: Apply the release version
+        if: inputs.version
+        run: node scripts/version.mjs set "$VERSION"
+        working-directory: .
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack@0.15.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      # Bindings (wasm-pack, then wasm-opt from the pinned binaryen).
+      - run: npm run wasm
+      # Type-check, then build into dist/.
+      - run: npm run build
+      - run: npm run size
+      - name: Smoke test in Chrome
+        run: CHROME_PATH="$(command -v google-chrome)" npm run test:smoke
+      # Every run keeps its builds: previews of pull requests (GitHub Pages
+      # hosts one site per repository; `npx vite preview` serves the site),
+      # and the assets of a release.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: apps/web/dist
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasm-bindings
+          path: apps/web/src/wasm
+          retention-days: 14
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: apps/web/dist
+
+  # Publishes only the built site, never the repository contents, once every
+  # job passed. Needs the repository's Pages source set to "GitHub Actions".
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [fmt, native, wasm, msrv, web]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
