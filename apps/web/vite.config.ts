@@ -1,0 +1,40 @@
+import { defineConfig, type Plugin } from "vite";
+import { jq79 } from "jq79/vite";
+
+// GitHub Pages cannot send headers, so the policy travels as a <meta> tag
+// (ADR 0005). WebAssembly needs 'wasm-unsafe-eval'; jq79's safeEval mode
+// removes the need for 'unsafe-eval' and inline styles. Production builds
+// only: the dev server injects inline scripts and styles of its own.
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
+  "style-src 'self'",
+  "img-src 'self'",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
+const contentSecurityPolicy = (): Plugin => ({
+  name: "anygamepad:content-security-policy",
+  apply: "build",
+  transformIndexHtml: () => [
+    {
+      tag: "meta",
+      attrs: { "http-equiv": "Content-Security-Policy", content: CONTENT_SECURITY_POLICY },
+      injectTo: "head-prepend",
+    },
+  ],
+});
+
+export default defineConfig({
+  plugins: [jq79({ safeEval: true }), contentSecurityPolicy()],
+  build: {
+    // Top-level await, which safeEval's component modules use.
+    target: "es2022",
+    // Every asset, jq79's precompiled scripts included, stays a file:
+    // `script-src 'self'` refuses data: URLs.
+    assetsInlineLimit: 0,
+  },
+});

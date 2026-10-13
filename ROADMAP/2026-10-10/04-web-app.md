@@ -63,6 +63,10 @@ deployments from CI, bundle size budget for the `.wasm` file. Deployment to
 GitHub Pages through a GitHub Actions workflow that publishes only the built
 `apps/web` output (not the repository contents).
 
+Status (2026-10-13): done
+(`RECORD/2026-10-13.w1-web-scaffolding.completed.md`). Previews are build
+artifacts, not hosted sites (GitHub Pages hosts one site per repository).
+
 ### W2 — Live tester on the core web backend
 
 Live view of buttons and axes for every connected pad, driven by the library's

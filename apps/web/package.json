@@ -1,0 +1,31 @@
+{
+  "name": "anygamepad-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Gamepad tester built on the anygamepad library compiled to WebAssembly.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "wasm": "wasm-pack build ../../crates/anygamepad-wasm --release --target web --no-pack --out-dir ../../apps/web/src/wasm && wasm-opt -Oz src/wasm/anygamepad_wasm_bg.wasm -o src/wasm/anygamepad_wasm_bg.wasm",
+    "wasm:dev": "wasm-pack build ../../crates/anygamepad-wasm --dev --target web --no-pack --out-dir ../../apps/web/src/wasm",
+    "check": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+    "dev": "vite",
+    "build": "npm run check && vite build",
+    "size": "node scripts/check-size.mjs",
+    "preview": "vite preview",
+    "test:smoke": "node tests/smoke.mjs"
+  },
+  "dependencies": {
+    "jq79": "0.7.4"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "binaryen": "132.0.0",
+    "playwright-core": "1.63.0",
+    "typescript": "6.0.3",
+    "vite": "8.3.4"
+  }
+}

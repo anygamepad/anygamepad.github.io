@@ -37,6 +37,9 @@ cargo test -p anygamepad-wasm --target wasm32-unknown-unknown
 The browser tests need `chromedriver` (or `geckodriver` for Firefox) in `PATH`,
 or its path in the `CHROMEDRIVER` (`GECKODRIVER`) environment variable.
 
+The web app (`apps/web`, Node 22.12+ and wasm-pack 0.15) has its own
+commands; see [apps/web/README.md](apps/web/README.md).
+
 ## License
 
 Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or

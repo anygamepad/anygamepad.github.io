@@ -1,0 +1,3 @@
+dist/
+# wasm-pack output (npm run wasm)
+src/wasm/

@@ -15,6 +15,10 @@ use crate::provider::ProviderError;
 
 // Bindings web-sys only has behind `web_sys_unstable_apis` (haptics), or
 // with types that lose information.
+//
+// The haptics members are the least standardized, so they `catch`: a getter
+// that throws must mean "no rumble", because an exception unwinding through
+// the provider would leave it borrowed for good.
 #[wasm_bindgen]
 extern "C" {
     /// The members of `Gamepad` that web-sys lacks; see [`ext`].
@@ -30,19 +34,19 @@ extern "C" {
     fn mapping_string(this: &GamepadExt) -> String;
 
     /// `Gamepad.vibrationActuator`: missing in Firefox.
-    #[wasm_bindgen(method, getter, js_name = vibrationActuator)]
-    fn vibration_actuator(this: &GamepadExt) -> Option<VibrationActuator>;
+    #[wasm_bindgen(method, getter, catch, js_name = vibrationActuator)]
+    fn vibration_actuator(this: &GamepadExt) -> Result<Option<VibrationActuator>, JsValue>;
 
     /// `GamepadHapticActuator`.
     type VibrationActuator;
 
     /// The effect types it supports (recent browsers).
-    #[wasm_bindgen(method, getter)]
-    fn effects(this: &VibrationActuator) -> Option<Array>;
+    #[wasm_bindgen(method, getter, catch)]
+    fn effects(this: &VibrationActuator) -> Result<Option<Array>, JsValue>;
 
     /// Its only effect type (older browsers).
-    #[wasm_bindgen(method, getter, js_name = type)]
-    fn kind(this: &VibrationActuator) -> Option<String>;
+    #[wasm_bindgen(method, getter, catch, js_name = type)]
+    fn kind(this: &VibrationActuator) -> Result<Option<String>, JsValue>;
 
     #[wasm_bindgen(method, catch, js_name = playEffect)]
     fn play_effect(
@@ -118,7 +122,7 @@ impl BrowserGamepads {
     fn actuator(&self, slot: usize) -> Option<VibrationActuator> {
         let gamepads = self.navigator.get_gamepads().ok()?;
         let gamepad = gamepads.get(slot as u32).dyn_into::<Gamepad>().ok()?;
-        ext(&gamepad).vibration_actuator()
+        ext(&gamepad).vibration_actuator().ok().flatten()
     }
 
     fn ignore_rejection(&self, promise: Result<Promise, JsValue>) {
@@ -214,7 +218,7 @@ impl GamepadSource for BrowserGamepads {
 
 /// The effects a gamepad's `vibrationActuator` can play.
 fn haptics(gamepad: &Gamepad) -> OutputSet {
-    let Some(actuator) = ext(gamepad).vibration_actuator() else {
+    let Ok(Some(actuator)) = ext(gamepad).vibration_actuator() else {
         return OutputSet::EMPTY;
     };
     let output = |kind: &str| match kind {
@@ -222,13 +226,15 @@ fn haptics(gamepad: &Gamepad) -> OutputSet {
         "trigger-rumble" => Some(Output::TriggerRumble),
         _ => None,
     };
-    match actuator.effects() {
+    match actuator.effects().ok().flatten() {
         Some(effects) => effects
             .iter()
             .filter_map(|kind| kind.as_string().as_deref().and_then(output))
             .collect(),
         None => actuator
             .kind()
+            .ok()
+            .flatten()
             .as_deref()
             .and_then(output)
             .into_iter()
