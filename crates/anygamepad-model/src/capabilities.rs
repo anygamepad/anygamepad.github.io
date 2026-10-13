@@ -9,6 +9,7 @@ use crate::{Axis, AxisSet, Button, ButtonSet, Output, OutputSet, Sensor, SensorS
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Capabilities {
     /// Buttons the device has.
     pub buttons: ButtonSet,

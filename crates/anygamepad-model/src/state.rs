@@ -9,11 +9,17 @@ use crate::{Axis, Button, ButtonSet, MAX_TOUCH_POINTS, MotionSample, Power, Stic
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct GamepadState {
     /// Buttons currently pressed.
     pub buttons: ButtonSet,
     /// Axis values, in the order of [`Axis::ALL`]; always within
     /// [`Axis::range`] when set through [`GamepadState::set_axis`].
+    ///
+    /// Serialized as an object keyed by axis name in human-readable formats.
+    #[cfg_attr(feature = "serde", serde(with = "axes_serde"))]
+    #[cfg_attr(feature = "schemars", schemars(schema_with = "axes_serde::schema"))]
+    #[cfg_attr(feature = "tsify", tsify(type = "Record<Axis, number>"))]
     axes: [f32; Axis::COUNT],
     /// Fingers on the touchpads; `None` entries are free slots.
     pub touches: [Option<TouchPoint>; MAX_TOUCH_POINTS],
@@ -77,6 +83,92 @@ impl GamepadState {
     /// Fingers currently down, on any touchpad.
     pub fn active_touches(&self) -> impl Iterator<Item = TouchPoint> + '_ {
         self.touches.iter().flatten().copied()
+    }
+}
+
+/// Serde form of [`GamepadState::axes`]: an object keyed by axis name in
+/// human-readable formats, the array in binary formats. Values are clamped
+/// into their axis range when read.
+#[cfg(feature = "serde")]
+mod axes_serde {
+    use core::fmt;
+
+    use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
+    use serde::ser::{Serialize, SerializeStruct, Serializer};
+
+    use crate::Axis;
+
+    type Axes = [f32; Axis::COUNT];
+
+    const NAMES: [&str; Axis::COUNT] = {
+        let mut names = [""; Axis::COUNT];
+        let mut i = 0;
+        while i < Axis::COUNT {
+            names[i] = Axis::ALL[i].as_str();
+            i += 1;
+        }
+        names
+    };
+
+    pub(super) fn serialize<S: Serializer>(axes: &Axes, serializer: S) -> Result<S::Ok, S::Error> {
+        if serializer.is_human_readable() {
+            // A struct, not a map, so that every serializer writes a plain
+            // object (serde-wasm-bindgen turns maps into JavaScript `Map`s).
+            let mut object = serializer.serialize_struct("Axes", Axis::COUNT)?;
+            for axis in Axis::ALL {
+                object.serialize_field(axis.as_str(), &axes[axis.index()])?;
+            }
+            object.end()
+        } else {
+            axes.serialize(serializer)
+        }
+    }
+
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Axes, D::Error> {
+        let mut axes = if deserializer.is_human_readable() {
+            deserializer.deserialize_struct("Axes", &NAMES, AxesVisitor)?
+        } else {
+            Axes::deserialize(deserializer)?
+        };
+        for axis in Axis::ALL {
+            axes[axis.index()] = axis.clamp(axes[axis.index()]);
+        }
+        Ok(axes)
+    }
+
+    /// Missing axes are at rest (0); unknown names are rejected.
+    struct AxesVisitor;
+
+    impl<'de> Visitor<'de> for AxesVisitor {
+        type Value = Axes;
+
+        fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("an object from axis names to values")
+        }
+
+        fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Axes, A::Error> {
+            let mut axes = [0.0; Axis::COUNT];
+            while let Some(axis) = map.next_key::<Axis>()? {
+                axes[axis.index()] = map.next_value()?;
+            }
+            Ok(axes)
+        }
+    }
+
+    #[cfg(feature = "schemars")]
+    pub(super) fn schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        let number = schemars::json_schema!({ "type": "number" });
+        let properties: std::collections::BTreeMap<&str, schemars::Schema> = NAMES
+            .into_iter()
+            .map(|name| (name, number.clone()))
+            .collect();
+        schemars::json_schema!({
+            "type": "object",
+            "properties": properties,
+            "additionalProperties": false,
+        })
     }
 }
 

@@ -12,6 +12,7 @@ pub const MAX_TOUCH_POINTS: usize = 4;
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct TouchPoint {
     /// Index of the touchpad in
     /// [`Capabilities::touchpads`](crate::Capabilities::touchpads).
@@ -28,6 +29,7 @@ pub struct TouchPoint {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct TouchpadInfo {
     /// Number of fingers it tracks at once.
     pub max_fingers: u8,

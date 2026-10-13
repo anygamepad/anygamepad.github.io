@@ -117,6 +117,7 @@ named_enum! {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Browser {
     /// Engine.
     pub engine: BrowserEngine,
@@ -129,6 +130,7 @@ pub struct Browser {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct WebGamepad {
     /// `Gamepad.id`, verbatim (its format differs per browser; see
     /// [`GamepadApiId`]).
@@ -209,6 +211,10 @@ macro_rules! hex_u64 {
                 })
             }
         }
+
+        crate::macros::ts_decl!(
+            "/** 16 hexadecimal digits. */\nexport type ", stringify!($name), " = string;"
+        );
     };
 }
 
@@ -241,6 +247,7 @@ hex_u64! {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct DeviceIdentity {
     /// Provider that produced this view.
     pub provider: ProviderKind,

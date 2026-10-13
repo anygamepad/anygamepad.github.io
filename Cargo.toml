@@ -16,12 +16,16 @@ anygamepad = { path = "crates/anygamepad", version = "0.0.0" }
 anygamepad-db = { path = "crates/anygamepad-db", version = "0.0.0" }
 anygamepad-model = { path = "crates/anygamepad-model", version = "0.0.0" }
 anygamepad-report = { path = "crates/anygamepad-report", version = "0.0.0" }
+js-sys = "0.3.77"
 postcard = { version = "1.1", default-features = false, features = ["alloc"] }
 schemars = "1.2"
 serde = { version = "1.0.228", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
 serde_json = "1.0"
-wasm-bindgen = "0.2.100"
+tsify = { version = "0.5.8", default-features = false, features = ["js"] }
+wasm-bindgen = "0.2.104"
 wasm-bindgen-test = "0.3.50"
+web-sys = "0.3.77"
 
 [workspace.lints.rust]
 missing_docs = "warn"
@@ -30,3 +34,12 @@ unsafe_op_in_unsafe_fn = "deny"
 [workspace.lints.clippy]
 # AGENTS.md: every `unsafe` block needs a `// SAFETY:` comment.
 undocumented_unsafe_blocks = "deny"
+
+# The TypeScript declarations of the model (feature `tsify`) are custom
+# sections in its object files, and the linker drops the object files that the
+# web bindings do not reference. A single codegen unit keeps them all.
+[profile.dev.package.anygamepad-model]
+codegen-units = 1
+
+[profile.release.package.anygamepad-model]
+codegen-units = 1

@@ -6,6 +6,28 @@
 //! compact bit index instead, which is only stable within one library version
 //! (ADR 0003: the blob is rebuilt with the library).
 
+/// With the `tsify` feature, appends a TypeScript declaration to the `.d.ts`
+/// file of the web bindings. For types whose serde representation is written
+/// by hand, which `tsify` cannot derive. Takes the arguments of `concat!`, or
+/// a constant.
+macro_rules! ts_decl {
+    ($decl:path) => {
+        #[cfg(feature = "tsify")]
+        const _: () = {
+            #[::wasm_bindgen::prelude::wasm_bindgen(typescript_custom_section)]
+            const TS_DECL: &'static str = $decl;
+        };
+    };
+    ($($decl:tt)+) => {
+        #[cfg(feature = "tsify")]
+        const _: () = {
+            #[::wasm_bindgen::prelude::wasm_bindgen(typescript_custom_section)]
+            const TS_DECL: &'static str = concat!($($decl)+);
+        };
+    };
+}
+pub(crate) use ts_decl;
+
 /// Implements `Serialize` and `Deserialize` for a type that has `as_str`,
 /// `FromStr`, `bit` and `from_bit`.
 macro_rules! impl_name_serde {
@@ -65,7 +87,7 @@ pub(crate) use impl_name_serde;
 ///
 /// Generates `ALL`, `COUNT`, `as_str`, `index`, the crate-internal `bit` /
 /// `from_bit` used by [`enum_set!`], `Display`, `FromStr`, and with the
-/// `serde` / `schemars` features a string representation.
+/// `serde` / `schemars` / `tsify` features a string representation.
 macro_rules! named_enum {
     (
         $(#[$meta:meta])*
@@ -149,6 +171,10 @@ macro_rules! named_enum {
                 })
             }
         }
+
+        $crate::macros::ts_decl!(
+            "export type ", stringify!($name), " =", $(" | \"", $str, "\"",)+ ";"
+        );
     };
 }
 pub(crate) use named_enum;
@@ -393,6 +419,10 @@ macro_rules! enum_set {
                 })
             }
         }
+
+        $crate::macros::ts_decl!(
+            "export type ", stringify!($set), " = ", stringify!($elem), "[];"
+        );
     };
 }
 pub(crate) use enum_set;

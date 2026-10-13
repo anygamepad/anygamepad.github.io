@@ -21,10 +21,15 @@ workspace = true
 serde = ["dep:serde"]
 # JSON Schema of the serde representation (implies `serde`).
 schemars = ["dep:schemars", "serde"]
+# TypeScript declarations of the serde representation for the web bindings
+# (ADR 0005), through tsify and wasm-bindgen (implies `serde`).
+tsify = ["dep:tsify", "dep:wasm-bindgen", "serde"]
 
 [dependencies]
 schemars = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
+tsify = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
 postcard.workspace = true

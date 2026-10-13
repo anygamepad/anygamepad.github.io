@@ -36,9 +36,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
-      # Optional features (serde, schemars) of the model crate.
+      # Optional features (serde, schemars, tsify) of the model crate.
       - run: cargo clippy -p anygamepad-model --all-targets --all-features --locked -- -D warnings
       - run: cargo test -p anygamepad-model --all-features --locked
+      # The library without its default `web` provider.
+      - run: cargo clippy -p anygamepad --all-targets --no-default-features --locked -- -D warnings
 
   wasm:
     runs-on: ubuntu-latest
@@ -61,11 +63,22 @@ jobs:
         run: CHROMEDRIVER="$CHROMEWEBDRIVER/chromedriver" cargo test -p anygamepad-wasm --target wasm32-unknown-unknown --locked
       - name: Test in headless Firefox
         run: GECKODRIVER="$GECKOWEBDRIVER/geckodriver" cargo test -p anygamepad-wasm --target wasm32-unknown-unknown --locked
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # The generated `.d.ts` must declare every type it references and fit
+      # the way the web app uses the bindings (crates/anygamepad-wasm/ts).
+      - name: Type-check the TypeScript declarations
+        run: |
+          wasm-bindgen --target web --out-dir target/ts-check target/wasm32-unknown-unknown/debug/anygamepad_wasm.wasm
+          cp crates/anygamepad-wasm/ts/check.ts crates/anygamepad-wasm/ts/tsconfig.json target/ts-check/
+          cd target/ts-check && npx --yes -p typescript@6.0.3 tsc -p .
 
   msrv:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - run: rustup toolchain install 1.85 --profile minimal
+      - run: rustup toolchain install 1.85 --profile minimal --target wasm32-unknown-unknown
       - run: cargo +1.85 check --workspace --locked
       - run: cargo +1.85 check -p anygamepad-model --all-features --locked
+      - run: cargo +1.85 check --workspace --exclude anygamepad-virtual --target wasm32-unknown-unknown --locked

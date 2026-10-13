@@ -4,7 +4,7 @@ use core::fmt;
 use core::str::FromStr;
 
 use crate::ParseNameError;
-use crate::macros::{enum_set, impl_name_serde};
+use crate::macros::{enum_set, impl_name_serde, ts_decl};
 
 /// Number of extra buttons a gamepad can report beyond the standard ones.
 pub const MAX_EXTRA_BUTTONS: usize = 32;
@@ -285,6 +285,23 @@ impl schemars::JsonSchema for Button {
     }
 }
 
+/// TypeScript type of a button name; checked against [`Button::STANDARD`] by
+/// the tests.
+#[cfg(any(feature = "tsify", test))]
+#[allow(dead_code, reason = "read through a wasm-bindgen custom section")]
+const TS_BUTTON: &str = concat!(
+    "export type Button =",
+    r#" | "south" | "east" | "west" | "north""#,
+    r#" | "dpad_up" | "dpad_down" | "dpad_left" | "dpad_right""#,
+    r#" | "left_shoulder" | "right_shoulder" | "left_trigger" | "right_trigger""#,
+    r#" | "left_stick" | "right_stick" | "select" | "start" | "home""#,
+    r#" | "share" | "capture" | "mute""#,
+    r#" | "left_paddle_1" | "left_paddle_2" | "right_paddle_1" | "right_paddle_2""#,
+    r#" | "touchpad_click" | `extra_${number}`;"#,
+);
+
+ts_decl!(TS_BUTTON);
+
 enum_set! {
     /// A set of [`Button`]s: the buttons pressed in a state, or the buttons a
     /// device has.
@@ -337,6 +354,15 @@ mod tests {
         ] {
             let error = name.parse::<Button>().unwrap_err();
             assert_eq!(error.name(), name);
+        }
+    }
+
+    #[test]
+    fn typescript_type_lists_every_standard_button() {
+        let quoted = TS_BUTTON.matches('"').count() / 2;
+        assert_eq!(quoted, Button::STANDARD.len());
+        for button in Button::STANDARD {
+            assert!(TS_BUTTON.contains(&format!(r#""{button}""#)), "{button}");
         }
     }
 

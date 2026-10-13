@@ -1,8 +1,35 @@
-//! WebAssembly bindings of anygamepad, used by the web app.
+//! WebAssembly bindings of anygamepad, used by the web app (ADR 0005).
 //!
-//! Built with `wasm-bindgen`; the full API is defined by roadmap task C11.
+//! [`Gamepads`] exposes the library's web provider to JavaScript. Values are
+//! converted with serde-wasm-bindgen, and the generated `.d.ts` declares
+//! their TypeScript types (through tsify), so the frontend never writes the
+//! canonical model by hand.
+//!
+//! ```js
+//! import init, { Gamepads } from "anygamepad-wasm";
+//!
+//! await init();
+//! const gamepads = new Gamepads();
+//! function frame() {
+//!   for (const event of gamepads.update()) {
+//!     if (event.type === "added") gamepads.open(event.device);
+//!   }
+//!   for (const device of gamepads.devices()) {
+//!     const state = gamepads.state(device); // canonical, standard layout only
+//!     const raw = gamepads.poll(device); // raw Gamepad API values
+//!   }
+//!   requestAnimationFrame(frame);
+//! }
+//! requestAnimationFrame(frame);
+//! ```
 
 use wasm_bindgen::prelude::*;
+
+mod gamepads;
+
+pub use gamepads::{
+    ButtonSnapshot, DeviceEvent, DeviceInfo, Environment, GamepadSnapshot, Gamepads,
+};
 
 /// Returns the version of the anygamepad library compiled into this module.
 #[wasm_bindgen]
