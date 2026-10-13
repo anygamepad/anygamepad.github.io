@@ -5,22 +5,29 @@
 
 <main>
   <p :if="error" class="message error">{{ error }}</p>
-  <p :elseif="devices.length === 0" class="message">
+  <p :if="devices.length === 0" class="message">
     Connect a gamepad and press one of its buttons: browsers only show a gamepad after that.
   </p>
   <ul :else class="devices">
     <li :each="device in devices" :key="device.id" class="device">
-      <h2>{{ device.name }}</h2>
-      <dl>
-        <dt>Vendor:product</dt>
-        <dd>{{ device.ids }}</dd>
-        <dt>Mapping</dt>
-        <dd>{{ device.mapping }}</dd>
-        <dt>Buttons / axes</dt>
-        <dd>{{ device.buttons }} / {{ device.axes }}</dd>
-        <dt>Rumble</dt>
-        <dd>{{ device.rumble ? "yes" : "no" }}</dd>
-      </dl>
+      <header class="device-head">
+        <h2>{{ device.name }}</h2>
+        <p class="facts">
+          {{ device.ids }} · {{ device.mapping }} · {{ device.buttons }} buttons · {{ device.axes }} axes
+        </p>
+        <p class="gamepad-id" title="Gamepad.id, as the browser reports it"><code>{{ device.gamepadId }}</code></p>
+      </header>
+
+      <div class="live" :data-device="device.id"></div>
+
+      <footer class="vibration">
+        <span class="label">Vibration test</span>
+        <button type="button" :disabled="!device.rumble" @click="rumble(device.id, 'strong')">Strong motor</button>
+        <button type="button" :disabled="!device.rumble" @click="rumble(device.id, 'weak')">Weak motor</button>
+        <button type="button" :disabled="!device.rumble" @click="rumble(device.id, 'both')">Both</button>
+        <button type="button" :if="device.triggerRumble" @click="rumble(device.id, 'triggers')">Triggers</button>
+        <small :if="!device.rumble" class="note">This browser cannot vibrate this gamepad.</small>
+      </footer>
     </li>
   </ul>
 </main>

@@ -60,6 +60,7 @@ fn unknown_devices_are_refused() {
     gamepads.update().unwrap();
     assert!(gamepads.info(1).unwrap().is_undefined());
     assert!(gamepads.snapshot(1).unwrap().is_undefined());
+    assert_eq!(gamepads.timestamp(1), None);
     assert!(gamepads.open(1, None).is_err());
     assert!(gamepads.poll(1).is_err());
     assert!(gamepads.state(1).is_err());

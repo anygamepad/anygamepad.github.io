@@ -31,7 +31,8 @@ mod gamepads;
 mod hid_devices;
 
 pub use gamepads::{
-    ButtonSnapshot, DeviceEvent, DeviceInfo, Environment, GamepadSnapshot, Gamepads,
+    ButtonSnapshot, CanonicalLayout, DeviceEvent, DeviceInfo, Environment, GamepadSnapshot,
+    Gamepads,
 };
 #[cfg(target_arch = "wasm32")]
 pub use hid_devices::{HidDeviceInfo, HidDevices, HidFilter, HidInputReport};
