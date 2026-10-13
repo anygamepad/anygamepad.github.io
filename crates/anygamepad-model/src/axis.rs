@@ -61,6 +61,7 @@ enum_set! {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Stick {
     /// Horizontal position: -1 left, +1 right.
     pub x: f32,

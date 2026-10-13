@@ -32,6 +32,7 @@ enum_set! {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Rumble {
     /// Low-frequency (strong, usually left) motor.
     pub low_frequency: f32,
@@ -43,6 +44,7 @@ pub struct Rumble {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct TriggerRumble {
     /// Left trigger motor.
     pub left: f32,
@@ -54,6 +56,7 @@ pub struct TriggerRumble {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Rgb {
     /// Red.
     pub r: u8,
@@ -68,6 +71,7 @@ pub struct Rgb {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[non_exhaustive]
 pub enum OutputCommand {
     /// Sets the body motors ([`Output::Rumble`]); zero stops them.

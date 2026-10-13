@@ -31,6 +31,7 @@ pub const STANDARD_GRAVITY: f32 = 9.80665;
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Vec3 {
     /// Component on the X axis (right).
     pub x: f32,
@@ -78,6 +79,7 @@ enum_set! {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct MotionSample {
     /// Time of the reading in microseconds, from the device clock when it has
     /// one. Only differences between samples of the same device are

@@ -80,6 +80,32 @@ fn json_round_trip() {
 }
 
 #[test]
+fn json_state_axes_are_keyed_by_name() {
+    let json = serde_json::to_value(sample_state()).unwrap();
+    let axes = json["axes"].as_object().unwrap();
+    assert_eq!(axes.len(), Axis::COUNT);
+    assert_eq!(axes["right_stick_y"], -0.5);
+    assert_eq!(axes["left_trigger"], 0.0);
+    assert_eq!(json["buttons"], serde_json::json!(["east", "extra_31"]));
+
+    // Missing axes are at rest, values are clamped, unknown names fail.
+    let state: GamepadState = serde_json::from_value(serde_json::json!({
+        "buttons": [],
+        "axes": { "left_stick_x": 2.0, "right_trigger": -1.0 },
+        "touches": [null, null, null, null],
+        "motion": null,
+        "power": { "state": "unknown", "percent": null },
+    }))
+    .unwrap();
+    assert_eq!(state.axis(Axis::LeftStickX), 1.0);
+    assert_eq!(state.axis(Axis::RightTrigger), 0.0);
+    assert_eq!(state.axis(Axis::LeftStickY), 0.0);
+    let mut json = serde_json::to_value(sample_state()).unwrap();
+    json["axes"]["throttle"] = 1.0.into();
+    assert!(serde_json::from_value::<GamepadState>(json).is_err());
+}
+
+#[test]
 fn postcard_round_trip_is_compact() {
     let caps = sample_capabilities();
     let bytes = postcard::to_allocvec(&caps).unwrap();
@@ -125,6 +151,13 @@ fn json_schema_lists_names() {
     let button = &json["$defs"]["Button"];
     assert_eq!(button["type"], "string");
     assert_eq!(button["anyOf"][0]["enum"].as_array().unwrap().len(), 25);
+
+    let schema = serde_json::to_value(schemars::schema_for!(GamepadState)).unwrap();
+    let axes = &schema["properties"]["axes"];
+    assert_eq!(axes["type"], "object");
+    assert_eq!(axes["additionalProperties"], false);
+    assert_eq!(axes["properties"]["left_stick_y"]["type"], "number");
+    assert_eq!(axes["properties"].as_object().unwrap().len(), Axis::COUNT);
 }
 
 mod identity {
@@ -268,5 +301,72 @@ mod identity {
         }
         let schema = schemars::schema_for!(RawLayout);
         assert!(serde_json::to_string(&schema).unwrap().contains("evdev"));
+    }
+}
+
+mod hid {
+    use anygamepad_model::hid::{
+        HidCollection, HidItemFlag, HidItemFlags, HidReportInfo, HidReportItem, HidUnitSystem,
+        HidUsageRange,
+    };
+
+    fn gamepad() -> HidCollection {
+        let buttons = HidReportItem {
+            usage_range: Some(HidUsageRange {
+                minimum: 0x0009_0001,
+                maximum: 0x0009_000e,
+            }),
+            report_size: 1,
+            report_count: 14,
+            logical_maximum: 1,
+            physical_maximum: 1,
+            flags: HidItemFlags::from([HidItemFlag::Variable]),
+            ..HidReportItem::default()
+        };
+        let hat = HidReportItem {
+            usages: vec![0x0001_0039],
+            report_size: 4,
+            report_count: 1,
+            logical_maximum: 7,
+            physical_maximum: 315,
+            unit_system: HidUnitSystem::EnglishRotation,
+            flags: HidItemFlags::from_bits(0x42),
+            ..HidReportItem::default()
+        };
+        HidCollection {
+            usage_page: 0x01,
+            usage: 0x05,
+            kind: 1,
+            input_reports: vec![HidReportInfo {
+                report_id: 1,
+                items: vec![buttons, hat],
+            }],
+            ..HidCollection::default()
+        }
+    }
+
+    #[test]
+    fn collections_json() {
+        let collection = gamepad();
+        let json = serde_json::to_value(&collection).unwrap();
+        let items = &json["input_reports"][0]["items"];
+        assert_eq!(items[0]["usage_range"]["maximum"], 0x0009_000e);
+        assert_eq!(items[0]["flags"], serde_json::json!(["variable"]));
+        assert_eq!(items[1]["usage_range"], serde_json::Value::Null);
+        assert_eq!(items[1]["unit_system"], "english_rotation");
+        assert_eq!(
+            items[1]["flags"],
+            serde_json::json!(["variable", "null_state"])
+        );
+        assert_eq!(
+            serde_json::from_value::<HidCollection>(json).unwrap(),
+            collection
+        );
+
+        let bytes = postcard::to_allocvec(&collection).unwrap();
+        assert_eq!(
+            postcard::from_bytes::<HidCollection>(&bytes).unwrap(),
+            collection
+        );
     }
 }

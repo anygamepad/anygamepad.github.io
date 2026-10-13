@@ -1,0 +1,98 @@
+:root {
+  --bg: #f7f7fb;
+  --fg: #1d1d27;
+  --muted: #5d5d70;
+  --card: #ffffff;
+  --border: #dcdce6;
+  --accent: #4f46e5;
+  --error: #b42318;
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14141c;
+    --fg: #ececf4;
+    --muted: #a3a3b8;
+    --card: #1e1e2a;
+    --border: #33334a;
+    --accent: #8b85ff;
+    --error: #ff8a80;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+#app {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.top h1 {
+  margin: 0;
+  color: var(--accent);
+  font-size: 1.75rem;
+}
+
+.tagline,
+.environment {
+  color: var(--muted);
+}
+
+.message {
+  padding: 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.5rem;
+}
+
+.error {
+  color: var(--error);
+}
+
+.devices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.device {
+  padding: 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.device h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.device dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.device dt {
+  color: var(--muted);
+}
+
+.device dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}

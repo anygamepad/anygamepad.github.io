@@ -1,0 +1,30 @@
+<header class="top">
+  <h1>anygamepad</h1>
+  <p class="tagline">Gamepad tester, running the anygamepad library {{ version }} in WebAssembly</p>
+</header>
+
+<main>
+  <p :if="error" class="message error">{{ error }}</p>
+  <p :elseif="devices.length === 0" class="message">
+    Connect a gamepad and press one of its buttons: browsers only show a gamepad after that.
+  </p>
+  <ul :else class="devices">
+    <li :each="device in devices" :key="device.id" class="device">
+      <h2>{{ device.name }}</h2>
+      <dl>
+        <dt>Vendor:product</dt>
+        <dd>{{ device.ids }}</dd>
+        <dt>Mapping</dt>
+        <dd>{{ device.mapping }}</dd>
+        <dt>Buttons / axes</dt>
+        <dd>{{ device.buttons }} / {{ device.axes }}</dd>
+        <dt>Rumble</dt>
+        <dd>{{ device.rumble ? "yes" : "no" }}</dd>
+      </dl>
+    </li>
+  </ul>
+</main>
+
+<footer :if="environment" class="environment">
+  {{ environment.browser.engine }} {{ environment.browser.major_version }} on {{ environment.os }}
+</footer>

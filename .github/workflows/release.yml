@@ -1,0 +1,103 @@
+name: Release
+
+# Run by hand from the Actions tab, on main. Bumps the version (major, minor
+# or patch), builds and tests it with build.yml, then commits the bump, tags
+# it and publishes a GitHub release with the builds attached.
+#
+# The commit and the tag are pushed only after the build passed, together
+# (an atomic push), so a failed release leaves nothing behind and can simply
+# be run again.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Part of the version to raise
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+    steps:
+      - name: Releases come from main only
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run the release workflow on main, not ${GITHUB_REF}."
+          exit 1
+      - uses: actions/checkout@v5
+      - id: next
+        name: Next version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          current=$(node scripts/version.mjs current)
+          version=$(node scripts/version.mjs next "$BUMP")
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null; then
+            echo "::error::Tag v$version already exists."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$version ($BUMP bump from $current)." >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    needs: prepare
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+    permissions:
+      contents: read
+      # Only build.yml's Pages job asks for these, and it does not run here.
+      pages: write
+      id-token: write
+
+  release:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Commit and tag the version
+        run: |
+          node scripts/version.mjs set "$VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --all --message "Release v$VERSION"
+          git tag --annotate "v$VERSION" --message "anygamepad v$VERSION"
+          # Rejected, with nothing published, if main moved since the
+          # release started: run the release again then.
+          git push --atomic origin "HEAD:refs/heads/main" "refs/tags/v$VERSION"
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Package the builds
+        run: |
+          mkdir release
+          cp LICENSE-MIT LICENSE-APACHE artifacts/web/
+          cp LICENSE-MIT LICENSE-APACHE artifacts/wasm-bindings/
+          (cd artifacts/web && zip -qr "../../release/anygamepad-web-v$VERSION.zip" .)
+          (cd artifacts/wasm-bindings && zip -qr "../../release/anygamepad-wasm-v$VERSION.zip" .)
+          (cd release && sha256sum -- * > SHA256SUMS)
+          cat release/SHA256SUMS >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "v$VERSION" release/*
+          --title "anygamepad v$VERSION"
+          --generate-notes
+          --verify-tag

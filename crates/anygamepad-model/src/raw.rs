@@ -16,6 +16,7 @@ use crate::{
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[non_exhaustive]
 pub enum RawSource {
     /// Position in the backend's own list, when nothing else identifies the
@@ -42,6 +43,7 @@ pub enum RawSource {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct RawAxisInfo {
     /// Where the axis comes from.
     pub source: RawSource,
@@ -55,6 +57,7 @@ pub struct RawAxisInfo {
 #[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct RawLayout {
     /// Buttons, in the order of [`RawState::buttons`].
     pub buttons: Vec<RawSource>,
@@ -83,6 +86,7 @@ impl RawLayout {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Hat(pub u8);
 
 impl Hat {
@@ -150,6 +154,7 @@ impl Hat {
 #[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct RawState {
     /// Button values in `[0.0, 1.0]` (0 or 1 for digital buttons).
     pub buttons: Vec<f32>,

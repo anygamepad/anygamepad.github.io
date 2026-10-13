@@ -143,6 +143,11 @@ it.
   the web frontend (device list, raw and canonical state, wizard, reports).
 - Rust games compiled to WASM get the same backend for free.
 
+Status (2026-10-13): done
+(`RECORD/2026-10-13.c11-web-backend-and-js-bindings.completed.md`): Gamepad
+API provider, WebHID access (raw reports, not decoded) and the `Gamepads` /
+`HidDevices` bindings. Wizard and report bindings come with W4 and W6.
+
 ### C12 — Multi-provider arbitration
 
 - Correlate devices seen by several providers into one physical device

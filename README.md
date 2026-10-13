@@ -37,6 +37,26 @@ cargo test -p anygamepad-wasm --target wasm32-unknown-unknown
 The browser tests need `chromedriver` (or `geckodriver` for Firefox) in `PATH`,
 or its path in the `CHROMEDRIVER` (`GECKODRIVER`) environment variable.
 
+The web app (`apps/web`, Node 22.12+ and wasm-pack 0.15) has its own
+commands; see [apps/web/README.md](apps/web/README.md).
+
+## CI and releases
+
+- [`build.yml`](.github/workflows/build.yml) runs on every push and pull
+  request: formatting, clippy and tests on Linux, Windows and macOS, browser
+  tests in Chrome and Firefox, the MSRV check, and the web app build (size
+  budget, smoke test). Each run keeps the built web app and WebAssembly
+  bindings as artifacts; pushes to `main` deploy the web app to GitHub Pages.
+- [`release.yml`](.github/workflows/release.yml) cuts a release: Actions,
+  Release, Run workflow on `main`, then pick `patch`, `minor` or `major`. It
+  runs `build.yml` with the new version; once that passes it commits
+  `Release vX.Y.Z`, tags `vX.Y.Z` and publishes a GitHub release with
+  `anygamepad-web-vX.Y.Z.zip`, `anygamepad-wasm-vX.Y.Z.zip` and
+  `SHA256SUMS`. A failed release pushes nothing.
+
+The version lives in `Cargo.toml`, `Cargo.lock` and `apps/web/package*.json`;
+`node scripts/version.mjs` reads, checks and sets it in all of them.
+
 ## License
 
 Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or

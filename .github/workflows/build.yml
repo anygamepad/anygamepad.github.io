@@ -1,0 +1,176 @@
+name: Build
+
+# Tests and builds, on every push and pull request. The release workflow calls
+# it with the version being released, applied to the tree before anything is
+# built; the builds of that run are the release's assets. Pushes to main also
+# deploy the web app to GitHub Pages.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: Version (X.Y.Z) applied to the tree before building; empty keeps the committed one
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  # The workflow name keeps a release's nested run apart from push runs.
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  VERSION: ${{ inputs.version }}
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install
+      - run: cargo fmt --all --check
+      - name: Every file has the same version
+        run: node scripts/version.mjs check
+
+  native:
+    name: native (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Apply the release version
+        if: inputs.version
+        shell: bash
+        run: node scripts/version.mjs set "$VERSION"
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      # Optional features (serde, schemars, tsify) of the model crate.
+      - run: cargo clippy -p anygamepad-model --all-targets --all-features --locked -- -D warnings
+      - run: cargo test -p anygamepad-model --all-features --locked
+      # The library without its default `web` provider.
+      - run: cargo clippy -p anygamepad --all-targets --no-default-features --locked -- -D warnings
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Apply the release version
+        if: inputs.version
+        run: node scripts/version.mjs set "$VERSION"
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      # anygamepad-virtual is desktop-only.
+      - run: cargo clippy --workspace --exclude anygamepad-virtual --all-targets --target wasm32-unknown-unknown --locked -- -D warnings
+      - run: cargo build --workspace --exclude anygamepad-virtual --target wasm32-unknown-unknown --locked
+      - run: cargo clippy -p anygamepad-model --all-features --target wasm32-unknown-unknown --locked -- -D warnings
+      # wasm-bindgen-test-runner must match the wasm-bindgen version in Cargo.lock.
+      - id: wasm-bindgen
+        run: echo "version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')" >> "$GITHUB_OUTPUT"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@${{ steps.wasm-bindgen.outputs.version }}
+      # The runner images ship Chrome, Firefox and matching WebDriver binaries.
+      - name: Test in headless Chrome
+        run: CHROMEDRIVER="$CHROMEWEBDRIVER/chromedriver" cargo test -p anygamepad-wasm --target wasm32-unknown-unknown --locked
+      - name: Test in headless Firefox
+        run: GECKODRIVER="$GECKOWEBDRIVER/geckodriver" cargo test -p anygamepad-wasm --target wasm32-unknown-unknown --locked
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # The generated `.d.ts` must declare every type it references and fit
+      # the way the web app uses the bindings (crates/anygamepad-wasm/ts).
+      - name: Type-check the TypeScript declarations
+        run: |
+          wasm-bindgen --target web --out-dir target/ts-check target/wasm32-unknown-unknown/debug/anygamepad_wasm.wasm
+          cp crates/anygamepad-wasm/ts/check.ts crates/anygamepad-wasm/ts/tsconfig.json target/ts-check/
+          cd target/ts-check && npx --yes -p typescript@6.0.3 tsc -p .
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Apply the release version
+        if: inputs.version
+        run: node scripts/version.mjs set "$VERSION"
+      - run: rustup toolchain install 1.85 --profile minimal --target wasm32-unknown-unknown
+      - run: cargo +1.85 check --workspace --locked
+      - run: cargo +1.85 check -p anygamepad-model --all-features --locked
+      - run: cargo +1.85 check --workspace --exclude anygamepad-virtual --target wasm32-unknown-unknown --locked
+
+  # The web app and its WebAssembly bindings: the build artifacts.
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+      - name: Apply the release version
+        if: inputs.version
+        run: node scripts/version.mjs set "$VERSION"
+        working-directory: .
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack@0.15.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      # Bindings (wasm-pack, then wasm-opt from the pinned binaryen).
+      - run: npm run wasm
+      # Type-check, then build into dist/.
+      - run: npm run build
+      - run: npm run size
+      - name: Smoke test in Chrome
+        run: CHROME_PATH="$(command -v google-chrome)" npm run test:smoke
+      # Every run keeps its builds: previews of pull requests (GitHub Pages
+      # hosts one site per repository; `npx vite preview` serves the site),
+      # and the assets of a release.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: apps/web/dist
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasm-bindings
+          path: apps/web/src/wasm
+          retention-days: 14
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: apps/web/dist
+
+  # Publishes only the built site, never the repository contents, once every
+  # job passed. Needs the repository's Pages source set to "GitHub Actions".
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [fmt, native, wasm, msrv, web]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

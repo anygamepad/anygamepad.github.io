@@ -239,6 +239,8 @@ impl schemars::JsonSchema for SdlGuid {
     }
 }
 
+crate::macros::ts_decl!("/** 32 hexadecimal digits. */\nexport type SdlGuid = string;");
+
 #[cfg(test)]
 mod tests {
     use super::*;
