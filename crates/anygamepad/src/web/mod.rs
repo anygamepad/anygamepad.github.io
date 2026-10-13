@@ -8,12 +8,16 @@
 //! [`standard`] layout and the provider logic over a source the caller
 //! supplies.
 //!
+//! On wasm32, the `hid` module gives WebHID access (Chromium only).
+//!
 //! The Gamepad API is poll-based: call
 //! [`Provider::update`](crate::provider::Provider::update) once per frame,
 //! from `requestAnimationFrame`. Rust games compiled to WebAssembly use this
 //! provider the same way as the web app.
 
 mod browser;
+#[cfg(target_arch = "wasm32")]
+pub mod hid;
 mod provider;
 pub mod standard;
 #[cfg(target_arch = "wasm32")]

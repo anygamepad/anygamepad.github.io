@@ -14,8 +14,9 @@
 //! - Everything a device has is listed in its [`Capabilities`].
 //!
 //! Below the canonical model, [`identity`] describes which device a provider
-//! sees (shared with profiles and reports) and [`raw`] describes the raw
-//! elements a provider reads before a profile maps them.
+//! sees (shared with profiles and reports), [`raw`] describes the raw
+//! elements a provider reads before a profile maps them, and [`hid`]
+//! describes the report structure of HID devices.
 //!
 //! Every enum has a stable snake_case name ([`Button::as_str`], ...), which is
 //! how profiles, reports and the web bindings refer to it.
@@ -47,6 +48,7 @@ mod button;
 mod capabilities;
 mod device;
 mod hash;
+pub mod hid;
 pub mod identity;
 mod label;
 pub mod motion;

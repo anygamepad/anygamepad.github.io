@@ -98,3 +98,131 @@ fn values_have_their_declared_javascript_form() {
     assert!(get(&js, "descriptor_hash").is_undefined());
     assert_eq!(get(&get(&js, "web"), "mapping").as_string().unwrap(), "");
 }
+
+mod hid {
+    use anygamepad::model::hid::{HidItemFlag, HidUnitSystem, HidUsageRange};
+    use anygamepad::web::hid::parse_collections;
+    use anygamepad_wasm::HidDevices;
+    use wasm_bindgen_futures::JsFuture;
+    use wasm_bindgen_test::*;
+
+    /// `HIDDevice.collections` of a game pad, as Chromium describes it.
+    const COLLECTIONS: &str = r#"[{
+        "usagePage": 1, "usage": 5, "type": 1,
+        "children": [{
+            "usagePage": 1, "usage": 1, "type": 0, "children": [],
+            "inputReports": [{ "reportId": 1, "items": [{
+                "usages": [65584, 65585], "isRange": false,
+                "reportSize": 8, "reportCount": 2,
+                "logicalMinimum": 0, "logicalMaximum": 255,
+                "isAbsolute": true, "isArray": false, "isConstant": false,
+                "isLinear": true, "hasPreferredState": true, "hasNull": false,
+                "unitSystem": "none", "unitExponent": 0
+            }]}],
+            "outputReports": [], "featureReports": []
+        }],
+        "inputReports": [{ "reportId": 1, "items": [
+            {
+                "usages": [], "isRange": true,
+                "usageMinimum": 589825, "usageMaximum": 589838,
+                "reportSize": 1, "reportCount": 14,
+                "logicalMinimum": 0, "logicalMaximum": 1,
+                "isAbsolute": true, "isArray": false, "isLinear": true,
+                "hasPreferredState": true
+            },
+            {
+                "usages": [65593], "isRange": false,
+                "reportSize": 4, "reportCount": 1,
+                "logicalMinimum": 0, "logicalMaximum": 7,
+                "physicalMinimum": 0, "physicalMaximum": 315,
+                "isAbsolute": true, "isArray": false, "isLinear": true,
+                "hasPreferredState": true, "hasNull": true,
+                "unitSystem": "english-rotation", "unitExponent": 0
+            },
+            { "reportSize": 2, "reportCount": 1, "isConstant": true, "isArray": true,
+              "isAbsolute": true, "isLinear": true, "hasPreferredState": true }
+        ]}],
+        "outputReports": [{ "reportId": 5, "items": [] }],
+        "featureReports": []
+    }]"#;
+
+    #[wasm_bindgen_test]
+    fn collections_are_parsed() {
+        let collections = parse_collections(&js_sys::JSON::parse(COLLECTIONS).unwrap());
+        assert_eq!(collections.len(), 1);
+        let gamepad = &collections[0];
+        assert_eq!((gamepad.usage_page, gamepad.usage, gamepad.kind), (1, 5, 1));
+        assert_eq!(gamepad.output_reports[0].report_id, 5);
+
+        let items = &gamepad.input_reports[0].items;
+        assert_eq!(gamepad.input_reports[0].report_id, 1);
+        assert_eq!(
+            items[0].usage_range,
+            Some(HidUsageRange {
+                minimum: 0x0009_0001,
+                maximum: 0x0009_000e
+            })
+        );
+        assert_eq!((items[0].report_size, items[0].report_count), (1, 14));
+        assert_eq!(
+            items[0].flags.iter().collect::<Vec<_>>(),
+            [HidItemFlag::Variable]
+        );
+
+        let hat = &items[1];
+        assert_eq!(hat.usages, [0x0001_0039]);
+        assert_eq!(hat.usage_range, None);
+        assert_eq!(hat.physical_maximum, 315);
+        assert_eq!(hat.unit_system, HidUnitSystem::EnglishRotation);
+        assert!(hat.flags.contains(HidItemFlag::NullState));
+        assert_eq!(hat.flags.bits(), 0x42);
+
+        let padding = &items[2];
+        assert_eq!(
+            padding.flags.iter().collect::<Vec<_>>(),
+            [HidItemFlag::Constant]
+        );
+        assert_eq!(padding.unit_system, HidUnitSystem::None);
+
+        let sticks = &gamepad.children[0].input_reports[0].items[0];
+        assert_eq!(sticks.usages, [0x0001_0030, 0x0001_0031]);
+        assert_eq!(sticks.logical_maximum, 255);
+    }
+
+    #[wasm_bindgen_test]
+    fn malformed_collections_read_as_empty_or_zero() {
+        let parsed = |json: &str| parse_collections(&js_sys::JSON::parse(json).unwrap());
+        assert!(parsed("null").is_empty());
+        assert!(parsed(r#"{"usage": 5}"#).is_empty());
+        let odd = parsed(r#"[{"usagePage": "x", "usage": 1e9, "children": 3}]"#);
+        assert_eq!((odd[0].usage_page, odd[0].usage), (0, u16::MAX));
+        assert!(odd[0].children.is_empty());
+    }
+
+    #[wasm_bindgen_test]
+    async fn devices_need_permission() {
+        if !HidDevices::is_supported() {
+            // Firefox and Safari.
+            assert!(HidDevices::new().is_err());
+            return;
+        }
+        let mut hid = HidDevices::new().unwrap();
+        hid.update().unwrap();
+        assert!(hid.devices().is_empty());
+        assert!(hid.info(1).unwrap().is_undefined());
+        assert!(hid.reports(1).is_err());
+        assert_eq!(hid.dropped_reports(1), None);
+        assert!(JsFuture::from(hid.open(1)).await.is_err());
+        assert!(
+            JsFuture::from(hid.send_report(1, 0, &[1, 2]))
+                .await
+                .is_err()
+        );
+        // Without a user gesture the browser refuses to show its chooser.
+        let request = hid.request(wasm_bindgen::JsValue::UNDEFINED).unwrap();
+        assert!(JsFuture::from(request).await.is_err());
+        // Bad filters fail before reaching the browser.
+        let filters = js_sys::JSON::parse(r#"[{"vendor_id": "sony"}]"#).unwrap();
+        assert!(hid.request(filters).is_err());
+    }
+}

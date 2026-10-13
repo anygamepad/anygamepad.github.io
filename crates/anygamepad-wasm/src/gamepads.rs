@@ -18,20 +18,29 @@ const TS_ACCESS: &str = r#"/**
  */
 export type Access = "shared" | "observe_only";"#;
 
-/// A change in the connected gamepads.
+/// A change in the connected devices.
 #[derive(Clone, Copy, Debug, Serialize, Tsify)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum DeviceEvent {
-    /// A gamepad appeared.
+    /// A device appeared.
     Added {
         /// Its id.
         device: u32,
     },
-    /// A gamepad disappeared; its id is no longer valid.
+    /// A device disappeared; its id is no longer valid.
     Removed {
         /// Its id.
         device: u32,
     },
+}
+
+impl From<ProviderEvent> for DeviceEvent {
+    fn from(event: ProviderEvent) -> Self {
+        match event {
+            ProviderEvent::Added(id) => Self::Added { device: js_id(id) },
+            ProviderEvent::Removed(id) => Self::Removed { device: js_id(id) },
+        }
+    }
 }
 
 /// The browser and the OS it runs on, from the user agent.
@@ -129,17 +138,12 @@ impl Gamepads {
     pub fn update(&mut self) -> Result<JsValue, JsError> {
         self.events.clear();
         self.provider.update(&mut self.events).map_err(error)?;
-        let events: Vec<DeviceEvent> = self
-            .events
-            .iter()
-            .map(|&event| match event {
-                ProviderEvent::Added(id) => DeviceEvent::Added { device: js_id(id) },
-                ProviderEvent::Removed(id) => {
-                    self.raw.remove(&id);
-                    DeviceEvent::Removed { device: js_id(id) }
-                }
-            })
-            .collect();
+        for event in &self.events {
+            if let ProviderEvent::Removed(id) = event {
+                self.raw.remove(id);
+            }
+        }
+        let events: Vec<DeviceEvent> = self.events.iter().map(|&event| event.into()).collect();
         to_js(&events)
     }
 
@@ -284,24 +288,24 @@ fn button_snapshot(button: &web::ButtonSnapshot) -> ButtonSnapshot {
     }
 }
 
-/// The JavaScript form of a device id. The web provider counts ids up from
+/// The JavaScript form of a device id. The web providers count ids up from
 /// 1, so they fit.
-fn js_id(id: DeviceId) -> u32 {
+pub(crate) fn js_id(id: DeviceId) -> u32 {
     u32::try_from(id.0).unwrap_or(u32::MAX)
 }
 
-fn device_id(device: u32) -> DeviceId {
+pub(crate) fn device_id(device: u32) -> DeviceId {
     DeviceId(device.into())
 }
 
-fn to_js<T: Serialize + ?Sized>(value: &T) -> Result<JsValue, JsError> {
+pub(crate) fn to_js<T: Serialize + ?Sized>(value: &T) -> Result<JsValue, JsError> {
     serde_wasm_bindgen::to_value(value).map_err(|e| JsError::new(&e.to_string()))
 }
 
-fn error(error: ProviderError) -> JsError {
+pub(crate) fn error(error: ProviderError) -> JsError {
     JsError::new(&error.to_string())
 }
 
-fn unknown() -> JsError {
+pub(crate) fn unknown() -> JsError {
     error(ProviderError::UnknownDevice)
 }
