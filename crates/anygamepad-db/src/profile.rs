@@ -429,6 +429,44 @@ pub struct Mapping {
     pub axes: BTreeMap<Axis, AxisMapping>,
 }
 
+/// Error returned by [`Mapping::validate`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InvalidMapping {
+    message: String,
+}
+
+impl InvalidMapping {
+    /// What is wrong.
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+}
+
+impl fmt::Display for InvalidMapping {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid mapping: {}", self.message)
+    }
+}
+
+impl std::error::Error for InvalidMapping {}
+
+impl Mapping {
+    /// Checks what the types cannot, for a mapping outside a profile (the
+    /// one a device report confirms): product IDs in `when` with vendor
+    /// IDs, axis mappings with either an input or halves, no negative half
+    /// on triggers, deadzones in `[0, 1)`.
+    pub fn validate(&self) -> Result<(), InvalidMapping> {
+        self.when
+            .check("`when`")
+            .and_then(|()| {
+                self.axes
+                    .iter()
+                    .try_for_each(|(&axis, mapping)| mapping.check(axis))
+            })
+            .map_err(|message| InvalidMapping { message })
+    }
+}
+
 /// A table whose keys are `K` names: schemars leaves map keys unchecked.
 #[cfg(feature = "schemars")]
 fn map_schema<K: schemars::JsonSchema, V: schemars::JsonSchema>(
@@ -1027,6 +1065,35 @@ mod tests {
         ] {
             assert_eq!(invalid.validate().unwrap_err().message(), message);
         }
+    }
+
+    #[test]
+    fn mappings_validate_on_their_own() {
+        let mut mapping = Mapping::default();
+        mapping
+            .axes
+            .insert(Axis::LeftStickX, AxisMapping::full(input("a0")));
+        assert_eq!(mapping.validate(), Ok(()));
+
+        mapping
+            .axes
+            .insert(Axis::LeftStickY, AxisMapping::default());
+        assert_eq!(
+            mapping.validate().unwrap_err().message(),
+            "axis `left_stick_y`: set either `input` or `negative`/`positive`"
+        );
+
+        let mapping = Mapping {
+            when: MatchRule {
+                product_id: Some(0x0ce6),
+                ..MatchRule::default()
+            },
+            ..Mapping::default()
+        };
+        assert_eq!(
+            mapping.validate().unwrap_err().message(),
+            "`when`: `product_id` needs `vendor_id`"
+        );
     }
 
     #[test]
