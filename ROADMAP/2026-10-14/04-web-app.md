@@ -12,7 +12,9 @@ library: what users see in the browser is exactly what a Rust game would get.
 
 **Hosting:** the web app is a static site published on GitHub Pages at
 <https://anygamepad.github.io> (the user/organization site served by this
-repository). Only the ingestion API (P2) needs a server (P5).
+repository). Reports stay in the browser until the person shares them
+([ADR 0007](../../docs/adr/0007-local-first-device-reports.md)); only the
+later sync API (P2, P5) needs a server.
 
 ## Schedule
 
@@ -28,21 +30,19 @@ gantt
     C11 done :milestone, c11, 2026-10-14, 0d
     D2 done :milestone, d2, 2026-10-14, 0d
     C3 done :milestone, c3, 2026-10-14, 0d
-    P1 done :milestone, crit, p1, 2026-10-21, 0d
+    P1 done :milestone, p1, 2026-10-14, 0d
     D4 done :milestone, d4, 2026-10-21, 0d
     C15 done :milestone, c15, 2026-10-24, 0d
-    P3 done :milestone, p3, 2026-10-31, 0d
-    P2 done :milestone, crit, p2, 2026-11-10, 0d
-    P5 done :milestone, crit, p5, 2026-11-20, 0d
+    P3 done :milestone, p3, 2026-10-24, 0d
     section Web app
     W1 Web app scaffolding and WASM build pipeline :done, w1, 2026-10-13, 1d
     W2 Live tester on the core web backend :done, w2, 2026-10-13, 1d
     W8 Tester layout and device drawings :done, w8, 2026-10-14, 1d
     W3 WebHID mode with PlayStation decoding :w3, after w2 c15 w8, 15d
-    W4 Guided mapping wizard (shared with desktop) :w4, after w2 t0, 15d
+    W4 Guided mapping wizard (shared with desktop) :crit, w4, after w2 t0, 15d
     W5 Normalized view (mapping engine + profiles) :w5, after w2 c3 d2 d4, 10d
-    W6 Report submission and consent flow :crit, w6, after w4 p1 p2 p3, 10d
-    W7 Public launch of the web tester :crit, w7, after w5 w6 p5, 5d
+    W6 Local report store, sharing and consent flow :crit, w6, after w4 p1 p3, 10d
+    W7 Public launch of the web tester :crit, w7, after w5 w6, 5d
 ```
 
 ## Tasks
@@ -51,11 +51,11 @@ gantt
 |----|------|-----:|------------|--------|-------|-----|------:|
 | W1 | Web app scaffolding and WASM build pipeline | 7 | F1, F3 | W2 | 2026-10-13 | 2026-10-14 | done |
 | W2 | Live tester on the core web backend | 15 | W1, C11 | W3, W4, W5, W8 | 2026-10-13 | 2026-10-14 | done |
-| W3 | WebHID mode with PlayStation decoding | 15 | W2, C15, W8 | - | 2026-10-24 | 2026-11-08 | 82 |
-| W4 | Guided mapping wizard (shared with desktop) | 15 | W2 | A3, W6 | 2026-10-14 | 2026-10-29 | 12 |
-| W5 | Normalized view (mapping engine + profiles) | 10 | W2, C3, D2, D4 | W7 | 2026-10-21 | 2026-10-31 | 20 |
-| W6 | **Report submission and consent flow** | 10 | W4, P1, P2, P3 | W7 | 2026-11-10 | 2026-11-20 | 0 |
-| W7 | **Public launch of the web tester** | 5 | W5, W6, P5 | M2 | 2026-11-20 | 2026-11-25 | 0 |
+| W3 | WebHID mode with PlayStation decoding | 15 | W2, C15, W8 | - | 2026-10-24 | 2026-11-08 | 70 |
+| W4 | **Guided mapping wizard (shared with desktop)** | 15 | W2 | A3, W6 | 2026-10-14 | 2026-10-29 | 0 |
+| W5 | Normalized view (mapping engine + profiles) | 10 | W2, C3, D2, D4 | W7 | 2026-10-21 | 2026-10-31 | 8 |
+| W6 | **Local report store, sharing and consent flow** | 10 | W4, P1, P3 | P6, W7 | 2026-10-29 | 2026-11-08 | 0 |
+| W7 | **Public launch of the web tester** | 5 | W5, W6 | M2 | 2026-11-08 | 2026-11-13 | 0 |
 | W8 | Tester layout and device drawings | 7 | W2 | W3 | 2026-10-14 | 2026-10-14 | done |
 
 ### W1 — Web app scaffolding and WASM build pipeline
@@ -179,14 +179,33 @@ profiles (D4, bootstrapped with the SDL GameControllerDB import D2) next to the
 raw values, and highlight where it disagrees with what the user confirmed in
 the wizard.
 
-### W6 — Report submission and consent flow
+### W6 — Local report store, sharing and consent flow
 
-The library builds the device report (P1) inside WASM, so web and desktop
-reports come from the same code. Preview exactly what will be sent, explicit
-consent (P3), submit to the ingestion API (P2).
+Re-planned on 2026-10-14
+([ADR 0007](../../docs/adr/0007-local-first-device-reports.md)); it was
+"Report submission and consent flow", blocked by the ingestion API (P2).
+
+- The library builds the device report (P1) inside WASM, so web and desktop
+  reports come from the same code: `anygamepad-wasm` gains the calls that
+  build, scrub and validate a report for a connected pad, and the TypeScript
+  types of the report.
+- "Save a report" stores it in IndexedDB (database `anygamepad`, store
+  `reports`), never automatically. A list of saved reports with preview,
+  download (the same JSON) and delete; persistent storage requested, and a
+  note that private windows and Safari can drop it.
+- "Share" previews exactly what will be shared, with consent text (P3),
+  copies the compact JSON and opens the `device-report` GitHub issue form
+  (`.github/ISSUE_TEMPLATE/device-report.yml`, added here), whose required
+  checkbox confirms the review.
+
+**Done when:** a report of a pad can be saved, listed, downloaded, deleted
+and shared through the issue form in Chromium, Firefox and WebKit (smoke
+test with fake pads), and what the form receives reads back with
+`Report::from_json`.
 
 ### W7 — Public launch
 
 Production deployment of the web app on GitHub Pages
-(<https://anygamepad.github.io>), talking to the ingestion API hosted in P5. Reaching this milestone (M2)
-starts the data collection loop.
+(<https://anygamepad.github.io>), with local reports and sharing through
+issues (W6). Reaching this milestone (M2) starts the data collection loop;
+sync with the server (P6) follows.

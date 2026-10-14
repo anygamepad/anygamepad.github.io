@@ -3,7 +3,8 @@
 Windows, Linux and macOS application that detects controllers with the core
 library, offers a **virtual controller** of a selectable type (like
 DS4Windows, but not limited to one target type or one OS), and has a
-**collection mode** that submits device reports.
+**collection mode** that writes device reports to files
+([ADR 0007](../../docs/adr/0007-local-first-device-reports.md)).
 
 The web app has priority: the desktop workstream starts after the web tester
 is live (M2).
@@ -22,13 +23,13 @@ gantt
     section Upstream blockers
     F3 done :milestone, f3, 2026-10-10, 0d
     C1 done :milestone, c1, 2026-10-13, 0d
-    W4 done :milestone, w4, 2026-10-29, 0d
-    P3 done :milestone, p3, 2026-10-31, 0d
+    P1 done :milestone, p1, 2026-10-14, 0d
+    P3 done :milestone, p3, 2026-10-24, 0d
+    W4 done :milestone, crit, w4, 2026-10-29, 0d
     C4 done :milestone, c4, 2026-11-03, 0d
     C6 done :milestone, c6, 2026-11-08, 0d
-    P2 done :milestone, crit, p2, 2026-11-10, 0d
     C5 done :milestone, c5, 2026-11-13, 0d
-    M2 done :milestone, crit, m2, 2026-11-25, 0d
+    M2 done :milestone, crit, m2, 2026-11-13, 0d
     C10 done :milestone, c10, 2026-12-18, 0d
     section Desktop app
     A1 App shell (UI toolkit, tray, settings) :crit, a1, after f3 m2, 15d
@@ -37,7 +38,7 @@ gantt
     A7 Windows virtual output via ViGEmBus (X360, DS4) :a7, after a4 c5, 15d
     A8 macOS virtual output (IOHIDUserDevice) :a8, after a4 c6, 25d
     A2 Device list and live view :crit, a2, after a1 c4, 15d
-    A3 Collection mode :crit, a3, after a2 w4 p2 p3, 15d
+    A3 Collection mode :crit, a3, after a2 w4 p1 p3, 15d
     A6 Physical device hiding (grab/HidHide/seize) :crit, a6, after a5 c5 c6, 15d
     A11 Always-on-top input widget (overlay) :a11, after a2, 10d
     A9 Packaging and code signing :crit, a9, after a3 a6 a7 a8 a11, 15d
@@ -48,17 +49,17 @@ gantt
 
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
-| A1 | **App shell (UI toolkit, tray, settings)** | 15 | F3, M2 | A2 | 2026-11-25 | 2026-12-10 | 0 |
-| A2 | **Device list and live view** | 15 | A1, C4 | A3, A11 | 2026-12-10 | 2026-12-25 | 0 |
-| A3 | **Collection mode** | 15 | A2, W4, P2, P3 | A9 | 2026-12-25 | 2027-01-09 | 0 |
-| A4 | **Virtual pad abstraction and emulated profiles** | 10 | C1, M2 | A5, A7, A8 | 2026-11-25 | 2026-12-05 | 0 |
-| A5 | **Linux virtual output (uinput + UHID)** | 20 | A4, C4 | A6 | 2026-12-05 | 2026-12-25 | 0 |
-| A6 | **Physical device hiding (grab/HidHide/seize)** | 15 | A5, C5, C6 | A9 | 2026-12-25 | 2027-01-09 | 0 |
-| A7 | Windows virtual output via ViGEmBus (X360, DS4) | 15 | A4, C5 | A9 | 2026-12-05 | 2026-12-20 | 20 |
-| A8 | macOS virtual output (IOHIDUserDevice) | 25 | A4, C6 | A9 | 2026-12-05 | 2026-12-30 | 10 |
-| A9 | **Packaging and code signing** | 15 | A3, A6, A7, A8, A11 | A10 | 2027-01-09 | 2027-01-24 | 0 |
-| A10 | **Desktop app 0.1.0 release** | 5 | A9, C10 | M4 | 2027-01-24 | 2027-01-29 | 0 |
-| A11 | Always-on-top input widget (overlay) | 10 | A2 | A9 | 2026-12-25 | 2027-01-04 | 5 |
+| A1 | **App shell (UI toolkit, tray, settings)** | 15 | F3, M2 | A2 | 2026-11-13 | 2026-11-28 | 0 |
+| A2 | **Device list and live view** | 15 | A1, C4 | A3, A11 | 2026-11-28 | 2026-12-13 | 0 |
+| A3 | **Collection mode** | 15 | A2, W4, P1, P3 | A9, P6 | 2026-12-13 | 2026-12-28 | 0 |
+| A4 | **Virtual pad abstraction and emulated profiles** | 10 | C1, M2 | A5, A7, A8 | 2026-11-13 | 2026-11-23 | 0 |
+| A5 | **Linux virtual output (uinput + UHID)** | 20 | A4, C4 | A6 | 2026-11-23 | 2026-12-13 | 0 |
+| A6 | **Physical device hiding (grab/HidHide/seize)** | 15 | A5, C5, C6 | A9 | 2026-12-13 | 2026-12-28 | 0 |
+| A7 | Windows virtual output via ViGEmBus (X360, DS4) | 15 | A4, C5 | A9 | 2026-11-23 | 2026-12-08 | 20 |
+| A8 | macOS virtual output (IOHIDUserDevice) | 25 | A4, C6 | A9 | 2026-11-23 | 2026-12-18 | 10 |
+| A9 | **Packaging and code signing** | 15 | A3, A6, A7, A8, A11 | A10 | 2026-12-28 | 2027-01-12 | 0 |
+| A10 | **Desktop app 0.1.0 release** | 5 | A9, C10 | M4 | 2027-01-12 | 2027-01-17 | 0 |
+| A11 | Always-on-top input widget (overlay) | 10 | A2 | A9 | 2026-12-13 | 2026-12-23 | 5 |
 
 ### A1 — App shell
 
@@ -78,7 +79,11 @@ their backends (C5, C6) land.
 
 Reuses the guided wizard logic from the library (W4) and the report schema (P1). Adds data the
 browser cannot see: OS driver in use, full HID descriptors on every OS,
-evdev capabilities on Linux. Submits with explicit consent (P3) to the API (P2).
+evdev capabilities on Linux. Writes one report file per device to the app's
+data directory, and shares a report through the same GitHub issue form as
+the web app after showing it, with explicit consent (P3); see
+[ADR 0007](../../docs/adr/0007-local-first-device-reports.md). Upload to
+the sync server comes with P6.
 
 ### A4 — Virtual pad abstraction and emulated profiles
 

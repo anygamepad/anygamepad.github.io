@@ -40,9 +40,9 @@ WebHID can read that report ([research note 09](../../docs/research/09-dualsense
   triggers) is what C6, C7, C14 and C9 must replace without losing
   anything. Not urgent (owner, same day): controller support comes first,
   so the schedule stays as it is.
-- **Owner direction (2026-10-14), not yet re-planned:** the desktop
-  binaries write device reports to files, and the web app keeps them in
-  IndexedDB, synchronized with a database later. This changes the
+- **Owner direction (2026-10-14), re-planned the same day (last item):**
+  the desktop binaries write device reports to files, and the web app keeps
+  them in IndexedDB, synchronized with a database later. This changes the
   collection pipeline (P2, P5, W6, A3): the server, now on the critical path
   to M2, may move after it. It needs an ADR and a re-plan.
 - **Owner decision (2026-10-14): W8, C15 and W3 are next.** Reason: the
@@ -56,6 +56,22 @@ WebHID can read that report ([research note 09](../../docs/research/09-dualsense
 - **Status update (2026-10-14, in place):** C3 is done (grey). C3, D4 and
   W5 leave the critical path, and M1 moves to 2026-10-21. M2 and M4 stay:
   the collection pipeline (P1 -> P2) is now the only path to M2.
+- **Re-plan (2026-10-14, in place): local-first reports**
+  ([ADR 0007](../../docs/adr/0007-local-first-device-reports.md)). P1 is
+  done (grey). Reports stay local (files on the desktop, IndexedDB in the
+  browser) and people share the ones they choose as GitHub issues until a
+  sync server exists. Owner decisions of the same day: M2 needs local
+  reports and sharing, not the server; issues are the sharing channel.
+  - W6 becomes "Local report store, sharing and consent flow", blocked by
+    W4, P1 and P3 (no longer P2); W7 no longer waits for P5; A3 writes files
+    and waits for P1 instead of P2; P4 reads issues and files, blocked by P1
+    and D1.
+  - P2 becomes the sync API. New P6 (report sync in the web and desktop
+    apps, after P2, W6 and A3) and milestone M5 (reports synchronized,
+    after P5 and P6).
+  - The critical path to M2 is now W4 -> W6 -> W7: M2 moves from
+    2026-11-25 to 2026-11-13, M4 from 2027-01-29 to 2027-01-17. M5 lands on
+    2027-01-07 with 10 days of slack; P3 has 5.
 
 ## Vision
 
@@ -82,7 +98,7 @@ a data loop to keep improving detection over time.
 |---|-------------|--------|
 | 1 | **Rust library** (`anygamepad` crate) that Rust games embed to get normalized gamepad input, isolating them from device/mode/OS quirks. | [01-core-library.md](01-core-library.md), [02-device-database.md](02-device-database.md) |
 | 2 | **Desktop app** (Windows, Linux, macOS) that detects controllers and exposes a **virtual controller** of a selectable type (Xbox 360, DualShock 4, DualSense, Switch Pro Controller, ...), similar to DS4Windows but multi-target and multi-OS. Performance-first native UI with an **always-on-top widget**. | [05-desktop-app.md](05-desktop-app.md) |
-| 3 | **Web app** similar to hardwaretester.com/gamepad, built on the **anygamepad library compiled to WebAssembly**, backed by a database that **collects reports of detected controllers**. Published on GitHub Pages at <https://anygamepad.github.io>. | [04-web-app.md](04-web-app.md), [03-collection-pipeline.md](03-collection-pipeline.md) |
+| 3 | **Web app** similar to hardwaretester.com/gamepad, built on the **anygamepad library compiled to WebAssembly**, that **collects reports of detected controllers** (kept locally and shared as GitHub issues first, synchronized with a database later; [ADR 0007](../../docs/adr/0007-local-first-device-reports.md)). Published on GitHub Pages at <https://anygamepad.github.io>. | [04-web-app.md](04-web-app.md), [03-collection-pipeline.md](03-collection-pipeline.md) |
 | 4 | **Collection mode** in the desktop app, which gathers richer reports than the browser can (raw HID descriptors, OS driver info). | [05-desktop-app.md](05-desktop-app.md), [03-collection-pipeline.md](03-collection-pipeline.md) |
 
 Cross-cutting groundwork lives in [00-foundations.md](00-foundations.md).
@@ -92,7 +108,8 @@ Cross-cutting groundwork lives in [00-foundations.md](00-foundations.md).
 1. **Web app first.** The web tester (milestone M2) is the top priority: it
    starts the data collection loop and is the first real consumer of the
    library (through WebAssembly). Library work the web needs (C1, C2, C3, C11,
-   C15, D1, D2, D4) and the collection pipeline come first.
+   C15, D1, D2, D4) and the collection pipeline up to M2 (P1, P3) come
+   first; the sync server (P2, P5, P6) comes after M2.
 2. **Library 0.1.0** (M3): native providers (C4-C6, C13, C14) and protocol
    drivers progress in parallel, since the library is a deliverable on its own.
 3. **Desktop app** (M4): its first tasks (A1, A4) are blocked by M2, so desktop
@@ -122,10 +139,15 @@ of the device is recorded, so disagreements between them become data.
 flowchart LR
     U[Users] -->|test controller| WEB[Web tester]
     U -->|collection mode| DESK[Desktop app]
-    WEB -->|device report| API[Ingestion API]
-    DESK -->|device report| API
-    API --> DB[(Reports DB)]
-    DB --> CUR[Curation tooling]
+    WEB -->|save| IDB[(IndexedDB)]
+    DESK -->|save| FILES[(Report files)]
+    IDB -->|share, with consent| ISSUE[GitHub issues]
+    FILES -->|share, with consent| ISSUE
+    IDB -.->|sync, after M2| API[Sync API]
+    FILES -.->|sync, after M2| API
+    API -.-> DB[(Reports DB)]
+    ISSUE --> CUR[Curation tooling]
+    DB -.-> CUR
     CUR -->|reviewed profile PRs| PROF[Device profile database]
     PROF -->|embedded in| LIB[anygamepad library]
     LIB --> DESK
@@ -135,6 +157,8 @@ flowchart LR
 
 Every iteration of the project should feed collected reports back into the
 curated profile database, so detection gets better with each release.
+Reports leave a device only when its owner shares them (ADR 0007); dashed
+arrows come with the sync server (P2, P5, P6).
 
 ## Planning assumptions
 
@@ -149,8 +173,9 @@ curated profile database, so detection gets better with each release.
   what) stays valid. Use the graph, not the dates, to decide what to pick up
   next.
 - The critical path runs through the web launch (M2) and ends at milestone M4
-  (desktop 0.1.0). Projected end: **2027-01-29** (2027-03-16 in the previous
-  version, before the early finish of C1, C2, C11, W1, W2, D1 and D2).
+  (desktop 0.1.0). Projected end: **2027-01-17** (2027-01-29 before the
+  local-first re-plan of ADR 0007; 2027-03-16 in the previous version,
+  before the early finish of C1, C2, C11, W1, W2, D1 and D2).
 
 ## Master schedule
 
@@ -191,20 +216,20 @@ gantt
     D4 Profile embedding and runtime overrides :d4, after d1 c3, 7d
     C10 Library 0.1.0 release :c10, after c5 c6 c7 c8 c9 c11 c12 c14 d4, 5d
     section Collection pipeline
-    P1 Device report schema (shared crate) :crit, p1, after c2 d1 t0, 7d
-    P2 Ingestion API and PostgreSQL storage :crit, p2, after p1, 20d
-    P3 Privacy, consent, data retention policy :p3, after p1, 10d
-    P4 Curation tooling (reports to profile PRs) :p4, after p2 d1, 20d
-    P5 Hosting, backups, monitoring :crit, p5, after p2, 10d
+    P1 Device report schema (shared crate) :done, p1, 2026-10-14, 1d
+    P2 Sync API and PostgreSQL storage :p2, after p1 t0, 20d
+    P3 Privacy, consent, data retention policy :p3, after p1 t0, 10d
+    P4 Curation tooling (reports to profile PRs) :p4, after p1 d1 t0, 20d
+    P5 Hosting, backups, monitoring :p5, after p2, 10d
     section Web app
     W1 Web app scaffolding and WASM build pipeline :done, w1, 2026-10-13, 1d
     W2 Live tester on the core web backend :done, w2, 2026-10-13, 1d
     W8 Tester layout and device drawings :done, w8, 2026-10-14, 1d
     W3 WebHID mode with PlayStation decoding :w3, after w2 c15 w8, 15d
-    W4 Guided mapping wizard (shared with desktop) :w4, after w2 t0, 15d
+    W4 Guided mapping wizard (shared with desktop) :crit, w4, after w2 t0, 15d
     W5 Normalized view (mapping engine + profiles) :w5, after w2 c3 d2 d4, 10d
-    W6 Report submission and consent flow :crit, w6, after w4 p1 p2 p3, 10d
-    W7 Public launch of the web tester :crit, w7, after w5 w6 p5, 5d
+    W6 Local report store, sharing and consent flow :crit, w6, after w4 p1 p3, 10d
+    W7 Public launch of the web tester :crit, w7, after w5 w6, 5d
     section Milestones
     M1 Core runs in the browser :milestone, m1, after c3 c11 d4, 0d
     M2 Web tester live and collecting :milestone, crit, m2, after w7, 0d
@@ -216,29 +241,34 @@ gantt
     A7 Windows virtual output via ViGEmBus (X360, DS4) :a7, after a4 c5, 15d
     A8 macOS virtual output (IOHIDUserDevice) :a8, after a4 c6, 25d
     A2 Device list and live view :crit, a2, after a1 c4, 15d
-    A3 Collection mode :crit, a3, after a2 w4 p2 p3, 15d
+    A3 Collection mode :crit, a3, after a2 w4 p1 p3, 15d
     A6 Physical device hiding (grab/HidHide/seize) :crit, a6, after a5 c5 c6, 15d
     A11 Always-on-top input widget (overlay) :a11, after a2, 10d
     A9 Packaging and code signing :crit, a9, after a3 a6 a7 a8 a11, 15d
     A10 Desktop app 0.1.0 release :crit, a10, after a9 c10, 5d
     M4 Desktop app 0.1.0 :milestone, crit, m4, after a10, 0d
+    section Report sync
+    P6 Report sync in the web and desktop apps :p6, after p2 w6 a3, 10d
+    M5 Reports synchronized :milestone, m5, after p5 p6, 0d
 ```
 
 ### Critical path
 
-Zero-slack chains (they share most tasks). With the mapping engine (C3)
-done, the path up to M2 is the collection pipeline, from the device report
-schema (P1).
+Zero-slack chains (they share most tasks). With the device report schema
+(P1) done and the server after M2 (ADR 0007), the path up to M2 runs
+through the guided mapping wizard (W4) and the local report store (W6).
 
 Up to the web launch (M2):
 
-1. P1 -> P2 -> P5 -> W7 -> M2
-2. P1 -> P2 -> W6 -> W7 -> M2
+1. W4 -> W6 -> W7 -> M2
 
 From M2 to the desktop release (M4):
 
-3. M2 -> A1 -> A2 -> A3 -> A9 -> A10 -> M4
-4. M2 -> A4 -> A5 -> A6 -> A9 -> A10 -> M4
+2. M2 -> A1 -> A2 -> A3 -> A9 -> A10 -> M4
+3. M2 -> A4 -> A5 -> A6 -> A9 -> A10 -> M4
+
+Close to it: P3 (5 days of slack, it blocks W6 and A3), and D4 and W5 (8
+days, they block W7).
 
 Any delay on these tasks delays the web launch (M2) and therefore the desktop
 0.1.0 release. Everything else has slack (see the `Slack` column in each
@@ -286,6 +316,7 @@ flowchart LR
         p3[P3]
         p4[P4]
         p5[P5]
+        p6[P6]
     end
     subgraph web_app[Web app]
         w1[W1]
@@ -315,6 +346,7 @@ flowchart LR
         m2{{M2}}
         m3{{M3}}
         m4{{M4}}
+        m5{{M5}}
     end
     f2 --> f3
     f2 --> f4
@@ -365,9 +397,12 @@ flowchart LR
     d1 --> p1
     p1 --> p2
     p1 --> p3
-    p2 --> p4
+    p1 --> p4
     d1 --> p4
     p2 --> p5
+    p2 --> p6
+    w6 --> p6
+    a3 --> p6
     f1 --> w1
     f3 --> w1
     w1 --> w2
@@ -383,11 +418,9 @@ flowchart LR
     d4 --> w5
     w4 --> w6
     p1 --> w6
-    p2 --> w6
     p3 --> w6
     w5 --> w7
     w6 --> w7
-    p5 --> w7
     f3 --> a1
     m2 --> a1
     c1 --> a4
@@ -402,7 +435,7 @@ flowchart LR
     c4 --> a2
     a2 --> a3
     w4 --> a3
-    p2 --> a3
+    p1 --> a3
     p3 --> a3
     a5 --> a6
     c5 --> a6
@@ -421,16 +454,12 @@ flowchart LR
     w7 --> m2
     c10 --> m3
     a10 --> m4
-    c3 --> m1
-    c11 --> m1
-    d4 --> m1
-    w7 --> m2
-    c10 --> m3
-    a10 --> m4
+    p5 --> m5
+    p6 --> m5
     classDef crit fill:#fdd,stroke:#c00,stroke-width:2px
     classDef done fill:#eee,stroke:#999,color:#666
-    class p1,p2,p5,w6,w7,a1,a4,a5,a2,a3,a6,a9,a10,m2,m4,m2,m4 crit
-    class f1,f2,f3,c1,c2,c3,c11,d1,d2,w1,w2,w8 done
+    class w4,w6,w7,a1,a4,a5,a2,a3,a6,a9,a10,m2,m4 crit
+    class f1,f2,f3,c1,c2,c3,c11,d1,d2,p1,w1,w2,w8 done
 ```
 
 ## Milestones
@@ -438,9 +467,10 @@ flowchart LR
 | Milestone | Blocked by | Target date |
 |-----------|------------|-------------|
 | M1 Core runs in the browser | C3, C11, D4 | 2026-10-21 |
-| M2 Web tester live and collecting | W7 | 2026-11-25 |
+| M2 Web tester live and collecting (reports saved locally and shared as issues) | W7 | 2026-11-13 |
 | M3 Library 0.1.0 | C10 | 2026-12-18 |
-| M4 Desktop app 0.1.0 | A10 | 2027-01-29 |
+| M4 Desktop app 0.1.0 | A10 | 2027-01-17 |
+| M5 Reports synchronized with the sync server | P5, P6 | 2027-01-07 |
 
 ## Top risks
 
@@ -449,12 +479,13 @@ flowchart LR
 | Windows virtual controller drivers: ViGEmBus is retired (no longer maintained) and only emulates Xbox 360 and DualShock 4. A custom driver needs kernel/UMDF development plus EV signing and Microsoft attestation. | No DualSense/Switch Pro emulation on Windows in 0.1. | Ship ViGEmBus-based output first (A7); investigate an own VHF/UMDF driver after 0.1 (see "Beyond 0.1"). |
 | macOS virtual HID devices require the restricted `com.apple.developer.hid.virtual.device` entitlement (or DriverKit entitlements). | macOS virtual output may be blocked by Apple approval. | Request the entitlement as soon as A9 starts; ship macOS as input/collection-only if not granted. |
 | Clone controllers that impersonate genuine VID/PIDs (e.g. a third-party pad in Switch mode reporting as `057e:2009`). | Wrong profile, wrong calibration, failed handshakes. | Fingerprinting beyond VID/PID (C8), community reports. |
-| Privacy of collected data (serial numbers, Bluetooth MAC addresses, IPs). | Legal exposure (GDPR), loss of trust. | Strip identifiers client-side and server-side, explicit consent, retention policy (P3). |
+| Privacy of collected data (serial numbers, Bluetooth MAC addresses, IPs). | Legal exposure (GDPR), loss of trust. | Reports stay local until their owner shares them (ADR 0007); every reader scrubs or rejects identifiers (P1); explicit consent, retention policy (P3). |
+| Few people share reports: sharing needs a GitHub account and a manual step until sync exists (ADR 0007), and browser storage can be dropped (private windows, Safari after seven days without a visit). | Slow data loop after the launch. | One-click copy into a prefilled issue form, downloads for people without an account (W6); sync after M2 (P6). |
 | WebAssembly constraints: Gamepad API is poll-only (must be driven from `requestAnimationFrame`), WebHID is Chromium-only, browsers remap pads differently, and embedding profiles grows the `.wasm` bundle. | Web tester behaves differently from native, slow page load. | Browser is an identity dimension in profiles (C2, D1); bundle size budget in CI (W1); WebHID features are opt-in. |
 | macOS drives PlayStation pads itself (GameController) and switches them to their extended report, so IOKit HID readers, Chromium's Gamepad API among them, get no input. Reading feature reports over Bluetooth does the same switch on every OS until the pad is power-cycled. | DualSense invisible in Chromium on macOS; other apps losing a pad that we switched. | C15 + W3 read the extended report over WebHID; C6 uses GameController; W3 reads feature reports only after telling the user; the tester tells macOS Chromium users why. |
 | Hardware availability for testing many controllers on three OSes. | Profiles verified only on one OS. | Hardware lab inventory (F4) and crowd-sourced reports. |
 | Project name: `rustpad` is taken on crates.io and `omnipad` is taken on GitHub, so the project and library are named `anygamepad` (free on crates.io and npm on 2026-10-10). | Someone else takes `anygamepad` before the first release. | Publish placeholder releases early (F1). |
-| GitHub Pages only serves static files and does not allow custom HTTP headers (no COOP/COEP, so no `SharedArrayBuffer` or WASM threads; CSP only through a `<meta>` tag). | The ingestion API needs its own host; some WASM features unavailable. | Keep the web app single-threaded; host the API separately with CORS limited to `https://anygamepad.github.io` (P5). |
+| GitHub Pages only serves static files and does not allow custom HTTP headers (no COOP/COEP, so no `SharedArrayBuffer` or WASM threads; CSP only through a `<meta>` tag). | The sync API needs its own host; some WASM features unavailable. | Keep the web app single-threaded; reports local until sync (ADR 0007); host the API separately with CORS limited to `https://anygamepad.github.io` (P5). |
 | Always-on-top widget (A11): Wayland has no standard always-on-top for regular windows, and exclusive full-screen games cover every window on all OSes. | Widget hidden in some setups. | Layer-shell where available, documented fallbacks; recommend borderless windowed mode in games. |
 | Multiple providers (native, SDL3, gilrs) opening the same device: duplicates, exclusive-access conflicts, competing handshakes (e.g. two drivers configuring a Switch Pro Controller). SDL3 is also a C dependency (build and cross-compilation complexity). | Duplicate or broken input. | Arbitration layer (C12) lets one provider own each device; SDL hints disable SDL HIDAPI drivers for devices a native driver owns; SDL3 provider is an optional feature. |
 

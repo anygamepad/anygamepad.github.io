@@ -1,7 +1,11 @@
 # 03 — Collection pipeline
 
-Backend that receives device reports from the web app and the desktop app,
-stores them, and turns them into curated profile updates.
+How device reports are kept, shared and turned into curated profile
+updates. Reports are local first
+([ADR 0007](../../docs/adr/0007-local-first-device-reports.md), re-planned
+in place on 2026-10-14): the desktop app writes files, the web app keeps
+them in IndexedDB, people share the ones they choose as GitHub issues, and a
+sync server comes after the web launch (M2).
 
 ## Schedule
 
@@ -14,23 +18,27 @@ gantt
     Re-plan baseline :milestone, t0, 2026-10-14, 0d
     C2 done :milestone, c2, 2026-10-13, 0d
     D1 done :milestone, d1, 2026-10-14, 0d
+    W6 done :milestone, crit, w6, 2026-11-08, 0d
+    A3 done :milestone, crit, a3, 2026-12-28, 0d
     section Collection pipeline
-    P1 Device report schema (shared crate) :crit, p1, after c2 d1 t0, 7d
-    P2 Ingestion API and PostgreSQL storage :crit, p2, after p1, 20d
-    P3 Privacy, consent, data retention policy :p3, after p1, 10d
-    P4 Curation tooling (reports to profile PRs) :p4, after p2 d1, 20d
-    P5 Hosting, backups, monitoring :crit, p5, after p2, 10d
+    P1 Device report schema (shared crate) :done, p1, 2026-10-14, 1d
+    P2 Sync API and PostgreSQL storage :p2, after p1 t0, 20d
+    P3 Privacy, consent, data retention policy :p3, after p1 t0, 10d
+    P4 Curation tooling (reports to profile PRs) :p4, after p1 d1 t0, 20d
+    P5 Hosting, backups, monitoring :p5, after p2, 10d
+    P6 Report sync in the web and desktop apps :p6, after p2 w6 a3, 10d
 ```
 
 ## Tasks
 
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
-| P1 | **Device report schema (shared crate)** | 7 | C2, D1 | P2, P3, W6 | 2026-10-14 | 2026-10-21 | 0 |
-| P2 | **Ingestion API and PostgreSQL storage** | 20 | P1 | A3, P4, P5, W6 | 2026-10-21 | 2026-11-10 | 0 |
-| P3 | Privacy, consent, data retention policy | 10 | P1 | A3, W6 | 2026-10-21 | 2026-10-31 | 10 |
-| P4 | Curation tooling (reports to profile PRs) | 20 | P2, D1 | - | 2026-11-10 | 2026-11-30 | 60 |
-| P5 | **Hosting, backups, monitoring** | 10 | P2 | W7 | 2026-11-10 | 2026-11-20 | 0 |
+| P1 | Device report schema (shared crate) | 7 | C2, D1 | A3, P2, P3, P4, W6 | 2026-10-14 | 2026-10-14 | done |
+| P2 | Sync API and PostgreSQL storage | 20 | P1 | P5, P6 | 2026-10-14 | 2026-11-03 | 65 |
+| P3 | Privacy, consent, data retention policy | 10 | P1 | A3, W6 | 2026-10-14 | 2026-10-24 | 5 |
+| P4 | Curation tooling (reports to profile PRs) | 20 | P1, D1 | - | 2026-10-14 | 2026-11-03 | 75 |
+| P5 | Hosting, backups, monitoring | 10 | P2 | M5 | 2026-11-03 | 2026-11-13 | 65 |
+| P6 | Report sync in the web and desktop apps | 10 | P2, W6, A3 | M5 | 2026-12-28 | 2027-01-07 | 10 |
 
 ### P1 — Device report schema
 
@@ -49,14 +57,21 @@ desktop reports are produced by identical code:
 - User-confirmed mapping from the guided wizard (W4) and the mode the user says
   the controller is in.
 - **Never** serial numbers, Bluetooth MAC addresses or any personal data:
-  stripped on the client and validated again on the server.
+  stripped on the client and validated again by every reader.
 
-### P2 — Ingestion API and PostgreSQL storage
+Status (2026-10-14): done
+(`RECORD/2026-10-14.p1-device-report-schema.completed.md`). The format is
+documented in [`data/reports/`](../../data/reports/README.md); its compact
+JSON fits a GitHub issue (ADR 0007). The WASM bindings that build reports in
+the browser come with W6, their first caller.
 
-Rust `axum` service (shares types with the library), PostgreSQL storage
-([ADR 0006](../../docs/adr/0006-server-stack.md)),
-schema validation, deduplication by fingerprint, rate limiting, and an
-anonymous submission token.
+### P2 — Sync API and PostgreSQL storage
+
+Re-planned on 2026-10-14 (ADR 0007): the server is a sync target after the
+web launch, not a blocker of it. Rust `axum` service, PostgreSQL storage
+([ADR 0006](../../docs/adr/0006-server-stack.md)), validation with the same
+crate as the clients, storage of the re-serialized report, deduplication by a
+hash of its compact JSON, rate limiting, and an anonymous submission token.
 
 ### P3 — Privacy, consent, data retention
 
@@ -67,10 +82,21 @@ the aggregated dataset.
 ### P4 — Curation tooling
 
 Aggregate reports per fingerprint, show disagreements between reports, and
-generate profile PRs for `data/profiles/` that a maintainer reviews.
+generate profile PRs for `data/profiles/` that a maintainer reviews. Reads
+reports from GitHub issues labelled `device-report` and from files (ADR
+0007), so it needs P1 only; the sync database becomes one more source after
+P2.
 
 ### P5 — Hosting, backups, monitoring
 
-Deployment target for the ingestion API and PostgreSQL (the web frontend is
+Deployment target for the sync API and PostgreSQL (the web frontend is
 static and lives on GitHub Pages, see W7), automated backups, uptime and error
 monitoring. CORS allows the `https://anygamepad.github.io` origin.
+
+### P6 — Report sync in the web and desktop apps
+
+Added on 2026-10-14 (ADR 0007). The web app (IndexedDB, W6) and the desktop
+app (report files, A3) upload the reports the person chooses to the sync API,
+remember which ones were uploaded, and keep working offline. Consent and
+texts follow P3. Reaching milestone M5 (reports synchronized) closes the loop
+that issues bridge until then.
