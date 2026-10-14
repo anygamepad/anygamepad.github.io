@@ -89,7 +89,7 @@ export class ControllerDrawing {
     root.setAttribute("role", "img");
     root.setAttribute("aria-label", `${layout.name}, canonical positions`);
     this.element = root;
-    if (layout.kind === "art") this.illustration(layout);
+    if (layout.kind === "art") this.illustration(layout, labels);
     else this.shapes(layout, labels);
 
     if (this.touchpad) {
@@ -148,13 +148,20 @@ export class ControllerDrawing {
   }
 
   /** Builds a drawing from an illustration (see art/dualsense.svg). */
-  private illustration(layout: ArtLayout): void {
+  private illustration(layout: ArtLayout, labels: FaceLayout | undefined): void {
     const root = this.element;
     const source = new DOMParser().parseFromString(layout.svg, "image/svg+xml").documentElement;
     const viewBox = source.getAttribute("viewBox") ?? `0 0 ${BASE_WIDTH} 260`;
     root.setAttribute("viewBox", viewBox);
     this.scale = (Number(viewBox.split(/\s+/)[2]) || BASE_WIDTH) / BASE_WIDTH;
     for (const child of Array.from(source.childNodes)) root.append(document.importNode(child, true));
+
+    for (const button of layout.hide ?? []) root.querySelector(`[data-button="${button}"]`)?.remove();
+    // A printed label shows only when the pad's face layout has it there.
+    for (const mark of root.querySelectorAll<SVGElement>("[data-label]")) {
+      const button = mark.closest<SVGElement>("[data-button]")?.dataset.button as keyof FaceLayout | undefined;
+      if (!button || labels?.[button] !== mark.dataset.label) mark.remove();
+    }
 
     for (const element of root.querySelectorAll<SVGGElement>("[data-button]")) {
       const button = element.dataset.button as Button;

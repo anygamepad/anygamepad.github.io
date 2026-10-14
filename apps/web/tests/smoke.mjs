@@ -243,6 +243,9 @@ const readDetail = () => {
         ? [...diagram.querySelectorAll(".value")].map((value) => value.textContent)
         : null,
       glyphs: [...diagram.querySelectorAll(".glyph-text")].map((glyph) => glyph.textContent),
+      // Labels printed on an illustration's face buttons.
+      labels: [...diagram.querySelectorAll("[data-label]")].map((mark) => mark.dataset.label),
+      controls: [...diagram.querySelectorAll(".control")].map((element) => text(element.querySelector("title"))),
       fingers: [...diagram.querySelectorAll(".finger")].filter((dot) => dot.getAttribute("visibility") === "visible").length,
     },
     vibration: [...detail.querySelectorAll(".vibration button")].map(
@@ -380,6 +383,12 @@ try {
     sticks: ["translate(0.0 0.0)", "translate(0.0 0.0)"],
     values: null,
     glyphs: [],
+    labels: [],
+    controls: [
+      "left_shoulder", "right_shoulder", "touchpad_click", "select", "start", "dpad_up",
+      "dpad_right", "dpad_down", "dpad_left", "north", "west", "east", "south",
+      "left_stick", "right_stick", "home",
+    ],
     fingers: 0,
   });
   assert.deepEqual(pad.vibration, ["Strong motor", "Weak motor", "Both", "Triggers"]);
@@ -446,15 +455,24 @@ try {
   pad = await until("the next press", detail, (d) => d.buttons[1]?.pressed && !d.buttons[0].pressed);
   assert.deepEqual(pad.diagram.on, ["east"]);
 
-  // The drawing of each family: Xbox labels, the generic pad's C and Z.
+  // The Xbox illustration for both: Xbox labels on the Xbox pad, which has
+  // no C, Z or back buttons; the generic pad has them, without labels.
+  const xboxControls = [
+    "left_shoulder", "right_shoulder", "home", "select", "start", "share", "left_stick", "right_stick",
+    "dpad_up", "dpad_left", "dpad_right", "dpad_down", "north", "west", "east", "south",
+  ];
   await setGamepads([XBOX, FLYDIGI]);
   await until("the Xbox pad", detail, (d) => d?.ready && d.diagram?.label === "Xbox controller, canonical positions");
   pad = await detail();
-  assert.deepEqual(pad.diagram.glyphs, ["Y", "A", "X", "B"]);
+  assert.deepEqual(pad.diagram.labels, ["y", "x", "b", "a"]);
+  assert.deepEqual(pad.diagram.controls, xboxControls);
   await select("Flydigi Vader 5 Pro");
   pad = await until("the generic pad", detail, (d) => d.ready && d.diagram?.label === "Controller, canonical positions");
   assert.deepEqual(pad.diagram.on, ["extra_0"]);
-  assert.deepEqual(pad.diagram.glyphs, ["C", "Z"]);
+  assert.deepEqual(pad.diagram.labels, []);
+  assert.deepEqual(pad.diagram.controls, [
+    "left_paddle_1", "left_paddle_2", "right_paddle_2", "right_paddle_1", ...xboxControls, "extra_0", "extra_1",
+  ]);
 
   // WebHID: a DualSense picked in the chooser takes the place of its Gamepad
   // API twin, decoded: the reduced Bluetooth report first.

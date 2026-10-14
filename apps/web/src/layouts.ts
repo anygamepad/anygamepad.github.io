@@ -6,12 +6,13 @@
 //
 // The generic layout follows pads like the Flydigi Vader 5 Pro: Xbox-style
 // positions, two extra buttons by the face buttons (C and Z) and four back
-// buttons. Which extra index C and Z report is a guess until device
-// profiles (D4) say it.
+// buttons. It is the Xbox illustration with all of them. Which extra index
+// C and Z report is a guess until device profiles (D4) say it.
 
 import type { Button, Family } from "./wasm/anygamepad_wasm.js";
 import dualsense from "./art/dualsense.svg?raw";
 import dualshock4 from "./art/dualshock4.svg?raw";
+import xbox from "./art/xbox.svg?raw";
 
 export type Point = readonly [number, number];
 
@@ -57,52 +58,25 @@ export interface ArtLayout {
   name: string;
   /** The SVG document. */
   svg: string;
+  /** Controls of the illustration this family does not have. */
+  hide?: readonly Button[];
 }
 
 export type Layout = ShapeLayout | ArtLayout;
 
-/** Xbox-style body: offset sticks, wide grips. */
-const OFFSET_BODY =
-  "M118 44 C150 38 250 38 282 44 C330 52 358 74 372 118 C386 162 394 208 372 236 " +
-  "C352 258 322 250 302 222 C288 202 270 190 246 190 H154 C130 190 112 202 98 222 " +
-  "C78 250 48 258 28 236 C6 208 14 162 28 118 C42 74 70 52 118 44 Z";
-
-const XBOX: ShapeLayout = {
-  kind: "shapes",
+// The owner's illustration (art/xbox.svg). Xbox pads have neither C and Z
+// nor back buttons (the Elite's paddles are not told apart yet).
+const XBOX: ArtLayout = {
+  kind: "art",
   name: "Xbox controller",
-  height: 260,
-  body: OFFSET_BODY,
-  triggers: [88, 252],
-  sticks: [[112, 100], [242, 152]],
-  dpad: [158, 152],
-  face: [288, 100],
-  select: [172, 92],
-  start: [228, 92],
-  home: [200, 64],
-  extras: [{ button: "share", at: [200, 114], shape: "pill" }],
+  svg: xbox,
+  hide: ["extra_0", "extra_1", "left_paddle_1", "left_paddle_2", "right_paddle_1", "right_paddle_2"],
 };
 
-const GENERIC: ShapeLayout = {
-  kind: "shapes",
+const GENERIC: ArtLayout = {
+  kind: "art",
   name: "Controller",
-  height: 290,
-  body: OFFSET_BODY,
-  triggers: [88, 252],
-  sticks: [[112, 100], [242, 152]],
-  dpad: [158, 152],
-  face: [288, 100],
-  select: [172, 92],
-  start: [228, 92],
-  home: [200, 64],
-  extras: [
-    { button: "extra_0", at: [318, 62], shape: "circle", label: "C" },
-    { button: "extra_1", at: [340, 78], shape: "circle", label: "Z" },
-    // Back buttons, drawn below the body.
-    { button: "left_paddle_1", at: [70, 272], shape: "pill" },
-    { button: "left_paddle_2", at: [110, 272], shape: "pill" },
-    { button: "right_paddle_2", at: [290, 272], shape: "pill" },
-    { button: "right_paddle_1", at: [330, 272], shape: "pill" },
-  ],
+  svg: xbox,
 };
 
 const SWITCH_PRO: ShapeLayout = {

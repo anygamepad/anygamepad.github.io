@@ -150,7 +150,10 @@ not code or artwork):
 - The raw buttons and axes stay, folded under the drawing.
 
 Status (2026-10-14): done
-(`RECORD/2026-10-14.w8-tester-layout-and-drawings.completed.md`).
+(`RECORD/2026-10-14.w8-tester-layout-and-drawings.completed.md`). The Xbox
+and generic drawings are now the owner's Xbox illustration, with C and Z and
+the back buttons on generic pads
+(`RECORD/2026-10-14.w8-xbox-illustration.completed.md`).
 
 **Done when:** the smoke test covers the layout, the selection and the
 drawings in Chromium, Firefox and WebKit.
