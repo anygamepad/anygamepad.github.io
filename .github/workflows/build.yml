@@ -58,6 +58,11 @@ jobs:
       # Optional features (serde, schemars, tsify) of the model crate.
       - run: cargo clippy -p anygamepad-model --all-targets --all-features --locked -- -D warnings
       - run: cargo test -p anygamepad-model --all-features --locked
+      # Optional features (toml, schemars) of the profile database: the
+      # committed JSON Schema is current, and every curated profile and SDL
+      # GameControllerDB entry is valid.
+      - run: cargo clippy -p anygamepad-db --all-targets --all-features --locked -- -D warnings
+      - run: cargo test -p anygamepad-db --all-features --locked
       # The library without its default `web` provider.
       - run: cargo clippy -p anygamepad --all-targets --no-default-features --locked -- -D warnings
 
@@ -74,6 +79,7 @@ jobs:
       - run: cargo clippy --workspace --exclude anygamepad-virtual --all-targets --target wasm32-unknown-unknown --locked -- -D warnings
       - run: cargo build --workspace --exclude anygamepad-virtual --target wasm32-unknown-unknown --locked
       - run: cargo clippy -p anygamepad-model --all-features --target wasm32-unknown-unknown --locked -- -D warnings
+      - run: cargo clippy -p anygamepad-db --all-features --target wasm32-unknown-unknown --locked -- -D warnings
       # wasm-bindgen-test-runner must match the wasm-bindgen version in Cargo.lock.
       - id: wasm-bindgen
         run: echo "version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')" >> "$GITHUB_OUTPUT"
@@ -106,6 +112,7 @@ jobs:
       - run: rustup toolchain install 1.85 --profile minimal --target wasm32-unknown-unknown
       - run: cargo +1.85 check --workspace --locked
       - run: cargo +1.85 check -p anygamepad-model --all-features --locked
+      - run: cargo +1.85 check -p anygamepad-db --all-features --locked
       - run: cargo +1.85 check --workspace --exclude anygamepad-virtual --target wasm32-unknown-unknown --locked
 
   # The web app and its WebAssembly bindings: the build artifacts.

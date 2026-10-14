@@ -20,8 +20,8 @@ gantt
     Re-plan baseline :milestone, t0, 2026-10-14, 0d
     F1 done :milestone, f1, 2026-10-10, 0d
     F3 done :milestone, f3, 2026-10-10, 0d
-    D1 done :milestone, crit, d1, 2026-10-24, 0d
-    D4 done :milestone, crit, d4, 2026-11-20, 0d
+    D1 done :milestone, d1, 2026-10-14, 0d
+    D4 done :milestone, crit, d4, 2026-11-10, 0d
     D3 done :milestone, d3, 2026-11-23, 0d
     section Core library
     C1 Canonical gamepad model :done, c1, 2026-10-10, 3d
@@ -32,7 +32,7 @@ gantt
     C11 Web backend (Gamepad API + WebHID) and JS bindings :done, c11, 2026-10-13, 1d
     C13 SDL3 provider (incl. SDL HIDAPI drivers) :c13, after c1 c2 t0, 15d
     C14 gilrs provider (pure-Rust fallback) :c14, after c1 c2 t0, 10d
-    C3 Mapping engine :crit, c3, after c1 d1, 20d
+    C3 Mapping engine :crit, c3, after c1 d1 t0, 20d
     C15 PlayStation input decoder (sans-IO) :c15, after c1 c2 t0, 10d
     C7 Native protocol drivers (PlayStation outputs and IMU, Switch Pro) :c7, after c4 c15, 20d
     C12 Multi-provider arbitration (dedup, priority) :c12, after c4 c13, 15d
@@ -47,19 +47,19 @@ gantt
 |----|------|-----:|------------|--------|-------|-----|------:|
 | C1 | Canonical gamepad model | 10 | F1, F3 | A4, C3, C4, C5, C6, C11, C13, C14, C15 | 2026-10-10 | 2026-10-13 | done |
 | C2 | Device identity, fingerprint and provider trait | 10 | F3 | C4, C5, C6, C11, C13, C14, C15, D1, P1 | 2026-10-10 | 2026-10-13 | done |
-| C3 | **Mapping engine** | 20 | C1, D1 | C8, C9, D4, W5, M1 | 2026-10-24 | 2026-11-13 | 0 |
-| C4 | Linux input backend (evdev + hidraw) | 20 | C1, C2 | A2, A5, C7, C8, C12, D3 | 2026-10-14 | 2026-11-03 | 42 |
-| C5 | Windows input backend (HID + XInput) | 30 | C1, C2 | A6, A7, C10 | 2026-10-14 | 2026-11-13 | 52 |
-| C6 | macOS input backend (IOKit HID + GameController) | 25 | C1, C2 | A6, A8, C10 | 2026-10-14 | 2026-11-08 | 47 |
-| C7 | Native protocol drivers (PlayStation outputs and IMU, Switch Pro) | 20 | C4, C15 | C10 | 2026-11-03 | 2026-11-23 | 67 |
-| C8 | Mode and clone detection heuristics | 20 | C3, C4, D3 | C10 | 2026-11-23 | 2026-12-13 | 47 |
-| C9 | Public API, docs and examples | 15 | C3 | C10 | 2026-11-13 | 2026-11-28 | 62 |
-| C10 | Library 0.1.0 release | 5 | C5, C6, C7, C8, C9, C11, C12, C14, D4 | A10, M3 | 2026-12-13 | 2026-12-18 | 47 |
+| C3 | **Mapping engine** | 20 | C1, D1 | C8, C9, D4, W5, M1 | 2026-10-14 | 2026-11-03 | 0 |
+| C4 | Linux input backend (evdev + hidraw) | 20 | C1, C2 | A2, A5, C7, C8, C12, D3 | 2026-10-14 | 2026-11-03 | 32 |
+| C5 | Windows input backend (HID + XInput) | 30 | C1, C2 | A6, A7, C10 | 2026-10-14 | 2026-11-13 | 42 |
+| C6 | macOS input backend (IOKit HID + GameController) | 25 | C1, C2 | A6, A8, C10 | 2026-10-14 | 2026-11-08 | 37 |
+| C7 | Native protocol drivers (PlayStation outputs and IMU, Switch Pro) | 20 | C4, C15 | C10 | 2026-11-03 | 2026-11-23 | 57 |
+| C8 | Mode and clone detection heuristics | 20 | C3, C4, D3 | C10 | 2026-11-23 | 2026-12-13 | 37 |
+| C9 | Public API, docs and examples | 15 | C3 | C10 | 2026-11-03 | 2026-11-18 | 62 |
+| C10 | Library 0.1.0 release | 5 | C5, C6, C7, C8, C9, C11, C12, C14, D4 | A10, M3 | 2026-12-13 | 2026-12-18 | 37 |
 | C11 | Web backend (Gamepad API + WebHID) and JS bindings | 20 | C1, C2 | C10, W2, M1 | 2026-10-13 | 2026-10-14 | done |
-| C12 | Multi-provider arbitration (dedup, priority) | 15 | C4, C13 | C10 | 2026-11-03 | 2026-11-18 | 72 |
-| C13 | SDL3 provider (incl. SDL HIDAPI drivers) | 15 | C1, C2 | C12 | 2026-10-14 | 2026-10-29 | 77 |
-| C14 | gilrs provider (pure-Rust fallback) | 10 | C1, C2 | C10 | 2026-10-14 | 2026-10-24 | 97 |
-| C15 | PlayStation input decoder (sans-IO) | 10 | C1, C2 | C7, W3 | 2026-10-14 | 2026-10-24 | 77 |
+| C12 | Multi-provider arbitration (dedup, priority) | 15 | C4, C13 | C10 | 2026-11-03 | 2026-11-18 | 62 |
+| C13 | SDL3 provider (incl. SDL HIDAPI drivers) | 15 | C1, C2 | C12 | 2026-10-14 | 2026-10-29 | 67 |
+| C14 | gilrs provider (pure-Rust fallback) | 10 | C1, C2 | C10 | 2026-10-14 | 2026-10-24 | 87 |
+| C15 | PlayStation input decoder (sans-IO) | 10 | C1, C2 | C7, W3 | 2026-10-14 | 2026-10-24 | 67 |
 
 ### C1 — Canonical gamepad model
 

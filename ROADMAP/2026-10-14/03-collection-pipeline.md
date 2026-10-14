@@ -11,10 +11,11 @@ gantt
     axisFormat %b %d
     title Collection pipeline (critical path in red, done in grey)
     section Upstream blockers
+    Re-plan baseline :milestone, t0, 2026-10-14, 0d
     C2 done :milestone, c2, 2026-10-13, 0d
-    D1 done :milestone, crit, d1, 2026-10-24, 0d
+    D1 done :milestone, d1, 2026-10-14, 0d
     section Collection pipeline
-    P1 Device report schema (shared crate) :crit, p1, after c2 d1, 7d
+    P1 Device report schema (shared crate) :crit, p1, after c2 d1 t0, 7d
     P2 Ingestion API and PostgreSQL storage :crit, p2, after p1, 20d
     P3 Privacy, consent, data retention policy :p3, after p1, 10d
     P4 Curation tooling (reports to profile PRs) :p4, after p2 d1, 20d
@@ -25,11 +26,11 @@ gantt
 
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
-| P1 | **Device report schema (shared crate)** | 7 | C2, D1 | P2, P3, W6 | 2026-10-24 | 2026-10-31 | 0 |
-| P2 | **Ingestion API and PostgreSQL storage** | 20 | P1 | A3, P4, P5, W6 | 2026-10-31 | 2026-11-20 | 0 |
-| P3 | Privacy, consent, data retention policy | 10 | P1 | A3, W6 | 2026-10-31 | 2026-11-10 | 10 |
-| P4 | Curation tooling (reports to profile PRs) | 20 | P2, D1 | - | 2026-11-20 | 2026-12-10 | 60 |
-| P5 | **Hosting, backups, monitoring** | 10 | P2 | W7 | 2026-11-20 | 2026-11-30 | 0 |
+| P1 | **Device report schema (shared crate)** | 7 | C2, D1 | P2, P3, W6 | 2026-10-14 | 2026-10-21 | 0 |
+| P2 | **Ingestion API and PostgreSQL storage** | 20 | P1 | A3, P4, P5, W6 | 2026-10-21 | 2026-11-10 | 0 |
+| P3 | Privacy, consent, data retention policy | 10 | P1 | A3, W6 | 2026-10-21 | 2026-10-31 | 10 |
+| P4 | Curation tooling (reports to profile PRs) | 20 | P2, D1 | - | 2026-11-10 | 2026-11-30 | 60 |
+| P5 | **Hosting, backups, monitoring** | 10 | P2 | W7 | 2026-11-10 | 2026-11-20 | 0 |
 
 ### P1 — Device report schema
 

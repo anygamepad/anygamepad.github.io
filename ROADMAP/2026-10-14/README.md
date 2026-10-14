@@ -50,6 +50,9 @@ WebHID can read that report ([research note 09](../../docs/research/09-dualsense
   tester, and every later web task (W4 included) is tested with it. All three
   have slack, but D1 is now on the critical path: with one contributor, every
   day spent on them first moves M2 by a day.
+- **Status update (2026-10-14, in place):** W8, D1 and D2 are done (grey).
+  D1 left the critical path ten days early, so the dates move ten days
+  earlier: M1 on 2026-11-10, M2 on 2026-11-25, M4 on 2027-01-29.
 
 ## Vision
 
@@ -143,8 +146,8 @@ curated profile database, so detection gets better with each release.
   what) stays valid. Use the graph, not the dates, to decide what to pick up
   next.
 - The critical path runs through the web launch (M2) and ends at milestone M4
-  (desktop 0.1.0). Projected end: **2027-02-08** (2027-03-16 in the previous
-  version, before the early finish of C1, C2, C11, W1 and W2).
+  (desktop 0.1.0). Projected end: **2027-01-29** (2027-03-16 in the previous
+  version, before the early finish of C1, C2, C11, W1, W2, D1 and D2).
 
 ## Master schedule
 
@@ -176,16 +179,16 @@ gantt
     C15 PlayStation input decoder (sans-IO) :c15, after c1 c2 t0, 10d
     C7 Native protocol drivers (PlayStation outputs and IMU, Switch Pro) :c7, after c4 c15, 20d
     C12 Multi-provider arbitration (dedup, priority) :c12, after c4 c13, 15d
-    D1 Device profile format and JSON Schema :crit, d1, after c2 t0, 10d
-    C3 Mapping engine :crit, c3, after c1 d1, 20d
+    D1 Device profile format and JSON Schema :done, d1, 2026-10-14, 1d
+    C3 Mapping engine :crit, c3, after c1 d1 t0, 20d
     C9 Public API, docs and examples :c9, after c3, 15d
-    D2 SDL GameControllerDB importer :d2, after d1, 7d
+    D2 SDL GameControllerDB importer :done, d2, 2026-10-14, 1d
     D3 Initial curated profiles (top devices) :d3, after d1 c4 f4, 20d
     C8 Mode and clone detection heuristics :c8, after c3 c4 d3, 20d
     D4 Profile embedding and runtime overrides :crit, d4, after d1 c3, 7d
     C10 Library 0.1.0 release :c10, after c5 c6 c7 c8 c9 c11 c12 c14 d4, 5d
     section Collection pipeline
-    P1 Device report schema (shared crate) :crit, p1, after c2 d1, 7d
+    P1 Device report schema (shared crate) :crit, p1, after c2 d1 t0, 7d
     P2 Ingestion API and PostgreSQL storage :crit, p2, after p1, 20d
     P3 Privacy, consent, data retention policy :p3, after p1, 10d
     P4 Curation tooling (reports to profile PRs) :p4, after p2 d1, 20d
@@ -193,7 +196,7 @@ gantt
     section Web app
     W1 Web app scaffolding and WASM build pipeline :done, w1, 2026-10-13, 1d
     W2 Live tester on the core web backend :done, w2, 2026-10-13, 1d
-    W8 Tester layout and device drawings :w8, after w2 t0, 7d
+    W8 Tester layout and device drawings :done, w8, 2026-10-14, 1d
     W3 WebHID mode with PlayStation decoding :w3, after w2 c15 w8, 15d
     W4 Guided mapping wizard (shared with desktop) :w4, after w2 t0, 15d
     W5 Normalized view (mapping engine + profiles) :crit, w5, after w2 c3 d2 d4, 10d
@@ -220,15 +223,15 @@ gantt
 
 ### Critical path
 
-Zero-slack chains (they share most tasks). With the web UI tasks done early,
-the path up to M2 now starts at the profile format (D1) and runs through the
-mapping engine and the collection pipeline.
+Zero-slack chains (they share most tasks). With the profile format (D1) done,
+the path up to M2 starts at the mapping engine (C3) and the device report
+schema (P1).
 
 Up to the web launch (M2):
 
-1. D1 -> C3 -> D4 -> W5 -> W7 -> M2
-2. D1 -> P1 -> P2 -> P5 -> W7 -> M2
-3. D1 -> P1 -> P2 -> W6 -> W7 -> M2
+1. C3 -> D4 -> W5 -> W7 -> M2
+2. P1 -> P2 -> P5 -> W7 -> M2
+3. P1 -> P2 -> W6 -> W7 -> M2
 
 From M2 to the desktop release (M4):
 
@@ -424,18 +427,18 @@ flowchart LR
     a10 --> m4
     classDef crit fill:#fdd,stroke:#c00,stroke-width:2px
     classDef done fill:#eee,stroke:#999,color:#666
-    class c3,d1,d4,p1,p2,p5,w5,w6,w7,a1,a4,a5,a2,a3,a6,a9,a10,m2,m4,m2,m4 crit
-    class f1,f2,f3,c1,c2,c11,w1,w2 done
+    class c3,d4,p1,p2,p5,w5,w6,w7,a1,a4,a5,a2,a3,a6,a9,a10,m2,m4,m2,m4 crit
+    class f1,f2,f3,c1,c2,c11,d1,d2,w1,w2,w8 done
 ```
 
 ## Milestones
 
 | Milestone | Blocked by | Target date |
 |-----------|------------|-------------|
-| M1 Core runs in the browser | C3, C11, D4 | 2026-11-20 |
-| M2 Web tester live and collecting | W7 | 2026-12-05 |
+| M1 Core runs in the browser | C3, C11, D4 | 2026-11-10 |
+| M2 Web tester live and collecting | W7 | 2026-11-25 |
 | M3 Library 0.1.0 | C10 | 2026-12-18 |
-| M4 Desktop app 0.1.0 | A10 | 2027-02-08 |
+| M4 Desktop app 0.1.0 | A10 | 2027-01-29 |
 
 ## Top risks
 
