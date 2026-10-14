@@ -521,6 +521,38 @@ try {
   await page.waitForSelector(".message");
   await context.close();
 
+  // The theme follows the system until the viewer picks one, which a reload
+  // keeps.
+  const themed = await browser.newContext({ colorScheme: "light" });
+  const themePage = await themed.newPage();
+  watch(themePage, "(theme)");
+  await themePage.goto(url, { waitUntil: "networkidle" });
+  await themePage.waitForSelector(".theme");
+  const theme = () =>
+    themePage.evaluate(() => ({
+      attribute: document.documentElement.dataset.theme ?? null,
+      background: getComputedStyle(document.body).backgroundColor,
+      pressed: [...document.querySelectorAll(".theme button")]
+        .filter((button) => button.getAttribute("aria-pressed") === "true")
+        .map((button) => button.textContent.trim()),
+    }));
+  const LIGHT = "rgb(247, 247, 251)";
+  const DARK = "rgb(20, 20, 28)";
+  const expect = (want) => until(JSON.stringify(want), theme, (have) => JSON.stringify(have) === JSON.stringify(want));
+  const pick = (name) => themePage.getByRole("button", { name, exact: true }).click();
+  await expect({ attribute: null, background: LIGHT, pressed: ["Auto"] });
+  await pick("Dark");
+  await expect({ attribute: "dark", background: DARK, pressed: ["Dark"] });
+  await themePage.reload({ waitUntil: "networkidle" });
+  await themePage.waitForSelector(".theme");
+  await expect({ attribute: "dark", background: DARK, pressed: ["Dark"] });
+  await themePage.emulateMedia({ colorScheme: "dark" });
+  await pick("Light");
+  await expect({ attribute: "light", background: LIGHT, pressed: ["Light"] });
+  await pick("Auto");
+  await expect({ attribute: null, background: DARK, pressed: ["Auto"] });
+  await themed.close();
+
   // Chromium on macOS (by its user agent) explains why a DualSense may not
   // show, until a gamepad does.
   const mac = await browser.newContext({ userAgent: MAC_CHROME });

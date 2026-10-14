@@ -1,0 +1,51 @@
+#:schema ./schema.json
+
+# The W3C "standard" gamepad layout, which browsers apply to the pads they
+# recognize (`Gamepad.mapping == "standard"`):
+# https://w3c.github.io/gamepad/#remapping
+#
+# It only says where the 17 standard buttons and 4 axes are. Buttons that
+# browsers append after index 16 (touchpad, capture, share) need a profile
+# for the device, which wins over this one because it names the device.
+#
+# Mirrors `anygamepad::web::standard`.
+
+schema_version = 1
+name = "Gamepad API standard layout"
+source = "curated"
+verified = true
+
+[[match]]
+backend = "gamepad_api"
+gamepad_mapping = "standard"
+
+[[mapping]]
+
+[mapping.buttons]
+south = "b0"
+east = "b1"
+west = "b2"
+north = "b3"
+left_shoulder = "b4"
+right_shoulder = "b5"
+# Analog buttons: also the trigger axes below.
+left_trigger = "b6"
+right_trigger = "b7"
+select = "b8"
+start = "b9"
+left_stick = "b10"
+right_stick = "b11"
+dpad_up = "b12"
+dpad_down = "b13"
+dpad_left = "b14"
+dpad_right = "b15"
+home = "b16"
+
+[mapping.axes]
+left_stick_x = "a0"
+# The Gamepad API's Y axes grow downwards; canonical Y is up.
+left_stick_y = "a1~"
+right_stick_x = "a2"
+right_stick_y = "a3~"
+left_trigger = "b6"
+right_trigger = "b7"

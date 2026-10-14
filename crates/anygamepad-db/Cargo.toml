@@ -14,3 +14,32 @@ authors.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+# Read and write profiles as TOML (`Profile::from_toml`, `Profile::to_toml`):
+# the source format of `data/profiles/` and of runtime overrides (ADR 0003).
+toml = ["dep:toml"]
+# JSON Schema of the profile format (`json_schema`).
+schemars = ["dep:schemars", "anygamepad-model/schemars"]
+
+[dependencies]
+anygamepad-model = { workspace = true, features = ["serde"] }
+schemars = { workspace = true, optional = true }
+serde.workspace = true
+toml = { workspace = true, optional = true }
+
+[dev-dependencies]
+jsonschema = { version = "0.58.6", default-features = false }
+serde_json.workspace = true
+
+[[test]]
+name = "profiles"
+required-features = ["toml", "schemars"]
+
+[[test]]
+name = "sdl_gamecontrollerdb"
+required-features = ["toml", "schemars"]
+
+[[example]]
+name = "sdl_import"
+required-features = ["toml"]

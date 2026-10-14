@@ -6,9 +6,12 @@
 //! [`RawSource`], so profiles can refer to elements independently of the
 //! order a backend lists them in.
 
+use core::fmt;
+use core::str::FromStr;
+
 use crate::{
-    Axis, Button, MAX_TOUCH_POINTS, MotionSample, Power, Sensor, SensorSet, TouchPoint,
-    TouchpadInfo,
+    Axis, Button, MAX_TOUCH_POINTS, MotionSample, ParseNameError, Power, Sensor, SensorSet,
+    TouchPoint, TouchpadInfo,
 };
 
 /// Where a raw element comes from.
@@ -37,6 +40,59 @@ pub enum RawSource {
     Button(Button),
     /// Already a canonical axis.
     Axis(Axis),
+}
+
+/// Text form, used by device profiles: `3` (an index), `evdev:0x0130`,
+/// `hid:0x0001:0x0030`, `button:south`, `axis:left_stick_x`. Codes are
+/// written as four lowercase hexadecimal digits.
+impl fmt::Display for RawSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Index(index) => write!(f, "{index}"),
+            Self::Evdev(code) => write!(f, "evdev:{code:#06x}"),
+            Self::Hid { page, usage } => write!(f, "hid:{page:#06x}:{usage:#06x}"),
+            Self::Button(button) => write!(f, "button:{button}"),
+            Self::Axis(axis) => write!(f, "axis:{axis}"),
+        }
+    }
+}
+
+impl FromStr for RawSource {
+    type Err = ParseNameError;
+
+    /// Parses the text form of [`Display`](fmt::Display). Indices are
+    /// decimal without leading zeros; codes are `0x` and one to four
+    /// hexadecimal digits in either case.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let error = || ParseNameError::new("raw source", s);
+        let hex = |code: &str| {
+            let digits = code.strip_prefix("0x")?;
+            if (1..=4).contains(&digits.len()) && digits.bytes().all(|b| b.is_ascii_hexdigit()) {
+                u16::from_str_radix(digits, 16).ok()
+            } else {
+                None
+            }
+        };
+        let source = if let Some(code) = s.strip_prefix("evdev:") {
+            hex(code).map(Self::Evdev)
+        } else if let Some(codes) = s.strip_prefix("hid:") {
+            codes.split_once(':').and_then(|(page, usage)| {
+                Some(Self::Hid {
+                    page: hex(page)?,
+                    usage: hex(usage)?,
+                })
+            })
+        } else if let Some(name) = s.strip_prefix("button:") {
+            name.parse().ok().map(Self::Button)
+        } else if let Some(name) = s.strip_prefix("axis:") {
+            name.parse().ok().map(Self::Axis)
+        } else if s == "0" || (!s.starts_with('0') && s.bytes().all(|b| b.is_ascii_digit())) {
+            s.parse().ok().map(Self::Index)
+        } else {
+            None
+        };
+        source.ok_or_else(error)
+    }
 }
 
 /// A raw axis and its range.
@@ -210,6 +266,46 @@ mod tests {
         assert_eq!(Hat::from_axes(0, -1), Hat(Hat::UP));
         assert_eq!(Hat::from_axes(1, 1), Hat(Hat::DOWN | Hat::RIGHT));
         assert_eq!(Hat::from_axes(0, 0), Hat::CENTERED);
+    }
+
+    #[test]
+    fn raw_source_text() {
+        for (text, source) in [
+            ("0", RawSource::Index(0)),
+            ("17", RawSource::Index(17)),
+            ("evdev:0x0130", RawSource::Evdev(0x130)),
+            (
+                "hid:0x0001:0x0030",
+                RawSource::Hid {
+                    page: 0x01,
+                    usage: 0x30,
+                },
+            ),
+            ("button:south", RawSource::Button(Button::South)),
+            ("axis:left_stick_x", RawSource::Axis(Axis::LeftStickX)),
+        ] {
+            assert_eq!(text.parse::<RawSource>(), Ok(source));
+            assert_eq!(source.to_string(), text);
+        }
+        assert_eq!("evdev:0x13A".parse(), Ok(RawSource::Evdev(0x13a)));
+        for bad in [
+            "",
+            "01",
+            "-1",
+            "+1",
+            "65536",
+            "x",
+            "evdev:130",
+            "evdev:0x",
+            "evdev:0x10000",
+            "hid:0x01",
+            "hid:0x01:",
+            "button:cross",
+            "axis:",
+            "index:3",
+        ] {
+            assert!(bad.parse::<RawSource>().is_err(), "{bad}");
+        }
     }
 
     #[test]

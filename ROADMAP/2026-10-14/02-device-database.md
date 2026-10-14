@@ -12,14 +12,13 @@ gantt
     axisFormat %b %d
     title Device database (critical path in red, done in grey)
     section Upstream blockers
-    Re-plan baseline :milestone, t0, 2026-10-14, 0d
     C2 done :milestone, c2, 2026-10-13, 0d
     F4 done :milestone, f4, 2026-10-19, 0d
+    C3 done :milestone, crit, c3, 2026-11-03, 0d
     C4 done :milestone, c4, 2026-11-03, 0d
-    C3 done :milestone, crit, c3, 2026-11-13, 0d
     section Device database
-    D1 Device profile format and JSON Schema :crit, d1, after c2 t0, 10d
-    D2 SDL GameControllerDB importer :d2, after d1, 7d
+    D1 Device profile format and JSON Schema :done, d1, 2026-10-14, 1d
+    D2 SDL GameControllerDB importer :done, d2, 2026-10-14, 1d
     D3 Initial curated profiles (top devices) :d3, after d1 c4 f4, 20d
     D4 Profile embedding and runtime overrides :crit, d4, after d1 c3, 7d
 ```
@@ -28,10 +27,10 @@ gantt
 
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
-| D1 | **Device profile format and JSON Schema** | 10 | C2 | C3, D2, D3, D4, P1, P4 | 2026-10-14 | 2026-10-24 | 0 |
-| D2 | SDL GameControllerDB importer | 7 | D1 | W5 | 2026-10-24 | 2026-10-31 | 20 |
-| D3 | Initial curated profiles (top devices) | 20 | D1, C4, F4 | C8 | 2026-11-03 | 2026-11-23 | 47 |
-| D4 | **Profile embedding and runtime overrides** | 7 | D1, C3 | C10, W5, M1 | 2026-11-13 | 2026-11-20 | 0 |
+| D1 | Device profile format and JSON Schema | 10 | C2 | C3, D2, D3, D4, P1, P4 | 2026-10-14 | 2026-10-14 | done |
+| D2 | SDL GameControllerDB importer | 7 | D1 | W5 | 2026-10-14 | 2026-10-14 | done |
+| D3 | Initial curated profiles (top devices) | 20 | D1, C4, F4 | C8 | 2026-11-03 | 2026-11-23 | 37 |
+| D4 | **Profile embedding and runtime overrides** | 7 | D1, C3 | C10, W5, M1 | 2026-11-03 | 2026-11-10 | 0 |
 
 ### D1 — Device profile format and JSON Schema
 
@@ -44,11 +43,27 @@ gantt
   their own Gamepad API remapping.
 - Schema version field; JSON Schema published for tooling and the web app.
 
+Status (2026-10-14): done
+(`RECORD/2026-10-14.d1-profile-format.completed.md`): `anygamepad-db`
+profile types (match rules, mapping entries with `when` conditions, SDL-style
+input strings), selection between matching profiles, TOML read/write, the
+generated `data/profiles/schema.json` (also served at
+`https://anygamepad.github.io/schema/profile.json`) and a first curated
+profile for the Gamepad API standard layout. Calibration is a per-axis
+deadzone for now.
+
 ### D2 — SDL GameControllerDB importer
 
 Bootstrap coverage by converting SDL GameControllerDB entries into anygamepad
 profiles (marked `source = "sdl-gamecontrollerdb"`, `verified = false`).
 Keep attribution and license notice.
+
+Status (2026-10-14): done
+(`RECORD/2026-10-14.d2-sdl-gamecontrollerdb-importer.completed.md`):
+`anygamepad_db::sdl` converts the vendored copy in `data/sdl-gamecontrollerdb/`
+(2,279 entries, all of them) into profiles in memory; nothing is copied into
+`data/profiles/`. Their indices are SDL's (`indices = "sdl"`), so they apply
+once a provider reproduces SDL's order (C4, C13) and are embedded by D4.
 
 ### D3 — Initial curated profiles
 
