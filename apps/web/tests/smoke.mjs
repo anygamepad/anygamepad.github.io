@@ -406,9 +406,8 @@ try {
     pad.axes.map((axis) => [axis.value, axis.bar]),
     [["+0.500", "0.5"], ["−1.000", "-1"], ["+0.000", "0"], ["+0.250", "0.25"]],
   );
-  // The illustration fills R2's own shape with its travel.
   assert.deepEqual(pad.diagram.on, ["dpad_up", "south"]);
-  assert.deepEqual(pad.diagram.triggers, ["0.0", "62.0"]);
+  assert.deepEqual(pad.diagram.triggers, ["0.0", "55.0"]);
   assert.deepEqual(pad.diagram.sticks, ["translate(12.0 -24.0)", "translate(0.0 6.0)"]);
 
   // The values on the drawing.

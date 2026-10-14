@@ -38,9 +38,6 @@ const FACE_SPREAD = 21;
 /** Width of the viewBox the shape layouts and the text sizes are made for. */
 const BASE_WIDTH = 400;
 
-/** Makes the clip path ids of shaped triggers unique on the page. */
-let clips = 0;
-
 /** A signed value that keeps its width. */
 const signed = (value: number): string => `${value < 0 ? "−" : "+"}${Math.abs(value).toFixed(2)}`;
 
@@ -170,8 +167,7 @@ export class ControllerDrawing {
 
     for (const slot of root.querySelectorAll<SVGGElement>("[data-trigger]")) {
       const [x, y, width, height] = ["x", "y", "width", "height"].map((key) => Number(slot.dataset[key]));
-      const shape = slot.querySelector<SVGGeometryElement>(".shape") ?? undefined;
-      this.trigger(slot, slot.dataset.trigger as Axis, x ?? 0, y ?? 0, width ?? TRIGGER_WIDTH, height ?? 12, shape);
+      this.trigger(slot, slot.dataset.trigger as Axis, x ?? 0, y ?? 0, width ?? TRIGGER_WIDTH, height ?? 12);
     }
 
     for (const stick of root.querySelectorAll<SVGGElement>("[data-stick]")) {
@@ -253,30 +249,11 @@ export class ControllerDrawing {
     return group;
   }
 
-  /**
-   * A trigger's travel: a bar, or the trigger's own `shape` filled from its
-   * left edge, clipped to it; its value beside it, outwards.
-   */
-  private trigger(
-    parent: Element,
-    axis: Axis,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    shape?: SVGGeometryElement,
-  ): void {
-    let fill: SVGRectElement;
-    if (shape) {
-      const id = `trigger-clip-${++clips}`;
-      const clip = svg("clipPath", { id }, parent);
-      clip.append(shape.cloneNode(false));
-      fill = svg("rect", { class: "fill", x, y, width: 0, height, "clip-path": `url(#${id})` }, parent, axis);
-    } else {
-      const rx = Math.min(4, height / 2);
-      svg("rect", { class: "track", x, y, width, height, rx }, parent);
-      fill = svg("rect", { class: "fill", x, y, width: 0, height, rx }, parent, axis);
-    }
+  /** A trigger's travel bar, with its value beside it, outwards. */
+  private trigger(parent: Element, axis: Axis, x: number, y: number, width: number, height: number): void {
+    const rx = Math.min(4 * this.scale, height / 2);
+    svg("rect", { class: "track", x, y, width, height, rx }, parent);
+    const fill = svg("rect", { class: "fill", x, y, width: 0, height, rx }, parent, axis);
     const left = axis === "left_trigger";
     const gap = 6 * this.scale;
     const valueX = left ? x - gap : x + width + gap;
