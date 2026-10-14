@@ -53,6 +53,22 @@ Switch Pro) appear without VID/PID.
 - Gives VID/PID, report descriptors (collections) and raw input/feature
   reports: the data the desktop collector gets, without installing anything.
 
+## DualSense in Chrome on macOS (added 2026-10-14)
+
+- The owner's DualSense does not show in Chrome on macOS:
+  `navigator.getGamepads()` returns `[null, null, null, null]`. The same pad
+  works on the same Mac in `germadev/motorust`, which reads it through
+  GameController.framework (`src/gamepads/apple.rs`).
+- motorust's records (`RECORD/2026-10-09.foundation.completed.md`, item 31)
+  explain why gilrs, an IOKit HID reader, sees the pad connected but gets no
+  input: macOS's GameController switches the DualSense to the extended
+  report (`0x31`), and the standard reports with buttons and axes stop.
+- Chrome reads pads on macOS through IOKit HID too, and only exposes a pad
+  after an input. A pad with no standard reports is therefore never exposed.
+  This is inferred from the two observations above; Chrome's code was not
+  re-read. Safari (GameController) and WebHID in Chrome (reading `0x31`, see
+  note 09) should both see the pad.
+
 ## Implications for anygamepad (C2, C11, W2, W3)
 
 - The web identity parser must handle all formats above and treat VID/PID as
