@@ -11,6 +11,7 @@
 
 import type { Button, Family } from "./wasm/anygamepad_wasm.js";
 import dualsense from "./art/dualsense.svg?raw";
+import dualshock4 from "./art/dualshock4.svg?raw";
 
 export type Point = readonly [number, number];
 
@@ -147,24 +148,11 @@ const DUALSHOCK3: ShapeLayout = {
   extras: [],
 };
 
-const DUALSHOCK4: ShapeLayout = {
-  kind: "shapes",
+// The owner's illustration (art/dualshock4.svg).
+const DUALSHOCK4: ArtLayout = {
+  kind: "art",
   name: "DualShock 4",
-  height: 260,
-  body:
-    "M104 54 C124 44 152 42 200 42 C248 42 276 44 296 54 C336 62 358 86 370 128 " +
-    "C384 176 392 220 368 242 C348 260 318 250 298 222 C286 204 274 196 254 196 H146 " +
-    "C126 196 114 204 102 222 C82 250 52 260 32 242 C8 220 16 176 30 128 C42 86 64 62 104 54 Z",
-  triggers: [76, 264],
-  sticks: [[154, 156], [246, 156]],
-  dpad: [88, 108],
-  face: [312, 108],
-  select: [134, 62],
-  start: [266, 62],
-  home: [200, 150],
-  touchpad: { x: 150, y: 52, width: 100, height: 52 },
-  lightbar: "M168 44 H232",
-  extras: [],
+  svg: dualshock4,
 };
 
 /** The drawing for a family; the generic one when it is not recognized. */

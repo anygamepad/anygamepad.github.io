@@ -35,6 +35,12 @@ const TRIGGER_WIDTH = 64;
 /** Distance from the face buttons' centre to each of them. */
 const FACE_SPREAD = 21;
 
+/** Width of the viewBox the shape layouts and the text sizes are made for. */
+const BASE_WIDTH = 400;
+
+/** Makes the clip path ids of shaped triggers unique on the page. */
+let clips = 0;
+
 /** A signed value that keeps its width. */
 const signed = (value: number): string => `${value < 0 ? "−" : "+"}${Math.abs(value).toFixed(2)}`;
 
@@ -74,6 +80,8 @@ export class ControllerDrawing {
   private readonly sticks: Stick[] = [];
   private readonly fingers: SVGCircleElement[] = [];
   private touchpad: Area | undefined;
+  /** Drawing units per unit of the 400-wide base: text and marks scale. */
+  private scale = 1;
   private lastButtons = "";
   private lastAxes = "";
   private lastTouches = "";
@@ -90,7 +98,8 @@ export class ControllerDrawing {
     if (this.touchpad) {
       const { x, y } = this.touchpad;
       for (let finger = 0; finger < 4; finger++) {
-        this.fingers.push(svg("circle", { class: "finger", cx: x, cy: y, r: 5, visibility: "hidden" }, root));
+        const r = 5 * this.scale;
+        this.fingers.push(svg("circle", { class: "finger", cx: x, cy: y, r, visibility: "hidden" }, root));
       }
     }
   }
@@ -145,7 +154,9 @@ export class ControllerDrawing {
   private illustration(layout: ArtLayout): void {
     const root = this.element;
     const source = new DOMParser().parseFromString(layout.svg, "image/svg+xml").documentElement;
-    root.setAttribute("viewBox", source.getAttribute("viewBox") ?? "0 0 400 260");
+    const viewBox = source.getAttribute("viewBox") ?? `0 0 ${BASE_WIDTH} 260`;
+    root.setAttribute("viewBox", viewBox);
+    this.scale = (Number(viewBox.split(/\s+/)[2]) || BASE_WIDTH) / BASE_WIDTH;
     for (const child of Array.from(source.childNodes)) root.append(document.importNode(child, true));
 
     for (const element of root.querySelectorAll<SVGGElement>("[data-button]")) {
@@ -159,14 +170,17 @@ export class ControllerDrawing {
 
     for (const slot of root.querySelectorAll<SVGGElement>("[data-trigger]")) {
       const [x, y, width, height] = ["x", "y", "width", "height"].map((key) => Number(slot.dataset[key]));
-      this.trigger(slot, slot.dataset.trigger as Axis, x ?? 0, y ?? 0, width ?? TRIGGER_WIDTH, height ?? 12);
+      const shape = slot.querySelector<SVGGeometryElement>(".shape") ?? undefined;
+      this.trigger(slot, slot.dataset.trigger as Axis, x ?? 0, y ?? 0, width ?? TRIGGER_WIDTH, height ?? 12, shape);
     }
 
     for (const stick of root.querySelectorAll<SVGGElement>("[data-stick]")) {
       const cap = stick.querySelector<SVGGElement>("[data-cap]");
       if (!cap) continue;
       // Below the body, between the grips: on the page's background.
-      const value = svg("text", { class: "value", x: 0, y: 70, "text-anchor": "middle" }, stick);
+      const valueY = Number(stick.dataset.valueY ?? 70);
+      const value = svg("text", { class: "value", x: 0, y: valueY, "text-anchor": "middle" }, stick);
+      value.style.fontSize = `${9 * this.scale}px`;
       const axes = STICK_AXES[stick.dataset.stick === "right" ? "right" : "left"];
       this.sticks.push({ moving: cap, at: undefined, travel: Number(stick.dataset.travel ?? 7), value, axes });
     }
@@ -239,14 +253,35 @@ export class ControllerDrawing {
     return group;
   }
 
-  /** A trigger's travel bar, with its value beside it, outwards. */
-  private trigger(parent: Element, axis: Axis, x: number, y: number, width: number, height: number): void {
-    const rx = Math.min(4, height / 2);
-    svg("rect", { class: "track", x, y, width, height, rx }, parent);
-    const fill = svg("rect", { class: "fill", x, y, width: 0, height, rx }, parent, axis);
+  /**
+   * A trigger's travel: a bar, or the trigger's own `shape` filled from its
+   * left edge, clipped to it; its value beside it, outwards.
+   */
+  private trigger(
+    parent: Element,
+    axis: Axis,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    shape?: SVGGeometryElement,
+  ): void {
+    let fill: SVGRectElement;
+    if (shape) {
+      const id = `trigger-clip-${++clips}`;
+      const clip = svg("clipPath", { id }, parent);
+      clip.append(shape.cloneNode(false));
+      fill = svg("rect", { class: "fill", x, y, width: 0, height, "clip-path": `url(#${id})` }, parent, axis);
+    } else {
+      const rx = Math.min(4, height / 2);
+      svg("rect", { class: "track", x, y, width, height, rx }, parent);
+      fill = svg("rect", { class: "fill", x, y, width: 0, height, rx }, parent, axis);
+    }
     const left = axis === "left_trigger";
-    const valueX = left ? x - 6 : x + width + 6;
+    const gap = 6 * this.scale;
+    const valueX = left ? x - gap : x + width + gap;
     const value = svg("text", { class: "value", x: valueX, y: y + height - 3, "text-anchor": left ? "end" : "start" }, parent);
+    value.style.fontSize = `${9 * this.scale}px`;
     value.textContent = "0.00";
     this.triggers.push({ fill, value, axis, width });
   }

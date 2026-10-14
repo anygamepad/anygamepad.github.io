@@ -235,7 +235,10 @@ const readDetail = () => {
       label: diagram.getAttribute("aria-label"),
       on: [...diagram.querySelectorAll(".control.on")].map((element) => text(element.querySelector("title"))),
       triggers: [...diagram.querySelectorAll(".fill")].map((element) => element.getAttribute("width")),
-      sticks: [...diagram.querySelectorAll(".dot")].map((dot) => `${dot.getAttribute("cx")},${dot.getAttribute("cy")}`),
+      // Shapes move a dot; illustrations move a cap.
+      sticks: [...diagram.querySelectorAll(".dot, [data-cap]")].map((stick) =>
+        stick.matches(".dot") ? `${stick.getAttribute("cx")},${stick.getAttribute("cy")}` : stick.getAttribute("transform"),
+      ),
       values: diagram.classList.contains("show-values")
         ? [...diagram.querySelectorAll(".value")].map((value) => value.textContent)
         : null,
@@ -374,7 +377,7 @@ try {
     label: "DualShock 4, canonical positions",
     on: [],
     triggers: ["0.0", "0.0"],
-    sticks: ["154.0,156.0", "246.0,156.0"],
+    sticks: ["translate(0.0 0.0)", "translate(0.0 0.0)"],
     values: null,
     glyphs: [],
     fingers: 0,
@@ -403,9 +406,10 @@ try {
     pad.axes.map((axis) => [axis.value, axis.bar]),
     [["+0.500", "0.5"], ["−1.000", "-1"], ["+0.000", "0"], ["+0.250", "0.25"]],
   );
+  // The illustration fills R2's own shape with its travel.
   assert.deepEqual(pad.diagram.on, ["dpad_up", "south"]);
-  assert.deepEqual(pad.diagram.triggers, ["0.0", "32.0"]);
-  assert.deepEqual(pad.diagram.sticks, ["161.5,141.0", "246.0,159.8"]);
+  assert.deepEqual(pad.diagram.triggers, ["0.0", "62.0"]);
+  assert.deepEqual(pad.diagram.sticks, ["translate(12.0 -24.0)", "translate(0.0 6.0)"]);
 
   // The values on the drawing.
   await page.locator(".toggle").click();

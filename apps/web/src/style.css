@@ -317,6 +317,11 @@ body {
   display: none;
   fill: var(--fg);
   font: 9px ui-monospace, monospace;
+  /* A halo of the page's colour: readable over illustrations too. */
+  stroke: var(--bg);
+  stroke-width: 0.3em;
+  stroke-linejoin: round;
+  paint-order: stroke;
 }
 
 .diagram.show-values .value {
