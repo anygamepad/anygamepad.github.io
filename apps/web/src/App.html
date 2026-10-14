@@ -1,6 +1,29 @@
 <header class="top">
-  <h1>anygamepad</h1>
-  <p class="tagline">Gamepad tester, running the anygamepad library {{ version }} in WebAssembly</p>
+  <div class="title">
+    <h1>anygamepad</h1>
+    <p class="tagline">Gamepad tester, running the anygamepad library {{ version }} in WebAssembly</p>
+  </div>
+  <div class="theme" role="group" aria-label="Theme">
+    <button
+      type="button"
+      :class.on="theme === 'auto'"
+      :aria-pressed="theme === 'auto' ? 'true' : 'false'"
+      title="Follow the system"
+      @click="setTheme('auto')"
+    >Auto</button>
+    <button
+      type="button"
+      :class.on="theme === 'light'"
+      :aria-pressed="theme === 'light' ? 'true' : 'false'"
+      @click="setTheme('light')"
+    >Light</button>
+    <button
+      type="button"
+      :class.on="theme === 'dark'"
+      :aria-pressed="theme === 'dark' ? 'true' : 'false'"
+      @click="setTheme('dark')"
+    >Dark</button>
+  </div>
 </header>
 
 <main class="tester">
