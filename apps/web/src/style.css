@@ -299,6 +299,20 @@ body {
   fill: var(--card);
 }
 
+/* Illustrations (art/*.svg): their own colours, the accent when pressed. */
+.diagram .control.on .shape {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+.diagram .control.on .mark {
+  stroke: #fff;
+}
+
+.diagram .control.on .mark:not([fill="none"]) {
+  fill: #fff;
+}
+
 .diagram .value {
   display: none;
   fill: var(--fg);

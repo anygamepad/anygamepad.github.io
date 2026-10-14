@@ -473,7 +473,7 @@ try {
   assert.equal(pad.switchShown, true);
   pad = await until("the report rate", detail, (d) => /^[1-9]\d* reports\/s$/.test(d.rate));
   assert.equal(pad.diagram.label, "DualSense, canonical positions");
-  assert.deepEqual(pad.diagram.on, ["left_shoulder", "dpad_up", "south", "home"]);
+  assert.deepEqual(pad.diagram.on, ["left_shoulder", "home", "dpad_up", "south"]);
   assert.equal(pad.touch, "Needs the full report");
   assert.equal(pad.battery, "Needs the full report");
   assert.deepEqual(await page.evaluate(() => window.__hid.features), []);

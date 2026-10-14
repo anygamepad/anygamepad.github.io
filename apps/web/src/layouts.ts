@@ -1,6 +1,8 @@
 // Controller drawings as data: one layout per family the library recognizes
-// (`Family`), and a generic one for every other pad. Coordinates are in the
-// drawing's viewBox (400 wide); drawing.ts renders them.
+// (`Family`), and a generic one for every other pad. A layout is either
+// shapes placed by coordinates in a 400-wide viewBox, or an illustration
+// (an SVG file whose interactive parts carry data attributes, described in
+// art/dualsense.svg); drawing.ts renders both.
 //
 // The generic layout follows pads like the Flydigi Vader 5 Pro: Xbox-style
 // positions, two extra buttons by the face buttons (C and Z) and four back
@@ -8,6 +10,7 @@
 // profiles (D4) say it.
 
 import type { Button, Family } from "./wasm/anygamepad_wasm.js";
+import dualsense from "./art/dualsense.svg?raw";
 
 export type Point = readonly [number, number];
 
@@ -20,7 +23,9 @@ export interface ExtraControl {
   label?: string;
 }
 
-export interface Layout {
+/** A drawing made of shapes placed by coordinates. */
+export interface ShapeLayout {
+  kind: "shapes";
   /** What the drawing shows, for assistive technology. */
   name: string;
   /** Height of the viewBox. */
@@ -44,13 +49,25 @@ export interface Layout {
   extras: readonly ExtraControl[];
 }
 
+/** A drawing from an illustration marked up with data attributes. */
+export interface ArtLayout {
+  kind: "art";
+  /** What the drawing shows, for assistive technology. */
+  name: string;
+  /** The SVG document. */
+  svg: string;
+}
+
+export type Layout = ShapeLayout | ArtLayout;
+
 /** Xbox-style body: offset sticks, wide grips. */
 const OFFSET_BODY =
   "M118 44 C150 38 250 38 282 44 C330 52 358 74 372 118 C386 162 394 208 372 236 " +
   "C352 258 322 250 302 222 C288 202 270 190 246 190 H154 C130 190 112 202 98 222 " +
   "C78 250 48 258 28 236 C6 208 14 162 28 118 C42 74 70 52 118 44 Z";
 
-const XBOX: Layout = {
+const XBOX: ShapeLayout = {
+  kind: "shapes",
   name: "Xbox controller",
   height: 260,
   body: OFFSET_BODY,
@@ -64,7 +81,8 @@ const XBOX: Layout = {
   extras: [{ button: "share", at: [200, 114], shape: "pill" }],
 };
 
-const GENERIC: Layout = {
+const GENERIC: ShapeLayout = {
+  kind: "shapes",
   name: "Controller",
   height: 290,
   body: OFFSET_BODY,
@@ -86,7 +104,8 @@ const GENERIC: Layout = {
   ],
 };
 
-const SWITCH_PRO: Layout = {
+const SWITCH_PRO: ShapeLayout = {
+  kind: "shapes",
   name: "Switch Pro Controller",
   height: 260,
   body:
@@ -103,25 +122,15 @@ const SWITCH_PRO: Layout = {
   extras: [{ button: "capture", at: [176, 104], shape: "square" }],
 };
 
-const DUALSENSE: Layout = {
+// The owner's illustration (art/dualsense.svg).
+const DUALSENSE: ArtLayout = {
+  kind: "art",
   name: "DualSense",
-  height: 260,
-  body:
-    "M100 52 C120 40 150 38 200 38 C250 38 280 40 300 52 C340 60 362 84 374 126 " +
-    "C388 176 396 222 372 244 C352 262 320 252 300 222 C288 204 276 196 256 196 H144 " +
-    "C124 196 112 204 100 222 C80 252 48 262 28 244 C4 222 12 176 26 126 C38 84 60 60 100 52 Z",
-  triggers: [74, 266],
-  sticks: [[152, 160], [248, 160]],
-  dpad: [86, 106],
-  face: [314, 106],
-  select: [124, 64],
-  start: [276, 64],
-  home: [200, 152],
-  touchpad: { x: 140, y: 46, width: 120, height: 64 },
-  extras: [{ button: "mute", at: [200, 172], shape: "pill" }],
+  svg: dualsense,
 };
 
-const DUALSHOCK3: Layout = {
+const DUALSHOCK3: ShapeLayout = {
+  kind: "shapes",
   name: "DualShock 3",
   height: 260,
   body:
@@ -138,7 +147,8 @@ const DUALSHOCK3: Layout = {
   extras: [],
 };
 
-const DUALSHOCK4: Layout = {
+const DUALSHOCK4: ShapeLayout = {
+  kind: "shapes",
   name: "DualShock 4",
   height: 260,
   body:

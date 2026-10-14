@@ -137,7 +137,9 @@ not code or artwork):
   DualSense (and Edge), Switch Pro Controller, Xbox; every other pad gets a
   generic drawing after the Flydigi Vader 5 Pro, with its C and Z buttons
   and four back buttons. Face buttons show what is printed on them (letters
-  or PlayStation symbols). No logos.
+  or PlayStation symbols). No logos. The DualSense drawing is the owner's
+  illustration (`apps/web/src/art/dualsense.svg`, controls marked with data
+  attributes); the others are shapes, until illustrations replace them.
 - The library recognizes the family (`Family`, from VID/PID, XInput or the
   name Safari's GameController gives) and what is printed on the face
   buttons (`FaceLayout`); the page picks the drawing. These rules are a
