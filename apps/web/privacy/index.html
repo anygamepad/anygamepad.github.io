@@ -1,0 +1,178 @@
+<!doctype html>
+<!--
+  The privacy policy (roadmap task P3), published at
+  https://anygamepad.github.io/privacy/. Its maintainer side (consent texts,
+  retention, handling of shared reports) is docs/privacy/README.md: change
+  both together, and the date below with every change.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="What the anygamepad gamepad tester does with your data: it keeps it in your browser." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>anygamepad: privacy</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="top">
+        <div class="title">
+          <p class="home"><a href="/">anygamepad</a></p>
+          <h1>Privacy</h1>
+          <p class="tagline">Last changed on <time datetime="2026-10-14">14 October 2026</time>.</p>
+        </div>
+      </header>
+
+      <main class="policy">
+        <p class="summary">
+          The tester runs in your browser and sends nothing about you or your controllers anywhere. A device
+          report leaves your device only when you share it, and sharing means posting it yourself as a public
+          GitHub issue.
+        </p>
+
+        <h2 id="who">Who is responsible</h2>
+        <p>
+          anygamepad is an open-source project run by the maintainers of the
+          <a href="https://github.com/anygamepad">anygamepad organization on GitHub</a>. They decide what the
+          project does with data: under the GDPR, they are its controller.
+        </p>
+        <p>
+          Questions and requests go to the project's
+          <a href="https://github.com/anygamepad/anygamepad.github.io/issues">issues</a>. For anything private,
+          open an issue that only asks to be contacted privately, without details, and a maintainer will answer
+          with a private channel.
+        </p>
+
+        <h2 id="tester">The tester in your browser</h2>
+        <ul>
+          <li>
+            <strong>Your controllers.</strong> The page reads them through your browser's Gamepad API, which
+            shows a gamepad only after you press one of its buttons, and through WebHID, only for a device you
+            pick in the browser's chooser. What it reads stays in the page: it is shown, never sent. Your browser
+            remembers the devices you allowed through WebHID; you can remove them in the site's settings.
+          </li>
+          <li>
+            <strong>Nothing from other sites.</strong> The page loads its files from anygamepad.github.io only:
+            no analytics, no ads, no fonts or scripts from elsewhere, and no cookies.
+          </li>
+          <li>
+            <strong>Your theme.</strong> If you pick Light or Dark, this browser remembers it in its local storage
+            (<code>anygamepad.theme</code>); Auto removes it.
+          </li>
+          <li>
+            <strong>Activity log and recordings.</strong> The activity log stays in the tab, and is gone when you
+            close it unless you download it. "Record 2 seconds" saves a file on your device. The project receives
+            neither unless you send it yourself.
+          </li>
+          <li>
+            <strong>Saved reports.</strong> When you save a report, this browser keeps it (in IndexedDB), with when
+            you saved it and whether you copied it to share. You can look at, download and delete your reports at
+            any time. Private windows drop them when they close, and Safari may delete them after seven days
+            without a visit.
+          </li>
+        </ul>
+
+        <h2 id="desktop">The desktop app</h2>
+        <p>
+          Once released, the desktop app works the same way: it saves reports as files in its data folder, only
+          when you ask, and sends nothing by itself.
+        </p>
+
+        <h2 id="reports">What a device report holds</h2>
+        <p>A report describes a controller, not you:</p>
+        <ul>
+          <li>
+            how the controller identifies itself (vendor and product IDs, names, version) and how each browser or
+            system API sees it;
+          </li>
+          <li>samples of the data it sends and, through WebHID or the desktop app, the structure of that data;</li>
+          <li>the buttons you confirmed in the guided identification, and what you say about the product and its mode;</li>
+          <li>
+            the app's version, your operating system (and its version, from the desktop app), your browser's
+            engine and major version, and the day (UTC) the report was made.
+          </li>
+        </ul>
+        <p>
+          It never holds serial numbers, Bluetooth addresses, device paths, your name or account, your IP address
+          or the time of day. Texts that look like identifiers are replaced with <code>[redacted]</code>, and the
+          apps show you the whole report before you share it. The format is documented in the
+          <a href="https://github.com/anygamepad/anygamepad.github.io/blob/main/data/reports/README.md">repository</a>.
+        </p>
+
+        <h2 id="sharing">Sharing a report</h2>
+        <p>
+          "Share" copies a report and opens a GitHub issue form; nothing is shared until you submit the form on
+          GitHub. Then:
+        </p>
+        <ul>
+          <li>
+            The issue is public: anyone can read the report and see the GitHub account that posted it. GitHub
+            handles your account and the issue under its
+            <a href="https://docs.github.com/en/site-policy/github-terms/github-terms-of-service">Terms of Service</a>
+            and
+            <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">Privacy Statement</a>.
+          </li>
+          <li>
+            You dedicate the report to the public domain under
+            <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0 1.0</a>, so that anyone can use it,
+            and the anygamepad library can build its controller profiles from it. The form asks you to confirm
+            this, and that you reviewed the report.
+          </li>
+          <li>
+            The maintainers read shared reports to improve how controllers are detected. Changes made from a
+            report refer to its issue by number, not to your account.
+          </li>
+          <li>Without a GitHub account, you can download a report instead, and keep it.</li>
+        </ul>
+
+        <h2 id="retention">How long data is kept</h2>
+        <ul>
+          <li>In your browser or on your computer: until you delete it. The project can neither see nor delete it.</li>
+          <li>
+            Shared reports: the issue stays open until a maintainer has used the report, then it is closed and
+            kept, as the public source of the data. It is deleted when you ask, within a month, or as soon as a
+            maintainer sees personal data in it.
+          </li>
+          <li>Controller profiles and test data made from reports stay in the repository. They hold no personal data.</li>
+          <li>
+            Copies outside the project, such as GitHub's backups and notification emails, or copies other people
+            made of a public report, are out of its reach.
+          </li>
+        </ul>
+
+        <h2 id="host">The website's host</h2>
+        <p>
+          The site is hosted on GitHub Pages.
+          <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages">GitHub logs the IP address of every visitor</a>
+          for security purposes, whether or not they are signed in to GitHub. GitHub is responsible for those
+          logs; the project has no access to them.
+        </p>
+
+        <h2 id="server">No server yet</h2>
+        <p>
+          There is no anygamepad server: nothing is uploaded anywhere. A server to synchronize reports may come
+          later. Before it does, this page will say what it stores, and the apps will ask you before uploading
+          any report. It will not store IP addresses.
+        </p>
+
+        <h2 id="rights">Your rights</h2>
+        <p>
+          Under the GDPR you can ask for access to the data the project holds about you, for its correction or
+          deletion, or to restrict its use; you can object to that use, and take the data with you. The only
+          personal data the project handles is the GitHub account on the issues you posted, so the usual request
+          is to delete such an issue: ask on the issue itself, or in a new issue that links it, from the same
+          account. This also withdraws your consent, which does not affect what was done before. Requests are
+          answered within a month. You can also complain to the data protection authority of your country.
+        </p>
+
+        <h2 id="changes">Changes</h2>
+        <p>
+          The history of this page is in the
+          <a href="https://github.com/anygamepad/anygamepad.github.io/commits/main/apps/web/privacy/index.html">repository</a>.
+          If a change makes the project collect or share more, the tester will say so before it applies.
+        </p>
+      </main>
+    </div>
+    <script type="module" src="/src/privacy.ts"></script>
+  </body>
+</html>

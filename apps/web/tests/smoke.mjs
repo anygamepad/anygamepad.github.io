@@ -11,6 +11,8 @@
 //   twin, is decoded (reduced report, then the full one after the switch),
 //   shows its touchpad, motion and battery, records its reports to a file,
 //   and goes away on disconnection.
+// - The privacy page: linked under the tester, under the same policy, in the
+//   theme the viewer picked.
 //
 // Neither API has test hooks, so the devices are fakes: behind
 // `navigator.getGamepads()`, and a `navigator.hid` of our own.
@@ -792,6 +794,24 @@ try {
   await themePage.reload({ waitUntil: "networkidle" });
   await themePage.waitForSelector(".theme");
   await expect({ attribute: "dark", background: DARK, pressed: ["Dark"] });
+  // The privacy policy, linked under the tester, loads under the same policy
+  // and keeps the theme.
+  await themePage.getByRole("link", { name: "Privacy", exact: true }).click();
+  await themePage.waitForURL(/\/privacy\/$/, { waitUntil: "networkidle" });
+  assert.equal(await themePage.locator("h1").innerText(), "Privacy");
+  assert.equal(await themePage.title(), "anygamepad: privacy");
+  assert.equal(
+    await themePage.getAttribute('meta[http-equiv="Content-Security-Policy"]', "content"),
+    policy,
+  );
+  await until(
+    "the privacy page in the dark theme",
+    () => themePage.evaluate(() => [document.documentElement.dataset.theme, getComputedStyle(document.body).backgroundColor]),
+    ([attribute, background]) => attribute === "dark" && background === DARK,
+  );
+  assert.match(await themePage.locator(".policy").innerText(), /CC0 1\.0.*IP address/s);
+  await themePage.goBack({ waitUntil: "networkidle" });
+  await themePage.waitForSelector(".theme");
   await themePage.emulateMedia({ colorScheme: "dark" });
   await pick("Light");
   await expect({ attribute: "light", background: LIGHT, pressed: ["Light"] });

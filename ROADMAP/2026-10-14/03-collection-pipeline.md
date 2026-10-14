@@ -18,12 +18,12 @@ gantt
     Re-plan baseline :milestone, t0, 2026-10-14, 0d
     C2 done :milestone, c2, 2026-10-13, 0d
     D1 done :milestone, d1, 2026-10-14, 0d
-    W6 done :milestone, crit, w6, 2026-11-03, 0d
-    A3 done :milestone, crit, a3, 2026-12-23, 0d
+    W6 done :milestone, w6, 2026-10-24, 0d
+    A3 done :milestone, crit, a3, 2026-12-20, 0d
     section Collection pipeline
     P1 Device report schema (shared crate) :done, p1, 2026-10-14, 1d
     P2 Sync API and PostgreSQL storage :p2, after p1 t0, 20d
-    P3 Privacy, consent, data retention policy :crit, p3, after p1 t0, 10d
+    P3 Privacy, consent, data retention policy :done, p3, 2026-10-14, 1d
     P4 Curation tooling (reports to profile PRs) :p4, after p1 d1 t0, 20d
     P5 Hosting, backups, monitoring :p5, after p2, 10d
     P6 Report sync in the web and desktop apps :p6, after p2 w6 a3, 10d
@@ -34,11 +34,11 @@ gantt
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
 | P1 | Device report schema (shared crate) | 7 | C2, D1 | A3, P2, P3, P4, W6 | 2026-10-14 | 2026-10-14 | done |
-| P2 | Sync API and PostgreSQL storage | 20 | P1 | P5, P6 | 2026-10-14 | 2026-11-03 | 60 |
-| P3 | **Privacy, consent, data retention policy** | 10 | P1 | A3, W6 | 2026-10-14 | 2026-10-24 | 0 |
-| P4 | Curation tooling (reports to profile PRs) | 20 | P1, D1 | - | 2026-10-14 | 2026-11-03 | 70 |
-| P5 | Hosting, backups, monitoring | 10 | P2 | M5 | 2026-11-03 | 2026-11-13 | 60 |
-| P6 | Report sync in the web and desktop apps | 10 | P2, W6, A3 | M5 | 2026-12-23 | 2027-01-02 | 10 |
+| P2 | Sync API and PostgreSQL storage | 20 | P1 | P5, P6 | 2026-10-14 | 2026-11-03 | 57 |
+| P3 | Privacy, consent, data retention policy | 10 | P1 | A3, W6 | 2026-10-14 | 2026-10-14 | done |
+| P4 | Curation tooling (reports to profile PRs) | 20 | P1, D1 | - | 2026-10-14 | 2026-11-03 | 67 |
+| P5 | Hosting, backups, monitoring | 10 | P2 | M5 | 2026-11-03 | 2026-11-13 | 57 |
+| P6 | Report sync in the web and desktop apps | 10 | P2, W6, A3 | M5 | 2026-12-20 | 2026-12-30 | 10 |
 
 ### P1 — Device report schema
 
@@ -78,6 +78,18 @@ hash of its compact JSON, rate limiting, and an anonymous submission token.
 Privacy policy, explicit consent screen text, retention periods, GDPR data
 handling (no IP addresses stored beyond rate limiting), public data license for
 the aggregated dataset.
+
+Status (2026-10-14): done
+(`RECORD/2026-10-14.p3-privacy-consent-retention.completed.md`). The policy
+is a page of the web app, <https://anygamepad.github.io/privacy/>
+(`apps/web/privacy/index.html`), linked under the tester; the consent texts
+of W6, A3 and the issue form, the retention rules, the handling of shared
+reports and the rules for the sync server are in
+[`docs/privacy/`](../../docs/privacy/README.md). Owner decisions: reports
+are dedicated to the public domain under CC0 1.0
+([`data/reports/LICENSE-CC0`](../../data/reports/LICENSE-CC0)); the only
+contact channel is this repository's issues; a curated report's issue is
+closed and kept, and deleted on request.
 
 ### P4 — Curation tooling
 

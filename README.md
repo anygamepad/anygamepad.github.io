@@ -4,7 +4,9 @@ Gamepad input normalization: one canonical gamepad model for every controller,
 mode, transport and operating system.
 
 - Web app: <https://anygamepad.github.io> (not live yet)
-- Plan: [ROADMAP/2026-10-10/](ROADMAP/2026-10-10/README.md)
+- Plan: [ROADMAP/2026-10-14/](ROADMAP/2026-10-14/README.md)
+- Privacy: <https://anygamepad.github.io/privacy/> (maintainer side:
+  [docs/privacy/](docs/privacy/README.md))
 - Contributor and agent rules: [AGENTS.md](AGENTS.md)
 
 ## Layout
@@ -19,7 +21,9 @@ mode, transport and operating system.
 | `crates/anygamepad-wasm` | `wasm-bindgen` bindings used by the web app |
 | `apps/` | Web app, desktop app and ingestion server |
 | `data/profiles/` | Curated device profiles |
+| `data/reports/` | Device report format, schema and example |
 | `docs/adr/` | Architecture decision records |
+| `docs/privacy/` | Consent texts, retention and the handling of shared reports |
 
 ## Development
 
@@ -65,3 +69,8 @@ Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in this work, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
+
+Device reports (the ones people share, the dataset made of them and the
+reports in `data/reports/`) are dedicated to the public domain under
+[CC0 1.0](data/reports/LICENSE-CC0); see
+[data/reports/](data/reports/README.md#license).
