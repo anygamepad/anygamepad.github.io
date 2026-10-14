@@ -25,7 +25,8 @@ UPDATE_SCHEMA=1 cargo test -p anygamepad-report --all-features --test schema
 ## Example
 
 A generic USB pad in Firefox on Linux, with the mapping the person
-confirmed in the guided wizard:
+confirmed in the guided wizard (its d-pad is on two axes) and the controls
+they said it does not have:
 
 ```json
 {
@@ -43,7 +44,9 @@ confirmed in the guided wizard:
   },
   "user": {
     "product": "SNES-style USB pad",
-    "mode": "dinput"
+    "mode": "dinput",
+    "missing_buttons": ["left_trigger", "right_trigger", "left_stick", "right_stick", "home"],
+    "missing_axes": ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y", "left_trigger", "right_trigger"]
   },
   "views": [
     {
@@ -79,8 +82,11 @@ confirmed in the guided wizard:
       },
       "outputs": [],
       "confirmed": {
-        "buttons": { "south": "b2", "east": "b1", "west": "b3", "north": "b0", "select": "b8", "start": "b9" },
-        "axes": { "left_stick_x": "a0", "left_stick_y": "a1~" }
+        "buttons": {
+          "south": "b2", "east": "b1", "west": "b3", "north": "b0",
+          "dpad_up": "-a1", "dpad_down": "+a1", "dpad_left": "-a0", "dpad_right": "+a0",
+          "left_shoulder": "b4", "right_shoulder": "b5", "select": "b8", "start": "b9"
+        }
       }
     }
   ]
@@ -96,7 +102,7 @@ confirmed in the guided wizard:
 | `created` | Day the report was made, UTC (`YYYY-MM-DD`). No time of day: the day tells which browser and library were current, and correlates less. |
 | `source` | `app` (`web` or `desktop`), `app_version`, `library_version`. |
 | `host` | `os`; `os_version` from the desktop app (a release such as `14.6.1` or `6.8.0-45-generic`, never a host name); `browser` (engine and major version) for web reports. |
-| `user` | What the person says: `product`, the controller in their words (at most 100 characters), and `mode`, the mode they say it is in (`xinput`, `dinput`, `switch`, `ps3`, `ps4`, `ps5`, `xbox`, `android`, `apple`, `keyboard_mouse`, `other`). Optional. |
+| `user` | What the person says: `product`, the controller in their words (at most 100 characters); `mode`, the mode they say it is in (`xinput`, `dinput`, `switch`, `ps3`, `ps4`, `ps5`, `xbox`, `android`, `apple`, `keyboard_mouse`, `other`); `missing_buttons` and `missing_axes`, the controls they said it does not have in the guided wizard. Optional. |
 | `views` | One per provider or browser API that sees the device, 1 to 8. |
 
 Each view:

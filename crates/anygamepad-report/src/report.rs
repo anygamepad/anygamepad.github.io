@@ -8,7 +8,7 @@ use anygamepad_db::Mapping;
 use anygamepad_model::hid::HidCollection;
 use anygamepad_model::identity::{Browser, DeviceIdentity, Fingerprint, Os};
 use anygamepad_model::raw::RawLayout;
-use anygamepad_model::{Capabilities, Family, OutputSet};
+use anygamepad_model::{AxisSet, ButtonSet, Capabilities, Family, OutputSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{FORMAT, MAX_SAMPLES, SCHEMA_VERSION};
@@ -114,12 +114,30 @@ pub struct UserStatement {
     /// The mode they say it is in.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<ControllerMode>,
+    /// Buttons they say the device does not have (skipped in the guided
+    /// wizard).
+    #[serde(default, skip_serializing_if = "no_buttons")]
+    pub missing_buttons: ButtonSet,
+    /// Axes they say the device does not have.
+    #[serde(default, skip_serializing_if = "no_axes")]
+    pub missing_axes: AxisSet,
+}
+
+fn no_buttons(set: &ButtonSet) -> bool {
+    set.is_empty()
+}
+
+fn no_axes(set: &AxisSet) -> bool {
+    set.is_empty()
 }
 
 impl UserStatement {
     /// Whether nothing is stated.
     pub fn is_empty(&self) -> bool {
-        self.product.is_none() && self.mode.is_none()
+        self.product.is_none()
+            && self.mode.is_none()
+            && self.missing_buttons.is_empty()
+            && self.missing_axes.is_empty()
     }
 }
 

@@ -1263,6 +1263,14 @@
       "description": "What the person who made the report says about the device: the facts\nno API tells.",
       "type": "object",
       "properties": {
+        "missing_axes": {
+          "description": "Axes they say the device does not have.",
+          "$ref": "#/$defs/AxisSet"
+        },
+        "missing_buttons": {
+          "description": "Buttons they say the device does not have (skipped in the guided\nwizard).",
+          "$ref": "#/$defs/ButtonSet"
+        },
         "mode": {
           "description": "The mode they say it is in.",
           "anyOf": [

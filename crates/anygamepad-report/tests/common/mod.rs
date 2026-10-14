@@ -197,7 +197,7 @@ pub fn web_report() -> Report {
     let mut report = Report::new(source(App::Web), host, day());
     report.user = UserStatement {
         product: Some("DualSense (PS5 controller)".into()),
-        mode: None,
+        ..UserStatement::default()
     };
 
     let gamepad = DeviceIdentity::from_gamepad_api(
@@ -262,6 +262,7 @@ pub fn desktop_report() -> Report {
     report.user = UserStatement {
         product: Some("DualSense".into()),
         mode: Some(ControllerMode::Ps5),
+        ..UserStatement::default()
     };
 
     let base = DeviceIdentity {

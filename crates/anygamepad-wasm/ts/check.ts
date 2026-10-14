@@ -2,7 +2,7 @@
 // CI copies this file next to the `wasm-bindgen` output and runs `tsc` on it;
 // it is never executed.
 
-import init, { Gamepads, HidDevices, version } from "./anygamepad_wasm.js";
+import init, { Gamepads, HidDevices, MappingWizard, version } from "./anygamepad_wasm.js";
 import type {
   Axis,
   Button,
@@ -23,7 +23,43 @@ import type {
   RawState,
   ReportForm,
   Transport,
+  WizardInput,
+  WizardMissing,
+  WizardPhase,
+  WizardResult,
+  WizardStatus,
+  WizardStep,
+  WizardTarget,
 } from "./anygamepad_wasm.js";
+
+/** Reads the guided wizard as the web app does. */
+function readWizard(wizard: MappingWizard): void {
+  const status: WizardStatus = wizard.status();
+  const step: WizardStep | undefined = status.current;
+  if (step?.kind === "button") {
+    const button: Button = step.button;
+    console.log(button);
+  } else if (step) {
+    const axis: Axis = step.axis;
+    console.log(step.kind === "stick" ? axis : `${axis} trigger`);
+  }
+  const phase: WizardPhase = status.phase;
+  const detected: string | undefined = status.detected;
+  const conflict: WizardTarget | undefined = status.conflict;
+  const name: string = conflict?.kind === "button" ? conflict.button : (conflict?.axis ?? "");
+  const chord: [Button, Button] | undefined = status.chord;
+  const progress = `${status.step} of ${status.steps}`;
+  const results: WizardResult[] = wizard.results();
+  const first: WizardInput | undefined = results[0]?.inputs[0];
+  const missing: WizardMissing = wizard.missing();
+  const absent: boolean = results[0]?.missing ?? false;
+  const mapped: GamepadState = wizard.mappedState();
+  console.log(phase, detected, name, chord, progress, first?.input, first?.target, missing.buttons, missing.axes);
+  console.log(absent, mapped.buttons);
+  if (phase === "listen") wizard.skip();
+  wizard.back();
+  wizard.restart();
+}
 
 export async function main(): Promise<void> {
   await init();
@@ -86,6 +122,11 @@ export async function main(): Promise<void> {
         gamepads.send(device, rumble);
         gamepads.send(device, { rumble: { low_frequency: 0, high_frequency: 0 } });
       }
+      const wizard: MappingWizard = gamepads.wizard(device);
+      gamepads.feedWizard(device, wizard, performance.now());
+      readWizard(wizard);
+      wizard.free();
+
       gamepads.open(device, "observe_only");
       gamepads.close(device);
     }
@@ -129,6 +170,12 @@ export async function webHid(button: HTMLButtonElement): Promise<void> {
     if (form === "bluetooth_reduced") await devices.switchToFullReports(device);
     console.log(transport, decodes, touchpadWidth, poll.received, poll.last?.report_id, recorded.length);
     console.log(imu?.gyro[0], finger?.x, input?.state.power.percent, failure);
+    if (decodes) {
+      const wizard: MappingWizard = devices.wizard(device);
+      devices.feedWizard(device, wizard, performance.now());
+      readWizard(wizard);
+      wizard.free();
+    }
     const feature: DataView = await devices.receiveFeatureReport(device, 5);
     await devices.sendReport(device, 5, new Uint8Array([0x05, 0xff]));
     await devices.sendFeatureReport(device, 5, new Uint8Array([0x00]));

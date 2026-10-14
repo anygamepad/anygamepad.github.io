@@ -18,12 +18,12 @@ gantt
     Re-plan baseline :milestone, t0, 2026-10-14, 0d
     C2 done :milestone, c2, 2026-10-13, 0d
     D1 done :milestone, d1, 2026-10-14, 0d
-    W6 done :milestone, crit, w6, 2026-11-08, 0d
-    A3 done :milestone, crit, a3, 2026-12-28, 0d
+    W6 done :milestone, crit, w6, 2026-11-03, 0d
+    A3 done :milestone, crit, a3, 2026-12-23, 0d
     section Collection pipeline
     P1 Device report schema (shared crate) :done, p1, 2026-10-14, 1d
     P2 Sync API and PostgreSQL storage :p2, after p1 t0, 20d
-    P3 Privacy, consent, data retention policy :p3, after p1 t0, 10d
+    P3 Privacy, consent, data retention policy :crit, p3, after p1 t0, 10d
     P4 Curation tooling (reports to profile PRs) :p4, after p1 d1 t0, 20d
     P5 Hosting, backups, monitoring :p5, after p2, 10d
     P6 Report sync in the web and desktop apps :p6, after p2 w6 a3, 10d
@@ -34,11 +34,11 @@ gantt
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
 | P1 | Device report schema (shared crate) | 7 | C2, D1 | A3, P2, P3, P4, W6 | 2026-10-14 | 2026-10-14 | done |
-| P2 | Sync API and PostgreSQL storage | 20 | P1 | P5, P6 | 2026-10-14 | 2026-11-03 | 65 |
-| P3 | Privacy, consent, data retention policy | 10 | P1 | A3, W6 | 2026-10-14 | 2026-10-24 | 5 |
-| P4 | Curation tooling (reports to profile PRs) | 20 | P1, D1 | - | 2026-10-14 | 2026-11-03 | 75 |
-| P5 | Hosting, backups, monitoring | 10 | P2 | M5 | 2026-11-03 | 2026-11-13 | 65 |
-| P6 | Report sync in the web and desktop apps | 10 | P2, W6, A3 | M5 | 2026-12-28 | 2027-01-07 | 10 |
+| P2 | Sync API and PostgreSQL storage | 20 | P1 | P5, P6 | 2026-10-14 | 2026-11-03 | 60 |
+| P3 | **Privacy, consent, data retention policy** | 10 | P1 | A3, W6 | 2026-10-14 | 2026-10-24 | 0 |
+| P4 | Curation tooling (reports to profile PRs) | 20 | P1, D1 | - | 2026-10-14 | 2026-11-03 | 70 |
+| P5 | Hosting, backups, monitoring | 10 | P2 | M5 | 2026-11-03 | 2026-11-13 | 60 |
+| P6 | Report sync in the web and desktop apps | 10 | P2, W6, A3 | M5 | 2026-12-23 | 2027-01-02 | 10 |
 
 ### P1 — Device report schema
 

@@ -1,7 +1,8 @@
 //! WebAssembly bindings of anygamepad, used by the web app (ADR 0005).
 //!
 //! [`Gamepads`] exposes the library's web provider to JavaScript, and
-//! `HidDevices` (wasm32 only) its WebHID access. Values are
+//! `HidDevices` (wasm32 only) its WebHID access. [`MappingWizard`] runs the
+//! library's guided mapping wizard on a pad of either. Values are
 //! converted with serde-wasm-bindgen, and the generated `.d.ts` declares
 //! their TypeScript types (through tsify), so the frontend never writes the
 //! canonical model by hand.
@@ -29,6 +30,7 @@ use wasm_bindgen::prelude::*;
 mod gamepads;
 #[cfg(target_arch = "wasm32")]
 mod hid_devices;
+mod wizard;
 
 pub use gamepads::{
     ButtonSnapshot, CanonicalLayout, DeviceEvent, DeviceInfo, Environment, GamepadSnapshot,
@@ -37,6 +39,10 @@ pub use gamepads::{
 #[cfg(target_arch = "wasm32")]
 pub use hid_devices::{
     DecodedInput, HidDeviceInfo, HidDevices, HidFilter, HidInputReport, HidPoll, RawImu, ReportForm,
+};
+pub use wizard::{
+    MappingWizard, WizardInput, WizardMissing, WizardPhase, WizardResult, WizardStatus, WizardStep,
+    WizardTarget,
 };
 
 /// Returns the version of the anygamepad library compiled into this module.

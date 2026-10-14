@@ -299,36 +299,36 @@ impl Mapper {
     /// pass [`Profile::validate`](anygamepad_db::Profile::validate) have
     /// neither.
     pub fn new(mapping: &Mapping, layout: &RawLayout) -> Self {
-        let mut button_inputs: BTreeMap<Button, Input> = layout
-            .buttons
-            .iter()
-            .filter_map(|&source| match source {
-                RawSource::Button(button) => Some((button, Input::Button(source))),
-                _ => None,
-            })
-            .collect();
-        button_inputs.extend(&mapping.buttons);
+        // Maps are filled by inserting: collecting them sorts, and the sort
+        // costs WebAssembly bundle size.
+        let mut button_inputs: BTreeMap<Button, Input> = BTreeMap::new();
+        for &source in &layout.buttons {
+            if let RawSource::Button(button) = source {
+                button_inputs.insert(button, Input::Button(source));
+            }
+        }
+        for (&button, &input) in &mapping.buttons {
+            button_inputs.insert(button, input);
+        }
         let unset_triggers: Vec<(Button, Axis)> = TRIGGERS
             .into_iter()
             .filter(|(button, _)| !button_inputs.contains_key(button))
             .collect();
 
-        let mut axis_mappings: BTreeMap<Axis, AxisMapping> = layout
-            .axes
-            .iter()
-            .filter_map(|info| match info.source {
-                RawSource::Axis(axis) => Some((
-                    axis,
-                    AxisMapping::full(Input::Axis {
-                        source: info.source,
-                        range: AxisRange::Full,
-                        inverted: false,
-                    }),
-                )),
-                _ => None,
-            })
-            .collect();
-        axis_mappings.extend(&mapping.axes);
+        let mut axis_mappings: BTreeMap<Axis, AxisMapping> = BTreeMap::new();
+        for info in &layout.axes {
+            if let RawSource::Axis(axis) = info.source {
+                let input = Input::Axis {
+                    source: info.source,
+                    range: AxisRange::Full,
+                    inverted: false,
+                };
+                axis_mappings.insert(axis, AxisMapping::full(input));
+            }
+        }
+        for (&axis, &axis_mapping) in &mapping.axes {
+            axis_mappings.insert(axis, axis_mapping);
+        }
 
         let mut unresolved = Vec::new();
         let mut resolve = |target: Target, input: Input| {

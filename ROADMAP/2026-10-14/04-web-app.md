@@ -33,13 +33,13 @@ gantt
     P1 done :milestone, p1, 2026-10-14, 0d
     D4 done :milestone, d4, 2026-10-21, 0d
     C15 done :milestone, c15, 2026-10-24, 0d
-    P3 done :milestone, p3, 2026-10-24, 0d
+    P3 done :milestone, crit, p3, 2026-10-24, 0d
     section Web app
     W1 Web app scaffolding and WASM build pipeline :done, w1, 2026-10-13, 1d
     W2 Live tester on the core web backend :done, w2, 2026-10-13, 1d
     W8 Tester layout and device drawings :done, w8, 2026-10-14, 1d
     W3 WebHID mode with PlayStation decoding :w3, after w2 c15 w8, 15d
-    W4 Guided mapping wizard (shared with desktop) :crit, w4, after w2 t0, 15d
+    W4 Guided mapping wizard (shared with desktop) :done, w4, 2026-10-14, 1d
     W5 Normalized view (mapping engine + profiles) :w5, after w2 c3 d2 d4, 10d
     W6 Local report store, sharing and consent flow :crit, w6, after w4 p1 p3, 10d
     W7 Public launch of the web tester :crit, w7, after w5 w6, 5d
@@ -51,11 +51,11 @@ gantt
 |----|------|-----:|------------|--------|-------|-----|------:|
 | W1 | Web app scaffolding and WASM build pipeline | 7 | F1, F3 | W2 | 2026-10-13 | 2026-10-14 | done |
 | W2 | Live tester on the core web backend | 15 | W1, C11 | W3, W4, W5, W8 | 2026-10-13 | 2026-10-14 | done |
-| W3 | WebHID mode with PlayStation decoding | 15 | W2, C15, W8 | - | 2026-10-24 | 2026-11-08 | 70 |
-| W4 | **Guided mapping wizard (shared with desktop)** | 15 | W2 | A3, W6 | 2026-10-14 | 2026-10-29 | 0 |
-| W5 | Normalized view (mapping engine + profiles) | 10 | W2, C3, D2, D4 | W7 | 2026-10-21 | 2026-10-31 | 8 |
-| W6 | **Local report store, sharing and consent flow** | 10 | W4, P1, P3 | P6, W7 | 2026-10-29 | 2026-11-08 | 0 |
-| W7 | **Public launch of the web tester** | 5 | W5, W6 | M2 | 2026-11-08 | 2026-11-13 | 0 |
+| W3 | WebHID mode with PlayStation decoding | 15 | W2, C15, W8 | - | 2026-10-24 | 2026-11-08 | 65 |
+| W4 | Guided mapping wizard (shared with desktop) | 15 | W2 | A3, W6 | 2026-10-14 | 2026-10-14 | done |
+| W5 | Normalized view (mapping engine + profiles) | 10 | W2, C3, D2, D4 | W7 | 2026-10-21 | 2026-10-31 | 3 |
+| W6 | **Local report store, sharing and consent flow** | 10 | W4, P1, P3 | P6, W7 | 2026-10-24 | 2026-11-03 | 0 |
+| W7 | **Public launch of the web tester** | 5 | W5, W6 | M2 | 2026-11-03 | 2026-11-08 | 0 |
 | W8 | Tester layout and device drawings | 7 | W2 | W3 | 2026-10-14 | 2026-10-14 | done |
 
 ### W1 — Web app scaffolding and WASM build pipeline
@@ -171,6 +171,32 @@ test passes in Chromium locally, Firefox and WebKit run in CI.
 user confirms and produces a user-verified mapping in canonical model terms
 (C1). The wizard's state machine lives in the library so the desktop collection
 mode (A3) reuses the same logic; the web app only provides the UI.
+
+- Owner request (2026-10-14): for a connected pad, a view that asks for the
+  buttons of the usual layout one by one, and a button combination on the
+  pad itself to say the pad does not have the one asked for. The
+  combination is the first two buttons the wizard identified, pressed
+  together (the bottom and right face buttons); the view also has buttons
+  for it, for going back and for starting over.
+- Steps: face buttons, d-pad, shoulders, triggers, menu buttons, the system
+  button, each stick (right, up) and its click. Answers can be buttons, hat
+  directions, axes or half axes; an element that answered an earlier step is
+  refused and named.
+- The result is a `Mapping` in the profile format (D1), plus the controls
+  the person said the pad lacks, as the device report stores them (P1).
+- Gamepad API pads use their raw buttons and axes; PlayStation pads decoded
+  over WebHID (W3) use their canonical controls, so the wizard checks the
+  decoding. Raw WebHID devices wait for a HID report parser.
+
+**Done when:** the library's tests cover the detection rules and give the
+curated standard profile from a standard pad; the smoke test runs the whole
+wizard on a pad without the standard mapping (its d-pad on axes,
+combination and button skips, back, the mapping driving the drawing) and on
+a decoded WebHID pad.
+
+Status (2026-10-14): done
+(`RECORD/2026-10-14.w4-guided-mapping-wizard.completed.md`), with fake pads;
+not yet tried on a real one.
 
 ### W5 — Normalized view
 

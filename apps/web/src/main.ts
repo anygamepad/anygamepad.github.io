@@ -23,6 +23,7 @@ App.mount("#app", {
   ...emptyView(),
   select: tester.select,
   toggleValues: tester.toggleValues,
+  startWizard: tester.startWizard,
   connectHid: tester.connectHid,
   downloadLog: tester.downloadLog,
   rumble: tester.rumble,
