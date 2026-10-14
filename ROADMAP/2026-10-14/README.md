@@ -15,9 +15,14 @@ WebHID can read that report ([research note 09](../../docs/research/09-dualsense
 - **New C15**, PlayStation input decoder (sans-IO): DualSense, DualSense Edge
   and DualShock 4 input reports to canonical state. It needs only C1 and C2,
   both done, so it can start now.
-- **W3** becomes "WebHID mode with PlayStation decoding": blocked by C15 as
-  well as W2, 15 days instead of 10. It makes PlayStation pads that the
-  Gamepad API misses show in Chromium.
+- **W3** becomes "WebHID mode with PlayStation decoding": blocked by C15
+  and W8 as well as W2, 15 days instead of 10. It makes PlayStation pads that
+  the Gamepad API misses show in Chromium.
+- **New W8**, tester layout and device drawings (added the same day): a
+  two-column page in the spirit of `ds.daidr.me`, with the selected pad drawn
+  large, one drawing per family (DualShock 3 and 4, DualSense, Switch Pro,
+  Xbox, and a generic one after the Flydigi Vader 5 Pro), and the raw values
+  folded away. W3's touchpad, motion and battery panels go into it.
 - **C7** keeps what C15 does not cover (outputs, IMU calibration, feature
   reports, Switch Pro), is blocked by C15 as well as C4, and drops from 30 to
   20 days.
@@ -26,11 +31,16 @@ WebHID can read that report ([research note 09](../../docs/research/09-dualsense
 - **Re-baselined on 2026-10-14.** F1-F3, C1, C2, C11, W1 and W2 are done
   (grey, with their actual dates). Everything else is scheduled from the
   baseline milestone `t0`.
-- **Owner decision (2026-10-14): C15 and then W3 are next.** Reason: the most
-  common controller on the owner's own setup does not work in the tester, and
-  every later web task (W4 included) is tested with it. Both have slack, but
-  D1 is now on the critical path: with one contributor, every day spent on
-  C15 and W3 first moves M2 by a day.
+- **Owner direction (2026-10-14), not yet re-planned:** the desktop
+  binaries write device reports to files, and the web app keeps them in
+  IndexedDB, synchronized with a database later. This changes the
+  collection pipeline (P2, P5, W6, A3): the server, now on the critical path
+  to M2, may move after it. It needs an ADR and a re-plan.
+- **Owner decision (2026-10-14): W8, C15 and W3 are next.** Reason: the
+  most common controller on the owner's own setup does not work in the
+  tester, and every later web task (W4 included) is tested with it. All three
+  have slack, but D1 is now on the critical path: with one contributor, every
+  day spent on them first moves M2 by a day.
 
 ## Vision
 
@@ -174,7 +184,8 @@ gantt
     section Web app
     W1 Web app scaffolding and WASM build pipeline :done, w1, 2026-10-13, 1d
     W2 Live tester on the core web backend :done, w2, 2026-10-13, 1d
-    W3 WebHID mode with PlayStation decoding :w3, after w2 c15, 15d
+    W8 Tester layout and device drawings :w8, after w2 t0, 7d
+    W3 WebHID mode with PlayStation decoding :w3, after w2 c15 w8, 15d
     W4 Guided mapping wizard (shared with desktop) :w4, after w2 t0, 15d
     W5 Normalized view (mapping engine + profiles) :crit, w5, after w2 c3 d2 d4, 10d
     W6 Report submission and consent flow :crit, w6, after w4 p1 p2 p3, 10d
@@ -265,6 +276,7 @@ flowchart LR
     subgraph web_app[Web app]
         w1[W1]
         w2[W2]
+        w8[W8]
         w3[W3]
         w4[W4]
         w5[W5]
@@ -346,8 +358,10 @@ flowchart LR
     f3 --> w1
     w1 --> w2
     c11 --> w2
+    w2 --> w8
     w2 --> w3
     c15 --> w3
+    w8 --> w3
     w2 --> w4
     w2 --> w5
     c3 --> w5

@@ -111,14 +111,29 @@ DualShock 4 code; check which one each pad accepts in C7.
   report (C7 in ROADMAP/2026-10-10). The switch lasts until the pad is
   power-cycled (note 01, `SDL_JOYSTICK_ENHANCED_REPORTS`).
 
+## DualShock 3 (Sixaxis)
+
+Source: `jgermade/sixaxis-pairing` at `e2119f2` (2026-06-18), the owner's
+WebHID pairing tool, after `user-none/sixaxispairer` and
+`G2-Games/sixaxis-pair_rs`.
+
+- `054c:0268`.
+- Feature report `0xf2`: the pad's own Bluetooth MAC (bytes 4-9 of the
+  data).
+- Feature report `0xf5`: the MAC of the host it pairs with (bytes 2-7);
+  sending `0xf5` with a new MAC over USB pairs the pad with that host.
+- Both hold MAC addresses: anygamepad never reads them. Pairing (writing the
+  user's own host MAC, at the user's request) could become a feature of the
+  desktop app or the web tester without collecting anything.
+
 ## Implications for anygamepad (C2, C7, W3, P1)
 
 - C7 can take the offsets, output layout and CRC above as its starting
   tables (sans-IO, so the same code serves hidraw, Windows HID, IOKit and
   WebHID), checked against `hid-playstation`.
 - AGENTS.md forbids collecting serial numbers and MAC addresses. Never send
-  `0x80` test commands, in C7, W3 or reports. Read only `0x20` and the
-  calibration report.
+  `0x80` test commands, in C7, W3 or reports, and never read the DualShock
+  3's `0xf2`/`0xf5`. Read only `0x20` and the calibration report.
 - W3 must not read feature reports from a Bluetooth pad without telling the
   user: doing so switches the pad to the full report for every application
   until it is power-cycled. Generic HID readers (the Gamepad API in Chrome on

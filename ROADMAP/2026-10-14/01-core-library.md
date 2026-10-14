@@ -161,6 +161,10 @@ reports of a real DualSense over USB and Bluetooth (recorded with W3's raw
 view, without identifying data), and DualShock 4 reports from the same
 sources as note 09.
 
+Status (2026-10-14): decoder implemented with tests on built reports
+(`RECORD/2026-10-14.c15-playstation-decoder.WIP.md`); waiting on recordings
+from a real pad.
+
 ### C8 — Mode and clone detection heuristics
 
 Decide which profile applies when VID/PID is ambiguous: report descriptor

@@ -37,7 +37,8 @@ gantt
     section Web app
     W1 Web app scaffolding and WASM build pipeline :done, w1, 2026-10-13, 1d
     W2 Live tester on the core web backend :done, w2, 2026-10-13, 1d
-    W3 WebHID mode with PlayStation decoding :w3, after w2 c15, 15d
+    W8 Tester layout and device drawings :w8, after w2 t0, 7d
+    W3 WebHID mode with PlayStation decoding :w3, after w2 c15 w8, 15d
     W4 Guided mapping wizard (shared with desktop) :w4, after w2 t0, 15d
     W5 Normalized view (mapping engine + profiles) :crit, w5, after w2 c3 d2 d4, 10d
     W6 Report submission and consent flow :crit, w6, after w4 p1 p2 p3, 10d
@@ -49,12 +50,13 @@ gantt
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
 | W1 | Web app scaffolding and WASM build pipeline | 7 | F1, F3 | W2 | 2026-10-13 | 2026-10-14 | done |
-| W2 | Live tester on the core web backend | 15 | W1, C11 | W3, W4, W5 | 2026-10-13 | 2026-10-14 | done |
-| W3 | WebHID mode with PlayStation decoding | 15 | W2, C15 | - | 2026-10-24 | 2026-11-08 | 92 |
+| W2 | Live tester on the core web backend | 15 | W1, C11 | W3, W4, W5, W8 | 2026-10-13 | 2026-10-14 | done |
+| W3 | WebHID mode with PlayStation decoding | 15 | W2, C15, W8 | - | 2026-10-24 | 2026-11-08 | 92 |
 | W4 | Guided mapping wizard (shared with desktop) | 15 | W2 | A3, W6 | 2026-10-14 | 2026-10-29 | 22 |
 | W5 | **Normalized view (mapping engine + profiles)** | 10 | W2, C3, D2, D4 | W7 | 2026-11-20 | 2026-11-30 | 0 |
 | W6 | **Report submission and consent flow** | 10 | W4, P1, P2, P3 | W7 | 2026-11-20 | 2026-11-30 | 0 |
 | W7 | **Public launch of the web tester** | 5 | W5, W6, P5 | M2 | 2026-11-30 | 2026-12-05 | 0 |
+| W8 | Tester layout and device drawings | 7 | W2 | W3 | 2026-10-14 | 2026-10-21 | 95 |
 
 ### W1 — Web app scaffolding and WASM build pipeline
 
@@ -105,12 +107,51 @@ chooser) on the library's WebHID access (C11):
   them only after telling the user (on macOS the system has already switched
   it). It reads firmware information (`0x20`) and calibration only.
 - **Privacy**: no factory test commands, no pairing report (it holds the
-  Bluetooth MAC), no serial number (AGENTS.md).
+  Bluetooth MAC), no serial number (AGENTS.md); on the DualShock 3, never
+  feature reports `0xf2` and `0xf5` (the pad's and the host's MAC).
 - The macOS hint of W2 points to this mode once it exists.
+- The panels go into W8's layout: touchpad, motion and battery next to the
+  drawing, the raw view folded like the Gamepad API raw values.
+
+- **Recording**: the raw view records two seconds of reports to a JSON file
+  (identity, report structure, reports; nothing identifying), the real
+  reports C15's tests need.
 
 **Done when:** the owner's DualSense shows, decoded and live, in Chrome on
 macOS over USB and Bluetooth; the raw view works for a non-PlayStation pad;
 the smoke test covers both views with fake `HIDDevice`s.
+
+Status (2026-10-14): implemented
+(`RECORD/2026-10-14.w3-webhid-playstation.WIP.md`), with a smoke test on a
+fake Bluetooth DualSense; waiting on the owner's check with a real pad.
+
+### W8 — Tester layout and device drawings
+
+Added on 2026-10-14 at the owner's request, after `ds.daidr.me` (MIT; ideas,
+not code or artwork):
+
+- Two columns on wide screens: the connected pads on the left, the selected
+  pad on the right, drawn large with its facts, update rate and vibration
+  test; one column on phones.
+- One drawing per family, chosen by the owner: DualShock 3, DualShock 4,
+  DualSense (and Edge), Switch Pro Controller, Xbox; every other pad gets a
+  generic drawing after the Flydigi Vader 5 Pro, with its C and Z buttons
+  and four back buttons. Face buttons show what is printed on them (letters
+  or PlayStation symbols). No logos.
+- The library recognizes the family (`Family`, from VID/PID, XInput or the
+  name Safari's GameController gives) and what is printed on the face
+  buttons (`FaceLayout`); the page picks the drawing. These rules are a
+  stopgap: device profiles (D4), built from collected reports, replace them.
+- An option to show the values on the drawing (trigger travel, stick
+  positions).
+- The raw buttons and axes stay, folded under the drawing.
+
+**Done when:** the smoke test covers the layout, the selection and the
+drawings in Chromium, Firefox and WebKit.
+
+Status (2026-10-14): implemented
+(`RECORD/2026-10-14.w8-tester-layout-and-drawings.completed.md`); the smoke
+test passes in Chromium locally, Firefox and WebKit run in CI.
 
 ### W4 — Guided mapping wizard
 
