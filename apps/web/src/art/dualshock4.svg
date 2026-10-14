@@ -143,16 +143,16 @@
     <circle r="99" fill="url(#ds4-ring)" stroke="#dcdce1" stroke-width="2"/>
     <g data-cap="" data-button="left_stick">
       <circle class="shape" r="64" fill="url(#ds4-cap)" stroke="#2a2a2d" stroke-width="2"/>
-      <circle r="46" fill="#18181a" stroke="#333337" stroke-width="2"/>
-      <circle r="38" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="2"/>
+      <circle class="shape" r="46" fill="#18181a" stroke="#333337" stroke-width="2"/>
+      <circle class="shape" r="38" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="2"/>
     </g>
   </g>
   <g data-stick="right" data-travel="24" data-value-y="128" transform="translate(677 528)">
     <circle r="99" fill="url(#ds4-ring)" stroke="#dcdce1" stroke-width="2"/>
     <g data-cap="" data-button="right_stick">
       <circle class="shape" r="64" fill="url(#ds4-cap)" stroke="#2a2a2d" stroke-width="2"/>
-      <circle r="46" fill="#18181a" stroke="#333337" stroke-width="2"/>
-      <circle r="38" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="2"/>
+      <circle class="shape" r="46" fill="#18181a" stroke="#333337" stroke-width="2"/>
+      <circle class="shape" r="38" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="2"/>
     </g>
   </g>
 

@@ -122,7 +122,7 @@
     <circle r="31" fill="#d5d8e4" stroke="#b3b8c9" stroke-width="1.5"/>
     <g data-cap="" data-button="left_stick">
       <circle class="shape" r="26" fill="url(#ds-cap)" stroke="#aeb3c5" stroke-width="1.2"/>
-      <circle class="mark" r="19" fill="none" stroke="#b9bdce" stroke-width="1.5"/>
+      <circle class="shape" r="19" fill="none" stroke="#b9bdce" stroke-width="1.5"/>
     </g>
   </g>
   <g data-stick="right" data-travel="7" transform="translate(343 262)">
@@ -130,7 +130,7 @@
     <circle r="31" fill="#d5d8e4" stroke="#b3b8c9" stroke-width="1.5"/>
     <g data-cap="" data-button="right_stick">
       <circle class="shape" r="26" fill="url(#ds-cap)" stroke="#aeb3c5" stroke-width="1.2"/>
-      <circle class="mark" r="19" fill="none" stroke="#b9bdce" stroke-width="1.5"/>
+      <circle class="shape" r="19" fill="none" stroke="#b9bdce" stroke-width="1.5"/>
     </g>
   </g>
 
