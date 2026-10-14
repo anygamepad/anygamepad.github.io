@@ -57,7 +57,9 @@ The owner decided on 2026-10-14:
    never automatic. Sharing shows the whole report first (W6, A3) and says
    that an issue is public and tied to their GitHub account; the report
    itself holds no personal data (P1). P3 writes the texts and the
-   retention rules for issues and, later, the server.
+   retention rules for issues and, later, the server: they are in
+   [`docs/privacy/`](../privacy/README.md), and the public policy is
+   <https://anygamepad.github.io/privacy/> (2026-10-14).
 6. **Sync later.** The ingestion server of ADR 0006 becomes a sync target
    after M2 (P2, P5): clients upload the reports the person chooses (P6),
    the server validates them with the same crate, stores the re-serialized

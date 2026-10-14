@@ -21,7 +21,7 @@ npm run size       # check dist/ against the bundle size budget
 npm run preview    # serve dist/
 
 # Smoke test of dist/ with fake gamepads: loads under its CSP, live values,
-# drawing, update rate, vibration test, guided wizard, hotplug
+# drawing, update rate, vibration test, guided wizard, hotplug, privacy page
 CHROME_PATH=/path/to/chrome npm run test:smoke
 npx playwright-core install firefox webkit   # once, for the other engines
 BROWSER=firefox npm run test:smoke           # or BROWSER=webkit (Safari's engine)
@@ -35,6 +35,7 @@ cannot send headers); the dev server runs without one.
 | Path | Content |
 |------|---------|
 | `src/main.ts` | Entry point: loads the WebAssembly module, mounts the app |
+| `privacy/index.html`, `src/privacy.ts` | The privacy policy at `/privacy/` (roadmap P3; its maintainer side is [`docs/privacy/`](../../docs/privacy/README.md)) |
 | `src/tester.ts` | Sampler and frame loops, device list, vibration test, WebHID actions (logic stays in TypeScript) |
 | `src/activity.ts` | Activity log: what the tester detects, downloaded as JSON to share for analysis |
 | `src/live.ts` | Live view of a Gamepad API pad: update rate, drawing, raw buttons and axes |

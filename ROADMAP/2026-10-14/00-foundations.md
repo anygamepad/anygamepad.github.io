@@ -26,7 +26,7 @@ gantt
 | F1 | Cargo workspace, licensing, CI matrix | 5 | - | C1, W1 | 2026-10-10 | 2026-10-10 | done |
 | F2 | Prior-art research spike | 10 | - | F3, F4 | 2026-10-10 | 2026-10-10 | done |
 | F3 | Architecture decision records | 5 | F2 | A1, C1, C2, W1 | 2026-10-10 | 2026-10-10 | done |
-| F4 | Hardware test lab inventory | 5 | F2 | D3 | 2026-10-14 | 2026-10-19 | 35 |
+| F4 | Hardware test lab inventory | 5 | F2 | D3 | 2026-10-14 | 2026-10-19 | 32 |
 
 ### F1 — Cargo workspace, licensing, CI matrix
 

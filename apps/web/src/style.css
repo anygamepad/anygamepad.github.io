@@ -112,6 +112,46 @@ body {
   color: var(--muted);
 }
 
+a {
+  color: var(--accent);
+}
+
+/* Under every page of the tester: the environment and the privacy link. */
+.site {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+}
+
+/* The privacy page (privacy/index.html). */
+.home {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.home a {
+  text-decoration: none;
+}
+
+.policy {
+  max-width: 42rem;
+}
+
+.policy .summary {
+  font-size: 1.125rem;
+}
+
+.policy h2 {
+  margin: 2rem 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.policy li + li {
+  margin-top: 0.5rem;
+}
+
 .message {
   padding: 1rem;
   border: 1px dashed var(--border);

@@ -140,6 +140,10 @@ runs `Report::validate`, which rejects:
 name a person gave their device cannot be told from a product name, so the
 apps show the whole report before it is shared.
 
+Consent texts, retention and the handling of shared reports are in
+[`docs/privacy/`](../../docs/privacy/README.md) (roadmap task P3); the
+public policy is <https://anygamepad.github.io/privacy/>.
+
 ## Limits
 
 | What | At most |
@@ -154,3 +158,13 @@ apps show the whole report before it is shared.
 | Report descriptor | 4,096 bytes |
 | HID collection nesting | 8 levels |
 | HID collections, reports, items and usages per view | 2,048 |
+
+## License
+
+Device reports are dedicated to the public domain under
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+([`LICENSE-CC0`](LICENSE-CC0)): the reports people share through the issue
+form or upload later, the dataset made of them, and the reports in this
+directory. The schema, and the code that reads and writes reports, are
+under the repository's license (MIT or Apache-2.0). Why CC0:
+[`docs/privacy/`](../../docs/privacy/README.md#data-license).

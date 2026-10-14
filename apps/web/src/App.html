@@ -110,6 +110,9 @@
   </section>
 </main>
 
-<footer :if="environment" class="environment">
-  {{ environment.browser.engine }} {{ environment.browser.major_version }} on {{ environment.os }}
+<footer class="site">
+  <span :if="environment" class="environment">
+    {{ environment.browser.engine }} {{ environment.browser.major_version }} on {{ environment.os }}
+  </span>
+  <a href="/privacy/">Privacy</a>
 </footer>

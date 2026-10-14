@@ -77,6 +77,14 @@ WebHID can read that report ([research note 09](../../docs/research/09-dualsense
   the pad say it lacks the control asked for. The critical path to M2 is
   now P3 -> W6 -> W7: M2 moves to 2026-11-08, M4 to 2027-01-12, M5 to
   2027-01-02 (slack 10). D4 and W5 have 3 days of slack.
+- **Status update (2026-10-14, in place):** P3, privacy, consent and
+  retention, is done (grey): the policy at
+  <https://anygamepad.github.io/privacy/> and its maintainer side in
+  [`docs/privacy/`](../../docs/privacy/README.md), with the owner's
+  decisions of the same day (reports under CC0 1.0, this repository's
+  issues as the only contact, curated report issues closed and kept). The
+  critical path to M2 is now D4 -> W5 -> W7: M2 moves to 2026-11-05, M4 to
+  2027-01-09, M5 to 2026-12-30 (slack 10). W6 has 7 days of slack.
 
 ## Vision
 
@@ -178,8 +186,9 @@ arrows come with the sync server (P2, P5, P6).
   what) stays valid. Use the graph, not the dates, to decide what to pick up
   next.
 - The critical path runs through the web launch (M2) and ends at milestone M4
-  (desktop 0.1.0). Projected end: **2027-01-12** (2027-01-17 before W4
-  finished early, 2027-01-29 before the local-first re-plan of ADR 0007;
+  (desktop 0.1.0). Projected end: **2027-01-09** (2027-01-12 before P3
+  finished early, 2027-01-17 before W4 did, 2027-01-29 before the
+  local-first re-plan of ADR 0007;
   2027-03-16 in the previous version, before the early finish of C1, C2,
   C11, W1, W2, D1 and D2).
 
@@ -219,12 +228,12 @@ gantt
     D2 SDL GameControllerDB importer :done, d2, 2026-10-14, 1d
     D3 Initial curated profiles (top devices) :d3, after d1 c4 f4, 20d
     C8 Mode and clone detection heuristics :c8, after c3 c4 d3, 20d
-    D4 Profile embedding and runtime overrides :d4, after d1 c3, 7d
+    D4 Profile embedding and runtime overrides :crit, d4, after d1 c3, 7d
     C10 Library 0.1.0 release :c10, after c5 c6 c7 c8 c9 c11 c12 c14 d4, 5d
     section Collection pipeline
     P1 Device report schema (shared crate) :done, p1, 2026-10-14, 1d
     P2 Sync API and PostgreSQL storage :p2, after p1 t0, 20d
-    P3 Privacy, consent, data retention policy :crit, p3, after p1 t0, 10d
+    P3 Privacy, consent, data retention policy :done, p3, 2026-10-14, 1d
     P4 Curation tooling (reports to profile PRs) :p4, after p1 d1 t0, 20d
     P5 Hosting, backups, monitoring :p5, after p2, 10d
     section Web app
@@ -233,8 +242,8 @@ gantt
     W8 Tester layout and device drawings :done, w8, 2026-10-14, 1d
     W3 WebHID mode with PlayStation decoding :w3, after w2 c15 w8, 15d
     W4 Guided mapping wizard (shared with desktop) :done, w4, 2026-10-14, 1d
-    W5 Normalized view (mapping engine + profiles) :w5, after w2 c3 d2 d4, 10d
-    W6 Local report store, sharing and consent flow :crit, w6, after w4 p1 p3, 10d
+    W5 Normalized view (mapping engine + profiles) :crit, w5, after w2 c3 d2 d4, 10d
+    W6 Local report store, sharing and consent flow :w6, after w4 p1 p3, 10d
     W7 Public launch of the web tester :crit, w7, after w5 w6, 5d
     section Milestones
     M1 Core runs in the browser :milestone, m1, after c3 c11 d4, 0d
@@ -261,20 +270,20 @@ gantt
 ### Critical path
 
 Zero-slack chains (they share most tasks). With the device report schema
-(P1) and the guided mapping wizard (W4) done and the server after M2
-(ADR 0007), the path up to M2 runs through the privacy and consent texts
-(P3) and the local report store (W6).
+(P1), the guided mapping wizard (W4) and the privacy texts (P3) done and
+the server after M2 (ADR 0007), the path up to M2 runs through profile
+embedding (D4) and the normalized view (W5).
 
 Up to the web launch (M2):
 
-1. P3 -> W6 -> W7 -> M2
+1. D4 -> W5 -> W7 -> M2
 
 From M2 to the desktop release (M4):
 
 2. M2 -> A1 -> A2 -> A3 -> A9 -> A10 -> M4
 3. M2 -> A4 -> A5 -> A6 -> A9 -> A10 -> M4
 
-Close to it: D4 and W5 (3 days of slack, they block W7).
+Close to it: W6 (7 days of slack, it blocks W7).
 
 Any delay on these tasks delays the web launch (M2) and therefore the desktop
 0.1.0 release. Everything else has slack (see the `Slack` column in each
@@ -464,8 +473,8 @@ flowchart LR
     p6 --> m5
     classDef crit fill:#fdd,stroke:#c00,stroke-width:2px
     classDef done fill:#eee,stroke:#999,color:#666
-    class p3,w6,w7,a1,a4,a5,a2,a3,a6,a9,a10,m2,m4 crit
-    class f1,f2,f3,c1,c2,c3,c11,d1,d2,p1,w1,w2,w4,w8 done
+    class d4,w5,w7,a1,a4,a5,a2,a3,a6,a9,a10,m2,m4 crit
+    class f1,f2,f3,c1,c2,c3,c11,d1,d2,p1,p3,w1,w2,w4,w8 done
 ```
 
 ## Milestones
@@ -473,10 +482,10 @@ flowchart LR
 | Milestone | Blocked by | Target date |
 |-----------|------------|-------------|
 | M1 Core runs in the browser | C3, C11, D4 | 2026-10-21 |
-| M2 Web tester live and collecting (reports saved locally and shared as issues) | W7 | 2026-11-08 |
+| M2 Web tester live and collecting (reports saved locally and shared as issues) | W7 | 2026-11-05 |
 | M3 Library 0.1.0 | C10 | 2026-12-18 |
-| M4 Desktop app 0.1.0 | A10 | 2027-01-12 |
-| M5 Reports synchronized with the sync server | P5, P6 | 2027-01-02 |
+| M4 Desktop app 0.1.0 | A10 | 2027-01-09 |
+| M5 Reports synchronized with the sync server | P5, P6 | 2026-12-30 |
 
 ## Top risks
 

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import { jq79 } from "jq79/vite";
 
@@ -72,6 +73,13 @@ const minifiedArt = (): Plugin => ({
 export default defineConfig({
   plugins: [jq79({ safeEval: true }), contentSecurityPolicy(), schemas(), minifiedArt()],
   build: {
+    // The tester, and the privacy policy (roadmap P3) at /privacy/.
+    rolldownOptions: {
+      input: {
+        main: fileURLToPath(new URL("index.html", import.meta.url)),
+        privacy: fileURLToPath(new URL("privacy/index.html", import.meta.url)),
+      },
+    },
     // Top-level await, which safeEval's component modules use.
     target: "es2022",
     // Every asset, jq79's precompiled scripts included, stays a file:
