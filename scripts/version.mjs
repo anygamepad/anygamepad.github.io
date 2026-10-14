@@ -34,7 +34,8 @@ const PLACES = [
   {
     file: "Cargo.lock",
     // The workspace members (path packages: no `source` line follows).
-    pattern: /(\nname = "anygamepad[\w-]*"\nversion = ")([^"]+)("\n(?!source))/g,
+    // Windows checkouts may have CRLF line endings.
+    pattern: /(\r?\nname = "anygamepad[\w-]*"\r?\nversion = ")([^"]+)("\r?\n(?!source))/g,
   },
   { file: "apps/web/package.json", json: (data) => [data] },
   { file: "apps/web/package-lock.json", json: (data) => [data, data.packages?.[""]] },
@@ -45,7 +46,10 @@ const found = () =>
   PLACES.flatMap(({ file, pattern, json }) => {
     const text = read(file);
     if (json) return json(JSON.parse(text)).map((entry) => [file, entry?.version]);
-    return [...text.matchAll(pattern)].map((match) => [file, match[2] ?? match[5]]);
+    const versions = [...text.matchAll(pattern)].map((match) => [file, match[2] ?? match[5]]);
+    // A pattern that stops matching would leave the file behind unnoticed.
+    if (versions.length === 0) fail(`no version found in ${file}`);
+    return versions;
   });
 
 const current = () => {

@@ -20,8 +20,11 @@ npm run build      # type-check, then build into dist/
 npm run size       # check dist/ against the bundle size budget
 npm run preview    # serve dist/
 
-# Smoke test of dist/ in Chrome (loads under its CSP, a fake gamepad shows up)
+# Smoke test of dist/ with fake gamepads: loads under its CSP, live values,
+# drawing, update rate, vibration test, hotplug
 CHROME_PATH=/path/to/chrome npm run test:smoke
+npx playwright-core install firefox webkit   # once, for the other engines
+BROWSER=firefox npm run test:smoke           # or BROWSER=webkit (Safari's engine)
 ```
 
 `npm run build` emits a Content Security Policy `<meta>` tag (GitHub Pages
@@ -32,8 +35,11 @@ cannot send headers); the dev server runs without one.
 | Path | Content |
 |------|---------|
 | `src/main.ts` | Entry point: loads the WebAssembly module, mounts the app |
-| `src/tester.ts` | Frame loop and view data (logic stays in TypeScript) |
+| `src/tester.ts` | Sampler and frame loops, device list, vibration test (logic stays in TypeScript) |
+| `src/live.ts` | Live part of a device card: update rate, drawing, raw buttons and axes |
+| `src/diagram.ts` | Controller drawing of the canonical state (standard mapping only) |
+| `src/rate.ts` | Update rate meter |
 | `src/*.html` | jq79 components (rendering only) |
 | `src/wasm/` | wasm-pack output (generated, not committed) |
 | `scripts/check-size.mjs` | Bundle size budget |
-| `tests/smoke.mjs` | Smoke test of the built site in Chrome |
+| `tests/smoke.mjs` | Smoke test of the built site (Chromium, Firefox, WebKit) |

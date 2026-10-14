@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use anygamepad::model::identity::{Browser, DeviceIdentity, Fingerprint, Os};
 use anygamepad::model::raw::{RawLayout, RawState};
-use anygamepad::model::{Capabilities, GamepadState, OutputCommand, OutputSet};
+use anygamepad::model::{Axis, Button, Capabilities, GamepadState, OutputCommand, OutputSet};
 use anygamepad::provider::{Access, DeviceId, Provider, ProviderError, ProviderEvent};
 use anygamepad::web::{self, WebProvider, standard};
 use serde::Serialize;
@@ -67,6 +67,20 @@ pub struct DeviceInfo {
     /// Canonical controls, for gamepads the browser maps to the standard
     /// layout; `undefined` for others, until device profiles exist.
     pub capabilities: Option<Capabilities>,
+    /// Which canonical control each raw button and axis drives, under the
+    /// same condition as `capabilities`.
+    pub canonical: Option<CanonicalLayout>,
+}
+
+/// The canonical control of each raw element, by raw index (`undefined`
+/// for an element that drives none).
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct CanonicalLayout {
+    /// Per raw button. The analog trigger buttons also drive the trigger
+    /// axes.
+    pub buttons: Vec<Option<Button>>,
+    /// Per raw axis. Stick Y axes are inverted (ADR 0001: Y positive = up).
+    pub axes: Vec<Option<Axis>>,
 }
 
 /// One button as the Gamepad API reports it.
@@ -163,17 +177,18 @@ impl Gamepads {
             .web
             .as_ref()
             .is_some_and(|web| web.mapping == standard::MAPPING);
+        let (buttons, axes) = (info.layout.buttons.len(), info.layout.axes.len());
         to_js(&DeviceInfo {
             fingerprint: info.identity.fingerprint(),
             identity: info.identity.clone(),
             layout: info.layout.clone(),
             outputs: info.outputs,
-            capabilities: standard.then(|| {
-                standard::capabilities(
-                    info.layout.buttons.len(),
-                    info.layout.axes.len(),
-                    info.outputs,
-                )
+            capabilities: standard.then(|| standard::capabilities(buttons, axes, info.outputs)),
+            canonical: standard.then(|| CanonicalLayout {
+                buttons: (0..buttons).map(standard::button).collect(),
+                axes: (0..axes)
+                    .map(|index| standard::AXES.get(index).copied())
+                    .collect(),
             }),
         })
     }
@@ -231,6 +246,16 @@ impl Gamepads {
         let mut state = GamepadState::new();
         standard::map(raw, &mut state);
         to_js(&state)
+    }
+
+    /// `Gamepad.timestamp` at the last `update()`: when the browser last
+    /// received data from the gamepad, in milliseconds on the
+    /// `performance.now()` clock; `undefined` for an unknown id. Cheaper than
+    /// `snapshot()`, to measure how often the data changes.
+    pub fn timestamp(&self, device: u32) -> Option<f64> {
+        self.provider
+            .snapshot(device_id(device))
+            .map(|snapshot| snapshot.timestamp)
     }
 
     /// What the Gamepad API reported for a gamepad at the last `update()`,

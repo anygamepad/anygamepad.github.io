@@ -156,11 +156,41 @@ jobs:
         with:
           path: apps/web/dist
 
+  # The built site in Firefox and in WebKit (Safari's engine), from
+  # Playwright's builds of them.
+  web-smoke:
+    name: web smoke (${{ matrix.browser }})
+    needs: web
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    env:
+      BROWSER: ${{ matrix.browser }}
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: web
+          path: apps/web/dist
+      - run: npx playwright-core install --with-deps "$BROWSER"
+      - run: npm run test:smoke
+
   # Publishes only the built site, never the repository contents, once every
   # job passed. Needs the repository's Pages source set to "GitHub Actions".
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [fmt, native, wasm, msrv, web]
+    needs: [fmt, native, wasm, msrv, web, web-smoke]
     runs-on: ubuntu-latest
     permissions:
       pages: write

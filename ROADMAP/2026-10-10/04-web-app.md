@@ -73,6 +73,11 @@ Live view of buttons and axes for every connected pad, driven by the library's
 web backend (C11): browser `id` string, browser `mapping` value, raw values,
 polling rate, vibration test. Must work on Chromium, Firefox and Safari.
 
+Status (2026-10-13): done
+(`RECORD/2026-10-13.w2-live-tester.completed.md`). Tested with fake gamepads
+in Chromium, Firefox and WebKit (CI); real gamepads and Safari itself are
+not yet verified.
+
 ### W3 — WebHID raw mode
 
 Chromium-only opt-in mode (requires a user gesture) that uses the library's

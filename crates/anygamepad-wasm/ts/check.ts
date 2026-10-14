@@ -47,6 +47,10 @@ export async function main(): Promise<void> {
       for (const source of info.layout.buttons) {
         if ("index" in source) console.log(source.index);
       }
+      const firstButton: Button | undefined = info.canonical?.buttons[0] ?? undefined;
+      const firstAxis0: Axis | undefined = info.canonical?.axes[0] ?? undefined;
+      const updated: number | undefined = gamepads.timestamp(device);
+      console.log(firstButton, firstAxis0, updated);
       console.log(id, vendor, fingerprint, south);
 
       const snapshot: GamepadSnapshot | undefined = gamepads.snapshot(device);
