@@ -1,6 +1,6 @@
 # anygamepad roadmap — 2026-10-10
 
-Status: **active** (first roadmap of the project).
+Status: **superseded by [ROADMAP/2026-10-14/](../2026-10-14/README.md)** (first roadmap of the project).
 
 ## Vision
 

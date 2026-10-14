@@ -6,16 +6,23 @@ import init, { Gamepads, HidDevices, version } from "./anygamepad_wasm.js";
 import type {
   Axis,
   Button,
+  ButtonLabel,
+  DecodedInput,
   DeviceEvent,
   DeviceInfo,
   Environment,
+  Family,
   GamepadSnapshot,
   GamepadState,
   HidDeviceInfo,
   HidFilter,
   HidInputReport,
+  HidPoll,
   OutputCommand,
+  RawImu,
   RawState,
+  ReportForm,
+  Transport,
 } from "./anygamepad_wasm.js";
 
 export async function main(): Promise<void> {
@@ -43,6 +50,9 @@ export async function main(): Promise<void> {
       const id: string | undefined = info.identity.web?.id;
       const vendor: number | undefined = info.identity.vendor_id;
       const fingerprint: string = info.fingerprint;
+      const family: Family | undefined = info.family;
+      const south0: ButtonLabel | undefined = info.face_layout?.south;
+      console.log(family === "dualsense", south0);
       const south: boolean = info.capabilities?.buttons.includes("south") ?? false;
       for (const source of info.layout.buttons) {
         if ("index" in source) console.log(source.index);
@@ -106,6 +116,19 @@ export async function webHid(button: HTMLButtonElement): Promise<void> {
     const reports: HidInputReport[] = devices.reports(device);
     const firstByte: number | undefined = reports[0]?.data[0];
     const dropped: number | undefined = devices.droppedReports(device);
+    const transport: Transport | undefined = info?.transport;
+    const decodes: boolean = info?.decoded ?? false;
+    const touchpadWidth: number | undefined = info?.touchpad?.width;
+    const poll: HidPoll = devices.poll(device);
+    const recorded: HidInputReport[] = devices.poll(device, true).reports;
+    const input: DecodedInput | undefined = poll.input;
+    const form: ReportForm | undefined = input?.form;
+    const imu: RawImu | undefined = input?.imu;
+    const finger = input?.state.touches[0];
+    const failure: string | undefined = poll.error;
+    if (form === "bluetooth_reduced") await devices.switchToFullReports(device);
+    console.log(transport, decodes, touchpadWidth, poll.received, poll.last?.report_id, recorded.length);
+    console.log(imu?.gyro[0], finger?.x, input?.state.power.percent, failure);
     const feature: DataView = await devices.receiveFeatureReport(device, 5);
     await devices.sendReport(device, 5, new Uint8Array([0x05, 0xff]));
     await devices.sendFeatureReport(device, 5, new Uint8Array([0x00]));

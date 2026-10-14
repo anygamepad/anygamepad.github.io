@@ -35,7 +35,9 @@ pub use gamepads::{
     Gamepads,
 };
 #[cfg(target_arch = "wasm32")]
-pub use hid_devices::{HidDeviceInfo, HidDevices, HidFilter, HidInputReport};
+pub use hid_devices::{
+    DecodedInput, HidDeviceInfo, HidDevices, HidFilter, HidInputReport, HidPoll, RawImu, ReportForm,
+};
 
 /// Returns the version of the anygamepad library compiled into this module.
 #[wasm_bindgen]

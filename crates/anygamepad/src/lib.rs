@@ -13,6 +13,7 @@
 //!   `wasm32-unknown-unknown`.
 #![forbid(unsafe_code)]
 
+pub mod protocol;
 pub mod provider;
 #[cfg(feature = "web")]
 pub mod web;

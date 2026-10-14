@@ -3,33 +3,66 @@
   <p class="tagline">Gamepad tester, running the anygamepad library {{ version }} in WebAssembly</p>
 </header>
 
-<main>
-  <p :if="error" class="message error">{{ error }}</p>
-  <p :if="devices.length === 0" class="message">
-    Connect a gamepad and press one of its buttons: browsers only show a gamepad after that.
-  </p>
-  <ul :else class="devices">
-    <li :each="device in devices" :key="device.id" class="device">
-      <header class="device-head">
-        <h2>{{ device.name }}</h2>
-        <p class="facts">
-          {{ device.ids }} · {{ device.mapping }} · {{ device.buttons }} buttons · {{ device.axes }} axes
-        </p>
-        <p class="gamepad-id" title="Gamepad.id, as the browser reports it"><code>{{ device.gamepadId }}</code></p>
-      </header>
+<main class="tester">
+  <aside class="side">
+    <p :if="error" class="message error">{{ error }}</p>
+    <div :if="pads.length === 0" class="empty">
+      <p class="message">Connect a gamepad and press one of its buttons: browsers only show a gamepad after that.</p>
+      <p :if="hint" class="message hint">{{ hint }}</p>
+    </div>
+    <ul :else class="pads">
+      <li :each="pad in pads" :key="pad.key">
+        <button
+          type="button"
+          class="pad"
+          :class.selected="pad.key === selected"
+          :aria-pressed="pad.key === selected ? 'true' : 'false'"
+          @click="select(pad.key)"
+        >
+          <span class="pad-name">{{ pad.name }}</span>
+          <span class="pad-facts">{{ pad.facts }}</span>
+        </button>
+      </li>
+    </ul>
 
-      <div class="live" :data-device="device.id"></div>
+    <section :if="webhid" class="webhid">
+      <h2>WebHID</h2>
+      <p>
+        Reads a pad's raw reports, as the operating system receives them. PlayStation pads are decoded,
+        touchpad, motion and battery included.
+      </p>
+      <button type="button" class="action" @click="connectHid()">Connect a pad with WebHID</button>
+      <p :if="hidMessage" class="note">{{ hidMessage }}</p>
+    </section>
+  </aside>
 
-      <footer class="vibration">
-        <span class="label">Vibration test</span>
-        <button type="button" :disabled="!device.rumble" @click="rumble(device.id, 'strong')">Strong motor</button>
-        <button type="button" :disabled="!device.rumble" @click="rumble(device.id, 'weak')">Weak motor</button>
-        <button type="button" :disabled="!device.rumble" @click="rumble(device.id, 'both')">Both</button>
-        <button type="button" :if="device.triggerRumble" @click="rumble(device.id, 'triggers')">Triggers</button>
-        <small :if="!device.rumble" class="note">This browser cannot vibrate this gamepad.</small>
-      </footer>
-    </li>
-  </ul>
+  <section :if="current" class="detail">
+    <header class="detail-head">
+      <div>
+        <h2>{{ current.name }}</h2>
+        <p class="facts">{{ current.facts }}</p>
+        <p class="gamepad-id" title="Gamepad.id or WebHID product name, as the browser reports it"><code>{{ current.detail }}</code></p>
+      </div>
+      <button
+        type="button"
+        class="toggle"
+        :class.on="showValues"
+        :aria-pressed="showValues ? 'true' : 'false'"
+        @click="toggleValues()"
+      >Show values</button>
+    </header>
+
+    <div class="live" :data-key="current.key"></div>
+
+    <footer :if="current.source === 'gamepad'" class="vibration">
+      <span class="label">Vibration test</span>
+      <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'strong')">Strong motor</button>
+      <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'weak')">Weak motor</button>
+      <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'both')">Both</button>
+      <button type="button" :if="current.triggerRumble" @click="rumble(current.key, 'triggers')">Triggers</button>
+      <small :if="!current.rumble" class="note">This browser cannot vibrate this gamepad.</small>
+    </footer>
+  </section>
 </main>
 
 <footer :if="environment" class="environment">

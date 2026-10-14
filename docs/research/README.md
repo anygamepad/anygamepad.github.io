@@ -15,6 +15,7 @@ from crates.io metadata, and, where no source was available, from web pages
 | [06-browser-gamepad-api.md](06-browser-gamepad-api.md) | `Gamepad.id` formats, standard mapping, WebHID per browser |
 | [07-rust-wasm-tooling.md](07-rust-wasm-tooling.md) | wasm-bindgen, web-sys, wasm-pack, Trunk, tsify |
 | [08-provider-combination.md](08-provider-combination.md) | **Output:** how to combine native, web, SDL3 and gilrs providers |
+| [09-dualsense-hid-protocol.md](09-dualsense-hid-protocol.md) | DualSense/DualShock 4 reports, CRC32, feature reports, from a WebHID tester (added 2026-10-14, for C7 and W3) |
 
 ## Key findings
 

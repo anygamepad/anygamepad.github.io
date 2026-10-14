@@ -417,8 +417,12 @@ impl GamepadApiId {
         if let Some(parsed) = Self::parse_vid_pid_prefix(id) {
             return parsed;
         }
+        // Safari, GameController: the controller's name and its profile.
+        // Only the extended profile is recognized: a plain `" Gamepad"`
+        // suffix is too common in real product names.
+        let name = id.strip_suffix(" Extended Gamepad").unwrap_or(id);
         Self {
-            name: non_empty(id),
+            name: non_empty(name),
             ..Self::default()
         }
     }
@@ -570,11 +574,7 @@ mod tests {
 
     #[test]
     fn unknown_formats_keep_the_whole_id_as_name() {
-        for id in [
-            "DualSense Wireless Controller Extended Gamepad",
-            "8BitDo-Pro-2",
-            "Pad (Vendor: 12345 Product: 0001)",
-        ] {
+        for id in ["8BitDo-Pro-2", "Pad (Vendor: 12345 Product: 0001)"] {
             assert_eq!(
                 GamepadApiId::parse(id),
                 parsed(None, None, Some(id), false),
@@ -582,6 +582,18 @@ mod tests {
             );
         }
         assert_eq!(GamepadApiId::parse("  "), GamepadApiId::default());
+    }
+
+    #[test]
+    fn safari_game_controller_ids_keep_the_name() {
+        assert_eq!(
+            GamepadApiId::parse("DualSense Wireless Controller Extended Gamepad"),
+            parsed(None, None, Some("DualSense Wireless Controller"), false)
+        );
+        assert_eq!(
+            GamepadApiId::parse("Generic USB Gamepad"),
+            parsed(None, None, Some("Generic USB Gamepad"), false)
+        );
     }
 
     #[test]
