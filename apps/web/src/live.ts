@@ -1,23 +1,13 @@
-// The live part of a device card: the update rate, the controller drawing
-// (standard layout only), and every raw button and axis as the browser
-// reports it. Built once per device; the frame loop calls `update`, which
-// only touches what changed (ADR 0005: no reactivity per frame).
+// The live view of a Gamepad API pad: the update rate, the controller
+// drawing (standard layout only, shaped by the pad's family), and every raw
+// button and axis as the browser reports it, folded under the drawing.
+// Built once per device; the frame loop calls `update`, which only touches
+// what changed (ADR 0005: no reactivity per frame).
 
 import type { DeviceInfo, GamepadSnapshot, GamepadState } from "./wasm/anygamepad_wasm.js";
-import { ControllerDiagram } from "./diagram";
-
-const element = <K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className: string,
-  parent: Element,
-  text?: string,
-): HTMLElementTagNameMap[K] => {
-  const created = document.createElement(tag);
-  created.className = className;
-  if (text !== undefined) created.textContent = text;
-  parent.append(created);
-  return created;
-};
+import { element } from "./dom";
+import { ControllerDrawing } from "./drawing";
+import { layoutFor } from "./layouts";
 
 interface ButtonCell {
   cell: HTMLElement;
@@ -38,7 +28,7 @@ const axisText = (value: number): string => `${value < 0 ? "−" : "+"}${Math.ab
 export class LiveView {
   readonly root: HTMLElement;
   private readonly rate: HTMLElement;
-  private readonly diagram: ControllerDiagram | undefined;
+  private readonly drawing: ControllerDrawing | undefined;
   private readonly buttons: ButtonCell[] = [];
   private readonly axes: AxisRow[] = [];
   private lastRate = -1;
@@ -50,11 +40,15 @@ export class LiveView {
     this.rate = element("p", "rate", root, "Waiting for data…");
 
     if (info.canonical) {
-      this.diagram = new ControllerDiagram();
-      root.append(this.diagram.element);
+      this.drawing = new ControllerDrawing(layoutFor(info.family), info.face_layout);
+      root.append(this.drawing.element);
     }
 
-    const buttons = element("section", "raw raw-buttons", root);
+    // Folded under a drawing; open when there is none to show.
+    const raw = element("details", "raw-values", root);
+    raw.open = !info.canonical;
+    element("summary", "", raw, "Raw values");
+    const buttons = element("section", "raw raw-buttons", raw);
     element("h3", "", buttons, `Buttons (${info.layout.buttons.length})`);
     const buttonList = element("ol", "buttons", buttons);
     info.layout.buttons.forEach((_, index) => {
@@ -69,7 +63,7 @@ export class LiveView {
       this.buttons.push({ cell, fill, value, last: "" });
     });
 
-    const axes = element("section", "raw raw-axes", root);
+    const axes = element("section", "raw raw-axes", raw);
     element("h3", "", axes, `Axes (${info.layout.axes.length})`);
     const axisList = element("ol", "axes", axes);
     info.layout.axes.forEach((_, index) => {
@@ -83,8 +77,11 @@ export class LiveView {
     });
   }
 
-  /** Shows the latest values; `rate` is the update rate in Hz. */
-  update(snapshot: GamepadSnapshot, state: GamepadState | undefined, rate: number): void {
+  /**
+   * Shows the latest values; `rate` is the update rate in Hz, `showValues`
+   * whether the drawing shows numbers.
+   */
+  update(snapshot: GamepadSnapshot, state: GamepadState | undefined, rate: number, showValues: boolean): void {
     if (rate !== this.lastRate) {
       this.lastRate = rate;
       this.rate.textContent = `${rate} updates/s`;
@@ -112,6 +109,6 @@ export class LiveView {
       row.value.textContent = axisText(value);
     });
 
-    if (state && this.diagram) this.diagram.update(state);
+    if (state && this.drawing) this.drawing.update(state, showValues);
   }
 }

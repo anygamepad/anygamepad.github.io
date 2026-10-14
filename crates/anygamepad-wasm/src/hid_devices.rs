@@ -1,8 +1,12 @@
 //! The `HidDevices` class: WebHID access for JavaScript (Chromium only).
 
+use std::collections::BTreeMap;
+
 use anygamepad::model::hid::HidCollection;
 use anygamepad::model::identity::{DeviceIdentity, Fingerprint};
-use anygamepad::provider::ProviderEvent;
+use anygamepad::model::{FaceLayout, Family, GamepadState, TouchpadInfo, Transport};
+use anygamepad::protocol::playstation::{self, Model};
+use anygamepad::provider::{DeviceId, ProviderEvent};
 use anygamepad::web::hid::{self as web_hid, WebHid};
 use js_sys::Promise;
 use serde::{Deserialize, Serialize, Serializer};
@@ -48,6 +52,18 @@ pub struct HidDeviceInfo {
     pub identity: DeviceIdentity,
     /// Stable hash of the identity.
     pub fingerprint: Fingerprint,
+    /// Controller family recognized from the VID/PID; `undefined` when not
+    /// recognized.
+    pub family: Option<Family>,
+    /// What is printed on the face buttons, when the family is known.
+    pub face_layout: Option<FaceLayout>,
+    /// USB or Bluetooth, for the pads whose report sizes tell (PlayStation);
+    /// `unknown` otherwise.
+    pub transport: Transport,
+    /// Whether `poll()` decodes this device's reports (PlayStation pads).
+    pub decoded: bool,
+    /// The touchpad of a decoded pad that has one.
+    pub touchpad: Option<TouchpadInfo>,
     /// Top-level collections: the structure of the device's reports.
     pub collections: Vec<HidCollection>,
 }
@@ -66,6 +82,88 @@ pub struct HidInputReport<'a> {
     pub timestamp: f64,
 }
 
+/// What `poll()` read from a device since the last call.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct HidPoll<'a> {
+    /// Input reports received since the last call.
+    pub received: u32,
+    /// The newest of them; `undefined` when none arrived.
+    pub last: Option<HidInputReport<'a>>,
+    /// All of them, oldest first, when `poll()` was asked for them (empty
+    /// otherwise).
+    pub reports: Vec<HidInputReport<'a>>,
+    /// For pads the library decodes: their input from the newest report that
+    /// decoded, possibly from an earlier call.
+    pub input: Option<DecodedInput>,
+    /// Why the newest report did not decode, if it did not.
+    pub error: Option<String>,
+}
+
+/// Which form of input report a PlayStation pad sends.
+#[derive(Clone, Copy, Debug, Serialize, Tsify)]
+#[serde(rename_all = "snake_case")]
+pub enum ReportForm {
+    /// USB: always the full report.
+    Usb,
+    /// Bluetooth before the switch: no touchpad, motion or battery.
+    BluetoothReduced,
+    /// Bluetooth after the switch.
+    BluetoothFull,
+}
+
+/// Motion sensor readings as the pad reports them, before calibration.
+#[derive(Clone, Copy, Debug, Serialize, Tsify)]
+pub struct RawImu {
+    /// Gyroscope, in report order.
+    pub gyro: [i16; 3],
+    /// Accelerometer, in report order.
+    pub accel: [i16; 3],
+    /// The pad's sensor clock; only differences are meaningful.
+    pub timestamp: u32,
+}
+
+/// One decoded input report.
+#[derive(Clone, Copy, Debug, Serialize, Tsify)]
+pub struct DecodedInput {
+    /// The report's form.
+    pub form: ReportForm,
+    /// The transport the form implies.
+    pub transport: Transport,
+    /// Buttons, sticks, triggers, touch points and power (motion stays raw,
+    /// in `imu`).
+    pub state: GamepadState,
+    /// Motion sensors, in full reports.
+    pub imu: Option<RawImu>,
+}
+
+impl From<playstation::Input> for DecodedInput {
+    fn from(input: playstation::Input) -> Self {
+        Self {
+            form: match input.form {
+                playstation::ReportForm::Usb => ReportForm::Usb,
+                playstation::ReportForm::BluetoothReduced => ReportForm::BluetoothReduced,
+                playstation::ReportForm::BluetoothFull => ReportForm::BluetoothFull,
+            },
+            transport: input.form.transport(),
+            state: input.state,
+            imu: input.imu.map(|imu| RawImu {
+                gyro: imu.gyro,
+                accel: imu.accel,
+                timestamp: imu.timestamp,
+            }),
+        }
+    }
+}
+
+/// The JavaScript view of a queued report.
+fn report_view(report: &web_hid::HidInputReport) -> HidInputReport<'_> {
+    HidInputReport {
+        report_id: report.report_id,
+        data: &report.data,
+        timestamp: report.timestamp,
+    }
+}
+
 /// Serializes bytes as a `Uint8Array` (serde-wasm-bindgen).
 fn bytes<S: Serializer>(data: &&[u8], serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_bytes(data)
@@ -76,12 +174,16 @@ fn bytes<S: Serializer>(data: &&[u8], serializer: S) -> Result<S::Ok, S::Error> 
 ///
 /// `request()` opens the browser's chooser and must be called from a user
 /// gesture (a click). `open()` a device to queue its input reports, and
-/// collect them with `reports()`, for example once per frame.
+/// collect them with `reports()` or `poll()`, for example once per frame.
 #[wasm_bindgen]
 pub struct HidDevices {
     hid: WebHid,
     events: Vec<ProviderEvent>,
     reports: Vec<web_hid::HidInputReport>,
+    /// The protocol of each device seen by `poll()`, if the library has one.
+    models: BTreeMap<DeviceId, Option<Model>>,
+    /// The newest decoded input of each device.
+    inputs: BTreeMap<DeviceId, playstation::Input>,
 }
 
 #[wasm_bindgen]
@@ -100,6 +202,8 @@ impl HidDevices {
             hid: WebHid::new().map_err(error)?,
             events: Vec::new(),
             reports: Vec::new(),
+            models: BTreeMap::new(),
+            inputs: BTreeMap::new(),
         })
     }
 
@@ -129,6 +233,12 @@ impl HidDevices {
     pub fn update(&mut self) -> Result<JsValue, JsError> {
         self.events.clear();
         self.hid.update(&mut self.events);
+        for event in &self.events {
+            if let ProviderEvent::Removed(id) = event {
+                self.models.remove(id);
+                self.inputs.remove(id);
+            }
+        }
         let events: Vec<DeviceEvent> = self.events.iter().map(|&event| event.into()).collect();
         to_js(&events)
     }
@@ -144,8 +254,17 @@ impl HidDevices {
         let Some(info) = self.hid.info(device_id(device)) else {
             return Ok(JsValue::UNDEFINED);
         };
+        let family = Family::from_identity(&info.identity);
+        let model = family.and_then(Model::from_family);
         to_js(&HidDeviceInfo {
             fingerprint: info.identity.fingerprint(),
+            family,
+            face_layout: family.map(Family::face_layout),
+            transport: model.map_or(Transport::Unknown, |model| {
+                playstation::transport_from_collections(model, &info.collections)
+            }),
+            decoded: model.is_some(),
+            touchpad: model.map(Model::touchpad),
             identity: info.identity,
             collections: info.collections,
         })
@@ -172,16 +291,65 @@ impl HidDevices {
         self.hid
             .take_reports(device_id(device), &mut self.reports)
             .map_err(error)?;
-        let reports: Vec<HidInputReport<'_>> = self
-            .reports
-            .iter()
-            .map(|report| HidInputReport {
-                report_id: report.report_id,
-                data: &report.data,
-                timestamp: report.timestamp,
-            })
-            .collect();
+        let reports: Vec<HidInputReport<'_>> = self.reports.iter().map(report_view).collect();
         to_js(&reports)
+    }
+
+    /// Collects an open device's input reports received since the last call
+    /// and, for the pads the library knows (PlayStation), decodes them.
+    /// Replaces `reports()` for per-frame use; with `all`, the result also
+    /// lists every report (to record them).
+    #[wasm_bindgen(unchecked_return_type = "HidPoll")]
+    pub fn poll(&mut self, device: u32, all: Option<bool>) -> Result<JsValue, JsError> {
+        let id = device_id(device);
+        self.reports.clear();
+        self.hid
+            .take_reports(id, &mut self.reports)
+            .map_err(error)?;
+        let model = *self.models.entry(id).or_insert_with(|| {
+            let info = self.hid.info(id)?;
+            Family::from_identity(&info.identity).and_then(Model::from_family)
+        });
+        let mut error = None;
+        if let Some(model) = model {
+            for report in &self.reports {
+                match playstation::decode(model, report.report_id, &report.data) {
+                    Ok(input) => {
+                        self.inputs.insert(id, input);
+                        error = None;
+                    }
+                    // Audio frames interleave with state; not a failure.
+                    Err(playstation::DecodeError::NotState) => {}
+                    Err(failure) => error = Some(failure.to_string()),
+                }
+            }
+        }
+        to_js(&HidPoll {
+            received: u32::try_from(self.reports.len()).unwrap_or(u32::MAX),
+            last: self.reports.last().map(report_view),
+            reports: if all.unwrap_or(false) {
+                self.reports.iter().map(report_view).collect()
+            } else {
+                Vec::new()
+            },
+            input: self.inputs.get(&id).map(|&input| input.into()),
+            error,
+        })
+    }
+
+    /// Switches a Bluetooth PlayStation pad to its full report (touchpad,
+    /// motion, battery) by reading its calibration feature report. The pad
+    /// stays switched for every application on the host until it is
+    /// power-cycled, and some of them (DirectInput games, the Gamepad API
+    /// in some browsers) then get no input from it: tell the user first.
+    /// Reads nothing else.
+    #[wasm_bindgen(
+        js_name = switchToFullReports,
+        unchecked_return_type = "Promise<DataView>"
+    )]
+    pub fn switch_to_full_reports(&self, device: u32) -> Promise {
+        self.hid
+            .receive_feature_report(device_id(device), playstation::CALIBRATION_REPORT)
     }
 
     /// Input reports of a device dropped so far because `reports()` was not

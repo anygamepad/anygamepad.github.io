@@ -4,7 +4,9 @@ use std::collections::BTreeMap;
 
 use anygamepad::model::identity::{Browser, DeviceIdentity, Fingerprint, Os};
 use anygamepad::model::raw::{RawLayout, RawState};
-use anygamepad::model::{Axis, Button, Capabilities, GamepadState, OutputCommand, OutputSet};
+use anygamepad::model::{
+    Axis, Button, Capabilities, FaceLayout, Family, GamepadState, OutputCommand, OutputSet,
+};
 use anygamepad::provider::{Access, DeviceId, Provider, ProviderError, ProviderEvent};
 use anygamepad::web::{self, WebProvider, standard};
 use serde::Serialize;
@@ -60,6 +62,11 @@ pub struct DeviceInfo {
     pub identity: DeviceIdentity,
     /// Stable hash of the identity.
     pub fingerprint: Fingerprint,
+    /// Controller family recognized from the identity alone, for drawings
+    /// and labels; `undefined` when not recognized.
+    pub family: Option<Family>,
+    /// What is printed on the face buttons, when the family is known.
+    pub face_layout: Option<FaceLayout>,
     /// The raw elements `poll()` fills: the Gamepad API's buttons and axes.
     pub layout: RawLayout,
     /// Outputs `send()` can drive.
@@ -178,8 +185,11 @@ impl Gamepads {
             .as_ref()
             .is_some_and(|web| web.mapping == standard::MAPPING);
         let (buttons, axes) = (info.layout.buttons.len(), info.layout.axes.len());
+        let family = Family::from_identity(&info.identity);
         to_js(&DeviceInfo {
             fingerprint: info.identity.fingerprint(),
+            family,
+            face_layout: family.map(Family::face_layout),
             identity: info.identity.clone(),
             layout: info.layout.clone(),
             outputs: info.outputs,

@@ -65,29 +65,157 @@ body {
   color: var(--error);
 }
 
-.devices {
+/* Two columns on wide screens: the pads, and the selected one drawn large. */
+
+.tester {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 56rem) {
+  .tester {
+    grid-template-columns: minmax(16rem, 20rem) 1fr;
+    align-items: start;
+  }
+}
+
+.side {
+  display: grid;
   gap: 1rem;
+}
+
+.side .message {
+  margin: 0;
+}
+
+.empty {
+  display: grid;
+  gap: 1rem;
+}
+
+.pads {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.device {
+.pad {
+  display: grid;
+  gap: 0.125rem;
+  width: 100%;
+  padding: 0.75rem;
+  color: inherit;
+  text-align: left;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pad:hover {
+  border-color: var(--accent);
+}
+
+.pad.selected {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.pad-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pad-facts {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.webhid {
+  padding: 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.webhid h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.webhid p {
+  margin: 0.5rem 0;
+  color: var(--muted);
+}
+
+.action,
+.toggle,
+.switch-box button,
+.raw-report button {
+  padding: 0.375rem 0.75rem;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 0.375rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.action:hover,
+.toggle:hover,
+.switch-box button:hover:not(:disabled),
+.raw-report button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.toggle.on {
+  color: var(--card);
+  background: var(--accent);
+}
+
+.switch-box button:disabled,
+.raw-report button:disabled {
+  color: var(--muted);
+  border-color: var(--border);
+  cursor: progress;
+}
+
+.detail {
+  min-width: 0;
   padding: 1rem;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
 }
 
-.device h2 {
+.detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.detail-head > div {
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.detail h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.125rem;
   overflow-wrap: anywhere;
 }
 
 .facts,
-.rate {
+.rate,
+.report-form {
   margin: 0.25rem 0;
   color: var(--muted);
   font-size: 0.875rem;
@@ -100,19 +228,27 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* Controller drawing (diagram.ts). */
+/* Controller drawing (drawing.ts). */
 
 .diagram {
   display: block;
   width: 100%;
-  max-width: 20rem;
-  margin: 0.5rem auto;
+  max-width: 34rem;
+  margin: 0.75rem auto;
 }
 
 .diagram .body {
   fill: var(--bg);
   stroke: var(--border);
   stroke-width: 2;
+}
+
+.diagram .lightbar {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.6;
 }
 
 .diagram .control {
@@ -136,9 +272,155 @@ body {
   fill: var(--muted);
 }
 
+.diagram .finger {
+  fill: var(--accent);
+  opacity: 0.8;
+}
+
+.diagram .glyph {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.4;
+}
+
+.diagram .glyph-text {
+  fill: var(--muted);
+  stroke: none;
+  font: 600 10px system-ui, sans-serif;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.diagram .control.on .glyph {
+  stroke: var(--card);
+}
+
+.diagram .control.on .glyph-text {
+  fill: var(--card);
+}
+
+.diagram .value {
+  display: none;
+  fill: var(--fg);
+  font: 9px ui-monospace, monospace;
+}
+
+.diagram.show-values .value {
+  display: inline;
+}
+
+/* Folded raw values and reports. */
+
+.raw-values,
+.raw-report {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.raw-values summary,
+.raw-report summary {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-bytes {
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  overflow-x: auto;
+  background: var(--bg);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.decode-error {
+  margin: 0;
+  color: var(--error);
+  font-size: 0.8125rem;
+}
+
+.decode-error:empty {
+  display: none;
+}
+
+.structure {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+/* WebHID panels (hid-live.ts). */
+
+.switch-box {
+  padding: 0.75rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.switch-box p {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 0.75rem;
+}
+
+.panel {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+}
+
+.panel h3 {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.panel-text {
+  margin: 0.25rem 0;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.touch-area {
+  display: block;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+}
+
+.touch-area .finger {
+  fill: var(--accent);
+}
+
+/* Motion rows have no index column. */
+.axes.motion {
+  grid-template-columns: 3.5rem 1fr 3.25rem;
+}
+
+.battery-panel .meter {
+  display: block;
+}
+
 /* Raw buttons and axes (live.ts). The frame loop only sets --value. */
 
-.raw h3 {
+.raw h3,
+.raw-report h3 {
   margin: 1rem 0 0.5rem;
   color: var(--muted);
   font-size: 0.75rem;

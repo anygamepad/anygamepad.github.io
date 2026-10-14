@@ -30,3 +30,27 @@ export class RateMeter {
     if (old > 0) this.changes.splice(0, old);
   }
 }
+
+/** Counts events (WebHID input reports) over the last second. */
+export class CountMeter {
+  /** When each batch was counted (`performance.now()`) and its size. */
+  private batches: [number, number][] = [];
+
+  /** Records `count` events seen at `now`. */
+  add(count: number, now: number): void {
+    if (count > 0) this.batches.push([now, count]);
+    this.forget(now);
+  }
+
+  /** Events per second, over the last second. */
+  rate(now: number): number {
+    this.forget(now);
+    return this.batches.reduce((sum, [, count]) => sum + count, 0);
+  }
+
+  private forget(now: number): void {
+    let old = 0;
+    while (old < this.batches.length && now - (this.batches[old]?.[0] ?? now) > WINDOW_MS) old++;
+    if (old > 0) this.batches.splice(0, old);
+  }
+}
