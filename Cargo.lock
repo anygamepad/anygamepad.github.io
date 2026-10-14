@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "anygamepad"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anygamepad-db",
  "anygamepad-model",
@@ -16,11 +16,11 @@ dependencies = [
 
 [[package]]
 name = "anygamepad-db"
-version = "0.0.0"
+version = "0.0.1"
 
 [[package]]
 name = "anygamepad-model"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "postcard",
  "schemars",
@@ -32,15 +32,15 @@ dependencies = [
 
 [[package]]
 name = "anygamepad-report"
-version = "0.0.0"
+version = "0.0.1"
 
 [[package]]
 name = "anygamepad-virtual"
-version = "0.0.0"
+version = "0.0.1"
 
 [[package]]
 name = "anygamepad-wasm"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anygamepad",
  "anygamepad-model",
