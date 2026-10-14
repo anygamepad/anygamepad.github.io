@@ -176,6 +176,11 @@ the initial curated profiles (D3).
 Polling and event APIs, hotplug events, capability queries, examples (minimal
 game loop, Bevy integration example).
 
+Owner direction (2026-10-14): the Bevy integration is the library's use in
+`germadev/motorust`, which today reads pads through gilrs and, on macOS,
+GameController (`src/gamepads.rs`, `src/gamepads/apple.rs`), feeding Bevy's
+gamepad events, rumble and DualSense adaptive triggers.
+
 ### C11 — Web backend and JS bindings
 
 The library runs in the browser as WebAssembly; the web app (04) is built on

@@ -31,6 +31,14 @@ WebHID can read that report ([research note 09](../../docs/research/09-dualsense
 - **Re-baselined on 2026-10-14.** F1-F3, C1, C2, C11, W1 and W2 are done
   (grey, with their actual dates). Everything else is scheduled from the
   baseline milestone `t0`.
+- **Owner direction (2026-10-14), not yet re-planned:** the owner will
+  integrate the library into `germadev/motorust` (Bevy 0.19; Linux,
+  Windows, macOS and the web) as its gamepad layer, besides the native and
+  web apps. motorust becomes the library's first consumer: C9's Bevy
+  example becomes that integration, and motorust's own gamepad code (gilrs,
+  plus GameController on macOS for the DualSense, rumble and adaptive
+  triggers) is what C6, C7, C14 and C9 must replace without losing
+  anything. This pulls those tasks forward; it needs a re-plan.
 - **Owner direction (2026-10-14), not yet re-planned:** the desktop
   binaries write device reports to files, and the web app keeps them in
   IndexedDB, synchronized with a database later. This changes the
