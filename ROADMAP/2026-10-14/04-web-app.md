@@ -27,11 +27,11 @@ gantt
     F3 done :milestone, f3, 2026-10-10, 0d
     C11 done :milestone, c11, 2026-10-14, 0d
     D2 done :milestone, d2, 2026-10-14, 0d
+    C3 done :milestone, c3, 2026-10-14, 0d
     P1 done :milestone, crit, p1, 2026-10-21, 0d
+    D4 done :milestone, d4, 2026-10-21, 0d
     C15 done :milestone, c15, 2026-10-24, 0d
     P3 done :milestone, p3, 2026-10-31, 0d
-    C3 done :milestone, crit, c3, 2026-11-03, 0d
-    D4 done :milestone, crit, d4, 2026-11-10, 0d
     P2 done :milestone, crit, p2, 2026-11-10, 0d
     P5 done :milestone, crit, p5, 2026-11-20, 0d
     section Web app
@@ -40,7 +40,7 @@ gantt
     W8 Tester layout and device drawings :done, w8, 2026-10-14, 1d
     W3 WebHID mode with PlayStation decoding :w3, after w2 c15 w8, 15d
     W4 Guided mapping wizard (shared with desktop) :w4, after w2 t0, 15d
-    W5 Normalized view (mapping engine + profiles) :crit, w5, after w2 c3 d2 d4, 10d
+    W5 Normalized view (mapping engine + profiles) :w5, after w2 c3 d2 d4, 10d
     W6 Report submission and consent flow :crit, w6, after w4 p1 p2 p3, 10d
     W7 Public launch of the web tester :crit, w7, after w5 w6 p5, 5d
 ```
@@ -53,7 +53,7 @@ gantt
 | W2 | Live tester on the core web backend | 15 | W1, C11 | W3, W4, W5, W8 | 2026-10-13 | 2026-10-14 | done |
 | W3 | WebHID mode with PlayStation decoding | 15 | W2, C15, W8 | - | 2026-10-24 | 2026-11-08 | 82 |
 | W4 | Guided mapping wizard (shared with desktop) | 15 | W2 | A3, W6 | 2026-10-14 | 2026-10-29 | 12 |
-| W5 | **Normalized view (mapping engine + profiles)** | 10 | W2, C3, D2, D4 | W7 | 2026-11-10 | 2026-11-20 | 0 |
+| W5 | Normalized view (mapping engine + profiles) | 10 | W2, C3, D2, D4 | W7 | 2026-10-21 | 2026-10-31 | 20 |
 | W6 | **Report submission and consent flow** | 10 | W4, P1, P2, P3 | W7 | 2026-11-10 | 2026-11-20 | 0 |
 | W7 | **Public launch of the web tester** | 5 | W5, W6, P5 | M2 | 2026-11-20 | 2026-11-25 | 0 |
 | W8 | Tester layout and device drawings | 7 | W2 | W3 | 2026-10-14 | 2026-10-14 | done |

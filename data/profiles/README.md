@@ -94,8 +94,21 @@ A number counts the backend's elements in its order (or SDL's, with
 `a{hid:0x0001:0x0030}`, `h{hid:0x0001:0x0039}.1`.
 
 A button is pressed while its input is at least halfway through its range
-(a button input: while the raw button is pressed). A stick axis goes from -1
-to 1 over its input's range, a trigger from 0 to 1. Stick Y is positive
-**up**; most backends report it positive down, hence `a1~`. An axis can
-also take a table: `{ negative = "b14", positive = "b15" }` for halves
-driven separately, or `{ input = "a5", deadzone = 0.05 }`.
+(a button input: from 30/255 on, the threshold of analog buttons). A stick
+axis goes from -1 to 1 over its input's range, a trigger from 0 to 1. Stick
+Y is positive **up**; most backends report it positive down, hence `a1~`.
+An axis can also take a table: `{ negative = "b14", positive = "b15" }` for
+halves driven separately (they add up: both at once read as rest), or
+`{ input = "a5", deadzone = 0.05 }`. A deadzone reads the first part of the
+travel as rest and scales the rest to start from there.
+
+Two defaults apply to targets no mapping entry sets:
+
+- Raw elements that are already canonical (`b{button:south}`,
+  `a{axis:left_trigger}`, from backends that normalize such as XInput)
+  drive their own control.
+- `left_trigger` and `right_trigger` buttons follow their trigger axis,
+  pressed from 30/255 on. Map them only when the pad has separate digital
+  trigger buttons.
+
+`anygamepad::mapping` applies profiles; its documentation has the details.

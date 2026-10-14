@@ -392,14 +392,20 @@ impl schemars::JsonSchema for AxisMapping {
 /// A target reads its input's position `t` in `[0, 1]` (see [`Input`]):
 ///
 /// - a **button** is pressed while `t` is at least 0.5; a `b` input presses
-///   it while the raw button reads as pressed (the provider's threshold for
-///   analog buttons);
+///   it from 30/255 on, the threshold of analog buttons (Chromium's, and
+///   XInput's for triggers);
 /// - a **stick axis** is `2t - 1` (from -1 to 1), a **trigger axis** is `t`;
-/// - a `negative` half is `-t`, a `positive` half is `t`.
+/// - a `negative` half is `-t`, a `positive` half is `t`; both halves add
+///   up.
 ///
 /// Inactive inputs (the other half of a half axis) leave their target at
 /// rest. Stick Y axes are positive **up** (ADR 0001): most backends report
 /// them positive down, so their inputs end in `~`.
+///
+/// Where no entry sets a target, raw elements that are already canonical
+/// (`b{button:south}`, `a{axis:left_trigger}`) drive their own control, and
+/// a trigger button follows its trigger axis from 30/255 on. The mapping
+/// engine (`anygamepad::mapping`) applies a mapping.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
