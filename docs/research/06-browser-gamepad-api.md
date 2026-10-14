@@ -68,6 +68,12 @@ Switch Pro) appear without VID/PID.
   This is inferred from the two observations above; Chrome's code was not
   re-read. Safari (GameController) and WebHID in Chrome (reading `0x31`, see
   note 09) should both see the pad.
+- Safari on the same Mac shows it (owner's test, 2026-10-14): `id`
+  `"DualSense Wireless Controller Extended Gamepad"` (the GameController
+  format above, no VID/PID), `"standard"` mapping, 17 buttons (no touchpad
+  click), 4 axes, `vibrationActuator` with `dual-rumble` but not
+  `trigger-rumble`. The tester read 0 updates/s with the pad at rest; whether
+  Safari only moves `timestamp` on changes is not yet checked.
 
 ## Implications for anygamepad (C2, C11, W2, W3)
 
