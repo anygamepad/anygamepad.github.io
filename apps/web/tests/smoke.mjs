@@ -246,6 +246,8 @@ const readDetail = () => {
       // Labels printed on an illustration's face buttons.
       labels: [...diagram.querySelectorAll("[data-label]")].map((mark) => mark.dataset.label),
       controls: [...diagram.querySelectorAll(".control")].map((element) => text(element.querySelector("title"))),
+      // Optional controls the pad lacks, dimmed.
+      absent: [...diagram.querySelectorAll(".absent")].map((element) => element.dataset.button),
       fingers: [...diagram.querySelectorAll(".finger")].filter((dot) => dot.getAttribute("visibility") === "visible").length,
     },
     vibration: [...detail.querySelectorAll(".vibration button")].map(
@@ -281,6 +283,14 @@ const FLYDIGI = {
   id: "Flydigi Vader 5 Pro (STANDARD GAMEPAD Vendor: 04b4 Product: 2412)",
   mapping: "standard",
   buttons: Array.from({ length: 19 }, (_, index) => (index === 17 ? 1 : 0)),
+  axes: [0, 0, 0, 0],
+};
+
+// A pad of no known family that reports no extra buttons.
+const SN30 = {
+  id: "8BitDo SN30 Pro (STANDARD GAMEPAD Vendor: 2dc8 Product: 6101)",
+  mapping: "standard",
+  buttons: Array.from({ length: 17 }, () => 0),
   axes: [0, 0, 0, 0],
 };
 
@@ -389,6 +399,7 @@ try {
       "dpad_right", "dpad_down", "dpad_left", "north", "west", "east", "south",
       "left_stick", "right_stick", "home",
     ],
+    absent: [],
     fingers: 0,
   });
   assert.deepEqual(pad.vibration, ["Strong motor", "Weak motor", "Both", "Triggers"]);
@@ -455,24 +466,30 @@ try {
   pad = await until("the next press", detail, (d) => d.buttons[1]?.pressed && !d.buttons[0].pressed);
   assert.deepEqual(pad.diagram.on, ["east"]);
 
-  // The Xbox illustration for both: Xbox labels on the Xbox pad, which has
-  // no C, Z or back buttons; the generic pad has them, without labels.
+  // The Xbox illustration for all three: Xbox labels on the Xbox pad, which
+  // has no back buttons and C and Z dimmed; the generic pads have back
+  // buttons, no labels, and C and Z dimmed unless the pad reports them.
   const xboxControls = [
     "left_shoulder", "right_shoulder", "home", "select", "start", "share", "left_stick", "right_stick",
     "dpad_up", "dpad_left", "dpad_right", "dpad_down", "north", "west", "east", "south",
   ];
-  await setGamepads([XBOX, FLYDIGI]);
+  const paddles = ["left_paddle_1", "left_paddle_2", "right_paddle_2", "right_paddle_1"];
+  await setGamepads([XBOX, FLYDIGI, SN30]);
   await until("the Xbox pad", detail, (d) => d?.ready && d.diagram?.label === "Xbox controller, canonical positions");
   pad = await detail();
   assert.deepEqual(pad.diagram.labels, ["y", "x", "b", "a"]);
   assert.deepEqual(pad.diagram.controls, xboxControls);
+  assert.deepEqual(pad.diagram.absent, ["extra_0", "extra_1"]);
   await select("Flydigi Vader 5 Pro");
   pad = await until("the generic pad", detail, (d) => d.ready && d.diagram?.label === "Controller, canonical positions");
   assert.deepEqual(pad.diagram.on, ["extra_0"]);
   assert.deepEqual(pad.diagram.labels, []);
-  assert.deepEqual(pad.diagram.controls, [
-    "left_paddle_1", "left_paddle_2", "right_paddle_2", "right_paddle_1", ...xboxControls, "extra_0", "extra_1",
-  ]);
+  assert.deepEqual(pad.diagram.controls, [...paddles, ...xboxControls, "extra_0", "extra_1"]);
+  assert.deepEqual(pad.diagram.absent, []);
+  await select("8BitDo SN30 Pro");
+  pad = await until("the pad without C and Z", detail, (d) => d.ready && d.name === "8BitDo SN30 Pro" && d.diagram);
+  assert.deepEqual(pad.diagram.controls, [...paddles, ...xboxControls]);
+  assert.deepEqual(pad.diagram.absent, ["extra_0", "extra_1"]);
 
   // WebHID: a DualSense picked in the chooser takes the place of its Gamepad
   // API twin, decoded: the reduced Bluetooth report first.

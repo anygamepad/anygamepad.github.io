@@ -60,17 +60,25 @@ export interface ArtLayout {
   svg: string;
   /** Controls of the illustration this family does not have. */
   hide?: readonly Button[];
+  /**
+   * Optional controls (`data-optional`) this family does not have, dimmed
+   * whatever buttons the pad reports.
+   */
+  dim?: readonly Button[];
 }
 
 export type Layout = ShapeLayout | ArtLayout;
 
-// The owner's illustration (art/xbox.svg). Xbox pads have neither C and Z
-// nor back buttons (the Elite's paddles are not told apart yet).
+// The owner's illustration (art/xbox.svg). Xbox pads have no back buttons
+// (the Elite's paddles are not told apart yet), and C and Z show dimmed:
+// Chromium reports an Xbox Series pad's share button as the first extra
+// button, so the buttons the pad reports cannot tell.
 const XBOX: ArtLayout = {
   kind: "art",
   name: "Xbox controller",
   svg: xbox,
-  hide: ["extra_0", "extra_1", "left_paddle_1", "left_paddle_2", "right_paddle_1", "right_paddle_2"],
+  hide: ["left_paddle_1", "left_paddle_2", "right_paddle_1", "right_paddle_2"],
+  dim: ["extra_0", "extra_1"],
 };
 
 const GENERIC: ArtLayout = {

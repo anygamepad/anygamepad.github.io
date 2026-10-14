@@ -40,7 +40,7 @@ export class LiveView {
     this.rate = element("p", "rate", root, "Waiting for data…");
 
     if (info.canonical) {
-      this.drawing = new ControllerDrawing(layoutFor(info.family), info.face_layout);
+      this.drawing = new ControllerDrawing(layoutFor(info.family), info.face_layout, info.capabilities?.buttons);
       root.append(this.drawing.element);
     }
 

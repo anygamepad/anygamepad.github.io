@@ -83,13 +83,17 @@ export class ControllerDrawing {
   private lastAxes = "";
   private lastTouches = "";
 
-  constructor(layout: Layout, labels: FaceLayout | undefined) {
+  /**
+   * `buttons` are the buttons the pad reports, when known: an illustration's
+   * optional controls the pad lacks are dimmed.
+   */
+  constructor(layout: Layout, labels: FaceLayout | undefined, buttons?: readonly Button[]) {
     const root = document.createElementNS(SVG_NS, "svg");
     root.setAttribute("class", "diagram");
     root.setAttribute("role", "img");
     root.setAttribute("aria-label", `${layout.name}, canonical positions`);
     this.element = root;
-    if (layout.kind === "art") this.illustration(layout, labels);
+    if (layout.kind === "art") this.illustration(layout, labels, buttons);
     else this.shapes(layout, labels);
 
     if (this.touchpad) {
@@ -148,7 +152,7 @@ export class ControllerDrawing {
   }
 
   /** Builds a drawing from an illustration (see art/dualsense.svg). */
-  private illustration(layout: ArtLayout, labels: FaceLayout | undefined): void {
+  private illustration(layout: ArtLayout, labels: FaceLayout | undefined, buttons: readonly Button[] | undefined): void {
     const root = this.element;
     const source = new DOMParser().parseFromString(layout.svg, "image/svg+xml").documentElement;
     const viewBox = source.getAttribute("viewBox") ?? `0 0 ${BASE_WIDTH} 260`;
@@ -166,8 +170,17 @@ export class ControllerDrawing {
     for (const element of root.querySelectorAll<SVGGElement>("[data-button]")) {
       const button = element.dataset.button as Button;
       const title = document.createElementNS(SVG_NS, "title");
-      title.textContent = button;
       element.prepend(title);
+      // An optional control the pad lacks: dimmed, never lit.
+      const absent =
+        element.hasAttribute("data-optional") &&
+        (layout.dim?.includes(button) || (buttons !== undefined && !buttons.includes(button)));
+      if (absent) {
+        title.textContent = `${button} (not on this pad)`;
+        element.classList.add("absent");
+        continue;
+      }
+      title.textContent = button;
       element.classList.add("control");
       this.controls.set(button, element);
     }

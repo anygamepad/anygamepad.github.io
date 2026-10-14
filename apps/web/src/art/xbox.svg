@@ -9,6 +9,7 @@
     dualsense.svg (data-button, data-stick with data-cap, data-trigger).
     data-label on a face button's mark: the mark shows only when the pad's
     face layout gives the button that label.
+    data-optional on a control: dimmed, and never lit, on pads without it.
   -->
   <defs>
     <linearGradient id="xb-body" x1="0" y1="0" x2="0" y2="1">
@@ -178,13 +179,13 @@
   </g>
 
   <!-- C and Z, below the face buttons (Flydigi Vader 5 Pro) -->
-  <g data-button="extra_0">
+  <g data-button="extra_0" data-optional="">
     <circle class="shape" cx="559" cy="360" r="21"
             fill="url(#xb-btn)" stroke="#c4c8d5" stroke-width="1.8" filter="url(#xb-soft)"/>
     <path class="mark" d="M566 353 C562 350 552 351 552 360 C552 369 562 370 566 367"
           fill="none" stroke="#8a8fa2" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <g data-button="extra_1">
+  <g data-button="extra_1" data-optional="">
     <circle class="shape" cx="601.5" cy="326" r="21"
             fill="url(#xb-btn)" stroke="#c4c8d5" stroke-width="1.8" filter="url(#xb-soft)"/>
     <path class="mark" d="M594.5 318 H608.5 L594.5 334 H608.5"

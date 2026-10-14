@@ -362,6 +362,10 @@ body {
 }
 
 /* Illustrations (art/*.svg): their own colours, the accent when pressed. */
+.diagram .absent {
+  opacity: 0.35;
+}
+
 .diagram .control.on .shape {
   fill: var(--accent);
   stroke: var(--accent);
