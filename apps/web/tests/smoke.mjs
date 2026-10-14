@@ -294,6 +294,13 @@ const SN30 = {
   axes: [0, 0, 0, 0],
 };
 
+const DUALSHOCK3 = {
+  id: "Sony PLAYSTATION(R)3 Controller (STANDARD GAMEPAD Vendor: 054c Product: 0268)",
+  mapping: "standard",
+  buttons: Array.from({ length: 17 }, (_, index) => (index === 0 ? 1 : 0)),
+  axes: [0, 0, 0, 0],
+};
+
 const XBOX = {
   id: "Xbox 360 Controller (XInput STANDARD GAMEPAD)",
   mapping: "standard",
@@ -347,6 +354,8 @@ try {
   assert.doesNotMatch(policy ?? "", /'unsafe-eval'|'unsafe-inline'/);
 
   await page.waitForSelector(".message");
+  // No pad yet: the generic drawing stands in for the selected one.
+  await page.waitForSelector(".placeholder .diagram");
   assert.match(await page.innerText(".tagline"), /library \d+\.\d+\.\d+ in WebAssembly/);
   assert.match(await page.innerText(".environment"), new RegExp(`^${target.engine} \\d+ on \\w+$`));
   assert.equal(await page.locator(".hint").count(), 0);
@@ -373,6 +382,7 @@ try {
   assert.deepEqual(await until("two pads", padNames, (names) => names.length === 2), ["Wireless Controller", "USB Gamepad"]);
   let pad = await until("the update rate", detail, (d) => d?.ready && /^[1-9]\d* updates\/s$/.test(d.rate ?? ""));
   assert.equal(pad.name, "Wireless Controller");
+  assert.equal(await page.locator(".placeholder").count(), 0);
   assert.equal(pad.facts, '054c:09cc · "standard" mapping · 18 buttons · 4 axes');
   assert.equal(pad.gamepadId, DUALSHOCK.id);
   assert.equal(pad.rawOpen, false);
@@ -491,6 +501,16 @@ try {
   assert.deepEqual(pad.diagram.controls, [...paddles, ...xboxControls]);
   assert.deepEqual(pad.diagram.absent, ["extra_0", "extra_1"]);
 
+  // The DualShock 3 illustration.
+  await setGamepads([DUALSHOCK3]);
+  pad = await until("the DualShock 3", detail, (d) => d?.ready && d.diagram?.label === "DualShock 3, canonical positions");
+  assert.deepEqual(pad.diagram.controls, [
+    "left_shoulder", "right_shoulder", "select", "start", "home", "dpad_up", "dpad_down", "dpad_left",
+    "dpad_right", "north", "west", "east", "south", "left_stick", "right_stick",
+  ]);
+  pad = await until("the DualShock 3's press", detail, (d) => d.diagram.on.length > 0);
+  assert.deepEqual(pad.diagram.on, ["south"]);
+
   // WebHID: a DualSense picked in the chooser takes the place of its Gamepad
   // API twin, decoded: the reduced Bluetooth report first.
   await setGamepads([DUALSENSE]);
@@ -554,6 +574,7 @@ try {
   await page.waitForSelector(".pads", { state: "detached" });
   await page.waitForSelector(".detail", { state: "detached" });
   await page.waitForSelector(".message");
+  await page.waitForSelector(".placeholder .diagram");
 
   // The activity log holds the whole session, in time order.
   const [logDownload] = await Promise.all([
@@ -573,7 +594,7 @@ try {
     of("gamepad_added").map((event) => event.identity.web.id),
     // The DualSense's Gamepad API twin stays connected while WebHID reads
     // the pad: the list only hides it.
-    [DUALSHOCK.id, GENERIC.id, XBOX.id, FLYDIGI.id, SN30.id, DUALSENSE.id],
+    [DUALSHOCK.id, GENERIC.id, XBOX.id, FLYDIGI.id, SN30.id, DUALSHOCK3.id, DUALSENSE.id],
   );
   assert.equal(of("gamepad_removed").length, of("gamepad_added").length);
   const dualshock = of("gamepad_added")[0].pad;

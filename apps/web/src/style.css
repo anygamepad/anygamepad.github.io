@@ -259,6 +259,32 @@ body {
   border-radius: 0.5rem;
 }
 
+/* Where the selected pad goes, while there is none. */
+.placeholder {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+  padding: 1.5rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.5rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.placeholder p {
+  margin: 0;
+}
+
+.placeholder-art {
+  width: 100%;
+}
+
+.placeholder .diagram {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
 .detail-head {
   display: flex;
   flex-wrap: wrap;

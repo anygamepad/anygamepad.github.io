@@ -20,7 +20,9 @@ import {
   type OutputCommand,
 } from "./wasm/anygamepad_wasm.js";
 import { ActivityLog } from "./activity";
+import { ControllerDrawing } from "./drawing";
 import { HidLiveView } from "./hid-live";
+import { layoutFor } from "./layouts";
 import { LiveView } from "./live";
 import { CountMeter, RateMeter } from "./rate";
 
@@ -571,6 +573,12 @@ export class Tester {
     }
   }
 
+  /** While no pad is selected: the generic drawing, at rest, in its place. */
+  private drawPlaceholder(): void {
+    const slot = document.querySelector<HTMLElement>(".placeholder-art");
+    if (slot && !slot.firstChild) slot.append(new ControllerDrawing(layoutFor(undefined), undefined).element);
+  }
+
   /** Builds the live view of the selected pad when needed, and updates it. */
   private drawSelected(now: number, reads: Map<string, GamepadRead>): void {
     const key = this.view.selected;
@@ -578,6 +586,7 @@ export class Tester {
     const root = document.querySelector<HTMLElement>(".live");
     if (!pad || !root) {
       this.live = undefined;
+      this.drawPlaceholder();
       return;
     }
     // jq79 renders the detail; the live view moves in once it exists, and

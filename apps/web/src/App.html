@@ -95,6 +95,10 @@
       <small :if="!current.rumble" class="note">This browser cannot vibrate this gamepad.</small>
     </footer>
   </section>
+  <section :else class="placeholder">
+    <div class="placeholder-art" aria-hidden="true"></div>
+    <p>The selected gamepad shows here, drawn live as you use it.</p>
+  </section>
 </main>
 
 <footer :if="environment" class="environment">

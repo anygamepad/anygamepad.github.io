@@ -11,6 +11,7 @@
 
 import type { Button, Family } from "./wasm/anygamepad_wasm.js";
 import dualsense from "./art/dualsense.svg?raw";
+import dualshock3 from "./art/dualshock3.svg?raw";
 import dualshock4 from "./art/dualshock4.svg?raw";
 import xbox from "./art/xbox.svg?raw";
 
@@ -112,22 +113,11 @@ const DUALSENSE: ArtLayout = {
   svg: dualsense,
 };
 
-const DUALSHOCK3: ShapeLayout = {
-  kind: "shapes",
+// The owner's illustration (art/dualshock3.svg).
+const DUALSHOCK3: ArtLayout = {
+  kind: "art",
   name: "DualShock 3",
-  height: 260,
-  body:
-    "M104 54 C124 46 152 44 200 44 C248 44 276 46 296 54 C336 62 358 86 370 128 " +
-    "C384 176 392 220 368 242 C348 260 318 250 298 222 C286 204 274 196 254 196 H146 " +
-    "C126 196 114 204 102 222 C82 250 52 260 32 242 C8 220 16 176 30 128 C42 86 64 62 104 54 Z",
-  triggers: [76, 264],
-  sticks: [[154, 156], [246, 156]],
-  dpad: [88, 108],
-  face: [312, 108],
-  select: [180, 96],
-  start: [220, 96],
-  home: [200, 124],
-  extras: [],
+  svg: dualshock3,
 };
 
 // The owner's illustration (art/dualshock4.svg).
