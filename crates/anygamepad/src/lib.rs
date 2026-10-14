@@ -7,12 +7,17 @@
 //! This crate is the public facade that games depend on. It is not usable yet:
 //! the project is in its first development phase.
 //!
+//! Providers ([`provider`]) read the raw elements of each device; the
+//! mapping engine ([`mapping`]) applies the device's profile
+//! ([`db`]) to turn them into the canonical model ([`model`]).
+//!
 //! # Features
 //!
 //! - `web` (default): the browser provider ([`web`]), active on
 //!   `wasm32-unknown-unknown`.
 #![forbid(unsafe_code)]
 
+pub mod mapping;
 pub mod protocol;
 pub mod provider;
 #[cfg(feature = "web")]

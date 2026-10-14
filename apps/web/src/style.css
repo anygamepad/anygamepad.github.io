@@ -198,7 +198,8 @@ body {
   overflow-wrap: anywhere;
 }
 
-.webhid {
+.webhid,
+.activity {
   padding: 1rem;
   background: var(--card);
   border: 1px solid var(--border);
@@ -206,12 +207,14 @@ body {
   font-size: 0.875rem;
 }
 
-.webhid h2 {
+.webhid h2,
+.activity h2 {
   margin: 0;
   font-size: 1rem;
 }
 
-.webhid p {
+.webhid p,
+.activity p {
   margin: 0.5rem 0;
   color: var(--muted);
 }
@@ -254,6 +257,32 @@ body {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
+}
+
+/* Where the selected pad goes, while there is none. */
+.placeholder {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+  padding: 1.5rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.5rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.placeholder p {
+  margin: 0;
+}
+
+.placeholder-art {
+  width: 100%;
+}
+
+.placeholder .diagram {
+  opacity: 0.35;
+  filter: grayscale(1);
 }
 
 .detail-head {
@@ -362,6 +391,10 @@ body {
 }
 
 /* Illustrations (art/*.svg): their own colours, the accent when pressed. */
+.diagram .absent {
+  opacity: 0.35;
+}
+
 .diagram .control.on .shape {
   fill: var(--accent);
   stroke: var(--accent);

@@ -243,6 +243,11 @@ const readDetail = () => {
         ? [...diagram.querySelectorAll(".value")].map((value) => value.textContent)
         : null,
       glyphs: [...diagram.querySelectorAll(".glyph-text")].map((glyph) => glyph.textContent),
+      // Labels printed on an illustration's face buttons.
+      labels: [...diagram.querySelectorAll("[data-label]")].map((mark) => mark.dataset.label),
+      controls: [...diagram.querySelectorAll(".control")].map((element) => text(element.querySelector("title"))),
+      // Optional controls the pad lacks, dimmed.
+      absent: [...diagram.querySelectorAll(".absent")].map((element) => element.dataset.button),
       fingers: [...diagram.querySelectorAll(".finger")].filter((dot) => dot.getAttribute("visibility") === "visible").length,
     },
     vibration: [...detail.querySelectorAll(".vibration button")].map(
@@ -278,6 +283,21 @@ const FLYDIGI = {
   id: "Flydigi Vader 5 Pro (STANDARD GAMEPAD Vendor: 04b4 Product: 2412)",
   mapping: "standard",
   buttons: Array.from({ length: 19 }, (_, index) => (index === 17 ? 1 : 0)),
+  axes: [0, 0, 0, 0],
+};
+
+// A pad of no known family that reports no extra buttons.
+const SN30 = {
+  id: "8BitDo SN30 Pro (STANDARD GAMEPAD Vendor: 2dc8 Product: 6101)",
+  mapping: "standard",
+  buttons: Array.from({ length: 17 }, () => 0),
+  axes: [0, 0, 0, 0],
+};
+
+const DUALSHOCK3 = {
+  id: "Sony PLAYSTATION(R)3 Controller (STANDARD GAMEPAD Vendor: 054c Product: 0268)",
+  mapping: "standard",
+  buttons: Array.from({ length: 17 }, (_, index) => (index === 0 ? 1 : 0)),
   axes: [0, 0, 0, 0],
 };
 
@@ -334,6 +354,8 @@ try {
   assert.doesNotMatch(policy ?? "", /'unsafe-eval'|'unsafe-inline'/);
 
   await page.waitForSelector(".message");
+  // No pad yet: the generic drawing stands in for the selected one.
+  await page.waitForSelector(".placeholder .diagram");
   assert.match(await page.innerText(".tagline"), /library \d+\.\d+\.\d+ in WebAssembly/);
   assert.match(await page.innerText(".environment"), new RegExp(`^${target.engine} \\d+ on \\w+$`));
   assert.equal(await page.locator(".hint").count(), 0);
@@ -360,6 +382,7 @@ try {
   assert.deepEqual(await until("two pads", padNames, (names) => names.length === 2), ["Wireless Controller", "USB Gamepad"]);
   let pad = await until("the update rate", detail, (d) => d?.ready && /^[1-9]\d* updates\/s$/.test(d.rate ?? ""));
   assert.equal(pad.name, "Wireless Controller");
+  assert.equal(await page.locator(".placeholder").count(), 0);
   assert.equal(pad.facts, '054c:09cc · "standard" mapping · 18 buttons · 4 axes');
   assert.equal(pad.gamepadId, DUALSHOCK.id);
   assert.equal(pad.rawOpen, false);
@@ -380,6 +403,13 @@ try {
     sticks: ["translate(0.0 0.0)", "translate(0.0 0.0)"],
     values: null,
     glyphs: [],
+    labels: [],
+    controls: [
+      "left_shoulder", "right_shoulder", "touchpad_click", "select", "start", "dpad_up",
+      "dpad_right", "dpad_down", "dpad_left", "north", "west", "east", "south",
+      "left_stick", "right_stick", "home",
+    ],
+    absent: [],
     fingers: 0,
   });
   assert.deepEqual(pad.vibration, ["Strong motor", "Weak motor", "Both", "Triggers"]);
@@ -446,15 +476,40 @@ try {
   pad = await until("the next press", detail, (d) => d.buttons[1]?.pressed && !d.buttons[0].pressed);
   assert.deepEqual(pad.diagram.on, ["east"]);
 
-  // The drawing of each family: Xbox labels, the generic pad's C and Z.
-  await setGamepads([XBOX, FLYDIGI]);
+  // The Xbox illustration for all three: Xbox labels on the Xbox pad, which
+  // has no back buttons and C and Z dimmed; the generic pads have back
+  // buttons, no labels, and C and Z dimmed unless the pad reports them.
+  const xboxControls = [
+    "left_shoulder", "right_shoulder", "home", "select", "start", "share", "left_stick", "right_stick",
+    "dpad_up", "dpad_left", "dpad_right", "dpad_down", "north", "west", "east", "south",
+  ];
+  const paddles = ["left_paddle_1", "left_paddle_2", "right_paddle_2", "right_paddle_1"];
+  await setGamepads([XBOX, FLYDIGI, SN30]);
   await until("the Xbox pad", detail, (d) => d?.ready && d.diagram?.label === "Xbox controller, canonical positions");
   pad = await detail();
-  assert.deepEqual(pad.diagram.glyphs, ["Y", "A", "X", "B"]);
+  assert.deepEqual(pad.diagram.labels, ["y", "x", "b", "a"]);
+  assert.deepEqual(pad.diagram.controls, xboxControls);
+  assert.deepEqual(pad.diagram.absent, ["extra_0", "extra_1"]);
   await select("Flydigi Vader 5 Pro");
   pad = await until("the generic pad", detail, (d) => d.ready && d.diagram?.label === "Controller, canonical positions");
   assert.deepEqual(pad.diagram.on, ["extra_0"]);
-  assert.deepEqual(pad.diagram.glyphs, ["C", "Z"]);
+  assert.deepEqual(pad.diagram.labels, []);
+  assert.deepEqual(pad.diagram.controls, [...paddles, ...xboxControls, "extra_0", "extra_1"]);
+  assert.deepEqual(pad.diagram.absent, []);
+  await select("8BitDo SN30 Pro");
+  pad = await until("the pad without C and Z", detail, (d) => d.ready && d.name === "8BitDo SN30 Pro" && d.diagram);
+  assert.deepEqual(pad.diagram.controls, [...paddles, ...xboxControls]);
+  assert.deepEqual(pad.diagram.absent, ["extra_0", "extra_1"]);
+
+  // The DualShock 3 illustration.
+  await setGamepads([DUALSHOCK3]);
+  pad = await until("the DualShock 3", detail, (d) => d?.ready && d.diagram?.label === "DualShock 3, canonical positions");
+  assert.deepEqual(pad.diagram.controls, [
+    "left_shoulder", "right_shoulder", "select", "start", "home", "dpad_up", "dpad_down", "dpad_left",
+    "dpad_right", "north", "west", "east", "south", "left_stick", "right_stick",
+  ]);
+  pad = await until("the DualShock 3's press", detail, (d) => d.diagram.on.length > 0);
+  assert.deepEqual(pad.diagram.on, ["south"]);
 
   // WebHID: a DualSense picked in the chooser takes the place of its Gamepad
   // API twin, decoded: the reduced Bluetooth report first.
@@ -519,6 +574,43 @@ try {
   await page.waitForSelector(".pads", { state: "detached" });
   await page.waitForSelector(".detail", { state: "detached" });
   await page.waitForSelector(".message");
+  await page.waitForSelector(".placeholder .diagram");
+
+  // The activity log holds the whole session, in time order.
+  const [logDownload] = await Promise.all([
+    page.waitForEvent("download", { timeout: 10000 }),
+    page.getByRole("button", { name: "Download the activity log" }).click(),
+  ]);
+  assert.match(logDownload.suggestedFilename(), /^anygamepad-activity-\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d\.json$/);
+  const log = JSON.parse(await readFile(await logDownload.path(), "utf8"));
+  assert.equal(log.format, "anygamepad-activity-log-v1");
+  assert.match(log.library, /^\d+\.\d+\.\d+$/);
+  assert.equal(log.environment.browser.engine, target.engine);
+  assert.equal(log.dropped_input_events, 0);
+  assert.ok(log.events.every((event, i) => i === 0 || log.events[i - 1].t <= event.t), "events in time order");
+  const of = (type) => log.events.filter((event) => event.type === type);
+  assert.equal(log.events[0].type, "session");
+  assert.deepEqual(
+    of("gamepad_added").map((event) => event.identity.web.id),
+    // The DualSense's Gamepad API twin stays connected while WebHID reads
+    // the pad: the list only hides it.
+    [DUALSHOCK.id, GENERIC.id, XBOX.id, FLYDIGI.id, SN30.id, DUALSHOCK3.id, DUALSENSE.id],
+  );
+  assert.equal(of("gamepad_removed").length, of("gamepad_added").length);
+  const dualshock = of("gamepad_added")[0].pad;
+  assert.ok(of("button").some((event) => event.pad === dualshock && event.index === 0 && event.pressed));
+  assert.ok(of("axis").some((event) => event.pad === dualshock && event.index === 1 && event.value === -1));
+  assert.ok(of("canonical_buttons").some((event) => event.pad === dualshock && event.pressed.join() === "south,dpad_up,right_trigger"));
+  assert.deepEqual(of("vibration_test").map((event) => event.kind), ["strong", "triggers", "strong"]);
+  const [hid] = of("hid_added");
+  assert.equal(hid.identity.product_id, 0x0ce6);
+  assert.deepEqual(of("hid_chooser").map((event) => event.picked), [1]);
+  assert.deepEqual(
+    of("hid_report_sample").map((event) => [event.report_id, event.length]),
+    [[0x01, 9], [0x31, 77]],
+  );
+  assert.deepEqual(of("hid_report_form").map((event) => event.form), ["bluetooth_reduced", "bluetooth_full"]);
+  assert.ok(["hid_opened", "hid_switch_to_full", "hid_recording", "hid_removed", "power", "touches"].every((type) => of(type).length > 0));
   await context.close();
 
   // The theme follows the system until the viewer picks one, which a reload

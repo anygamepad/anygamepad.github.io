@@ -14,10 +14,15 @@ import {
   version,
   type DeviceInfo,
   type Environment,
+  type GamepadSnapshot,
+  type GamepadState,
   type HidDeviceInfo,
   type OutputCommand,
 } from "./wasm/anygamepad_wasm.js";
+import { ActivityLog } from "./activity";
+import { ControllerDrawing } from "./drawing";
 import { HidLiveView } from "./hid-live";
+import { layoutFor } from "./layouts";
 import { LiveView } from "./live";
 import { CountMeter, RateMeter } from "./rate";
 
@@ -93,6 +98,9 @@ export const RECORD_MS = 2000;
 
 /** The sampler's period (browsers clamp timers to about 4 ms). */
 const SAMPLE_MS = 4;
+
+/** How often the activity log notes each pad's update rate, in milliseconds. */
+const RATE_LOG_MS = 10_000;
 
 const hex = (value: number | undefined): string =>
   value === undefined ? "----" : value.toString(16).padStart(4, "0");
@@ -176,6 +184,25 @@ type Pad = GamepadPad | HidPad;
 
 const toHex = (data: Uint8Array): string => Array.from(data, (byte) => byte.toString(16).padStart(2, "0")).join("");
 
+/** Downloads `content` as a JSON file. */
+const saveJson = (name: string, content: unknown): void => {
+  const blob = new Blob([JSON.stringify(content, null, 1)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+};
+
+/** A timestamp for file names: `2026-10-14T08-47-11`. */
+const fileTime = (): string => new Date().toISOString().slice(0, 19).replaceAll(":", "-");
+
+/** A Gamepad API pad as read in one frame. */
+interface GamepadRead {
+  snapshot: GamepadSnapshot;
+  state: GamepadState | undefined;
+}
+
 export class Tester {
   private gamepads: Gamepads | undefined;
   private hids: HidDevices | undefined;
@@ -184,14 +211,20 @@ export class Tester {
   private live: { key: string; root: HTMLElement; view: LiveView | HidLiveView } | undefined;
   private sampler: number | undefined;
   private frame = 0;
+  private readonly log = new ActivityLog();
+  private lastRateLog = 0;
 
   /** Starts reading gamepads into `view` (a component's reactive data). */
   start(view: TesterView): void {
     this.view = view;
+    window.addEventListener("error", (event) => this.log.event("page_error", { message: event.message }));
+    window.addEventListener("unhandledrejection", (event) =>
+      this.log.event("page_error", { message: String(event.reason) }),
+    );
     try {
       this.gamepads = new Gamepads();
     } catch (error) {
-      view.error = `This browser cannot read gamepads (${String(error)}).`;
+      this.fail(`This browser cannot read gamepads (${String(error)}).`);
       return;
     }
     view.environment = this.gamepads.environment();
@@ -204,6 +237,12 @@ export class Tester {
         // WebHID present but unusable (a policy): the Gamepad API still works.
       }
     }
+    this.log.event("session", {
+      library: version(),
+      environment: view.environment,
+      webhid: view.webhid,
+      hint: view.hint,
+    });
     document.addEventListener("visibilitychange", this.onVisibility);
     this.onVisibility();
     this.frame = requestAnimationFrame(this.draw);
@@ -227,22 +266,27 @@ export class Tester {
     this.view.hidMessage = null;
     hids.request().then(
       (picked) => {
+        this.log.event("hid_chooser", { picked });
         if (picked === 0) this.view.hidMessage = "No device picked.";
       },
-      (error: unknown) => {
-        this.view.hidMessage = `WebHID refused (${String(error)}).`;
-      },
+      (error: unknown) => this.hidNote(`WebHID refused (${String(error)}).`),
     );
+  };
+
+  /** Downloads the activity log (call it from a click). */
+  readonly downloadLog = (): void => {
+    saveJson(`anygamepad-activity-${fileTime()}.json`, this.log.toJSON(version(), this.view.environment));
   };
 
   /** Runs a short vibration test on a Gamepad API pad. */
   readonly rumble = (key: string, kind: RumbleKind): void => {
     const pad = this.pads.get(key);
     if (!this.gamepads || pad?.source !== "gamepad") return;
+    this.log.event("vibration_test", { pad: key, kind });
     try {
       this.gamepads.send(pad.id, rumbleCommand(kind, 1));
     } catch (error) {
-      this.view.error = `Vibration failed (${String(error)}).`;
+      this.fail(`Vibration failed (${String(error)}).`);
       return;
     }
     // One timer stops every motor, including those of a test it cut short.
@@ -274,8 +318,21 @@ export class Tester {
     this.hids = undefined;
   }
 
+  /** Shows an error, and logs it. */
+  private fail(message: string): void {
+    this.view.error = message;
+    this.log.event("error", { message });
+  }
+
+  /** Shows the outcome of a WebHID action, and logs it. */
+  private hidNote(message: string): void {
+    this.view.hidMessage = message;
+    this.log.event("hid_message", { message });
+  }
+
   // A hidden page needs neither loop (the frame loop pauses by itself).
   private readonly onVisibility = (): void => {
+    this.log.event(document.hidden ? "page_hidden" : "page_visible");
     window.clearInterval(this.sampler);
     this.sampler = document.hidden ? undefined : window.setInterval(this.sample, SAMPLE_MS);
   };
@@ -303,7 +360,7 @@ export class Tester {
         if (timestamp !== undefined) pad.rate.sample(timestamp, now);
       }
     } catch (error) {
-      this.view.error = `Reading the gamepads failed (${String(error)}).`;
+      this.fail(`Reading the gamepads failed (${String(error)}).`);
       window.clearInterval(this.sampler);
     }
   };
@@ -315,6 +372,17 @@ export class Tester {
     gamepads.open(id);
     const row = gamepadRow(id, info);
     this.pads.set(row.key, { source: "gamepad", id, info, row, rate: new RateMeter(), rumbleTimer: undefined });
+    this.log.event("gamepad_added", {
+      pad: row.key,
+      identity: info.identity,
+      fingerprint: info.fingerprint,
+      family: info.family,
+      face_layout: info.face_layout,
+      buttons: info.layout.buttons.length,
+      axes: info.layout.axes.length,
+      outputs: info.outputs,
+      canonical: info.canonical,
+    });
   }
 
   private addHid(id: number): void {
@@ -333,15 +401,24 @@ export class Tester {
       recording: undefined,
     };
     this.pads.set(row.key, pad);
+    this.log.event("hid_added", {
+      pad: row.key,
+      identity: info.identity,
+      fingerprint: info.fingerprint,
+      family: info.family,
+      transport: info.transport,
+      decoded: info.decoded,
+      touchpad: info.touchpad,
+      collections: info.collections,
+    });
     // Opening sends nothing to the device; it starts queueing its reports.
     hids.open(id).then(
       () => {
         pad.open = true;
+        this.log.event("hid_opened", { pad: row.key });
         this.refresh();
       },
-      (error: unknown) => {
-        this.view.hidMessage = `Cannot open ${row.name} (${String(error)}).`;
-      },
+      (error: unknown) => this.hidNote(`Cannot open ${row.name} (${String(error)}).`),
     );
   }
 
@@ -349,6 +426,8 @@ export class Tester {
     const pad = this.pads.get(key);
     if (pad?.source === "gamepad") window.clearTimeout(pad.rumbleTimer);
     this.pads.delete(key);
+    this.log.event(key.startsWith("webhid:") ? "hid_removed" : "gamepad_removed", { pad: key });
+    this.log.forget(key);
   }
 
   /**
@@ -378,18 +457,19 @@ export class Tester {
   private switchToFull(pad: HidPad): void {
     if (!this.hids || pad.switching) return;
     pad.switching = true;
+    this.log.event("hid_switch_to_full", { pad: pad.row.key });
     this.hids
       .switchToFullReports(pad.id)
-      .catch((error: unknown) => {
-        this.view.hidMessage = `Switching failed (${String(error)}).`;
-      })
+      .catch((error: unknown) => this.hidNote(`Switching failed (${String(error)}).`))
       .finally(() => {
         pad.switching = false;
       });
   }
 
   private record(pad: HidPad): void {
-    if (!pad.recording) pad.recording = { start: performance.now(), reports: [] };
+    if (pad.recording) return;
+    pad.recording = { start: performance.now(), reports: [] };
+    this.log.event("hid_recording", { pad: pad.row.key });
   }
 
   /** Downloads a recording: the device's identity and structure, and its reports. */
@@ -409,25 +489,47 @@ export class Tester {
       },
       reports: recording.reports,
     };
-    const blob = new Blob([JSON.stringify(content, null, 1)], { type: "application/json" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `anygamepad-${pad.row.ids.replace(":", "-")}-${new Date().toISOString().slice(0, 19)}.json`;
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    saveJson(`anygamepad-${pad.row.ids.replace(":", "-")}-${new Date().toISOString().slice(0, 19)}.json`, content);
   }
 
   private readonly draw = (): void => {
     try {
       const now = performance.now();
       this.drainHid(now);
-      this.drawSelected(now);
+      const reads = this.readGamepads();
+      this.drawSelected(now, reads);
+      this.logRates(now);
     } catch (error) {
-      this.view.error = `Drawing the gamepads failed (${String(error)}).`;
+      this.fail(`Drawing the gamepads failed (${String(error)}).`);
       return;
     }
     this.frame = requestAnimationFrame(this.draw);
   };
+
+  /** Reads every Gamepad API pad once a frame, for the log and the live view. */
+  private readGamepads(): Map<string, GamepadRead> {
+    const reads = new Map<string, GamepadRead>();
+    const gamepads = this.gamepads;
+    if (!gamepads) return reads;
+    for (const pad of this.pads.values()) {
+      if (pad.source !== "gamepad") continue;
+      const snapshot = gamepads.snapshot(pad.id);
+      if (snapshot === undefined) continue;
+      const state = pad.info.canonical ? gamepads.state(pad.id) : undefined;
+      this.log.gamepad(pad.row.key, snapshot, state);
+      reads.set(pad.row.key, { snapshot, state });
+    }
+    return reads;
+  }
+
+  /** Notes each pad's update rate in the log, every few seconds. */
+  private logRates(now: number): void {
+    if (now - this.lastRateLog < RATE_LOG_MS) return;
+    this.lastRateLog = now;
+    for (const pad of this.pads.values()) {
+      this.log.event("rate", { pad: pad.row.key, per_second: pad.rate.rate(now) });
+    }
+  }
 
   /** Polls every open WebHID device, so queues drain and rates count. */
   private drainHid(now: number): void {
@@ -446,6 +548,7 @@ export class Tester {
         continue;
       }
       pad.rate.add(poll.received, now);
+      this.log.hid(pad.row.key, poll);
       if (recording) {
         for (const report of poll.reports) {
           recording.reports.push({
@@ -470,13 +573,20 @@ export class Tester {
     }
   }
 
+  /** While no pad is selected: the generic drawing, at rest, in its place. */
+  private drawPlaceholder(): void {
+    const slot = document.querySelector<HTMLElement>(".placeholder-art");
+    if (slot && !slot.firstChild) slot.append(new ControllerDrawing(layoutFor(undefined), undefined).element);
+  }
+
   /** Builds the live view of the selected pad when needed, and updates it. */
-  private drawSelected(now: number): void {
+  private drawSelected(now: number, reads: Map<string, GamepadRead>): void {
     const key = this.view.selected;
     const pad = key ? this.pads.get(key) : undefined;
     const root = document.querySelector<HTMLElement>(".live");
     if (!pad || !root) {
       this.live = undefined;
+      this.drawPlaceholder();
       return;
     }
     // jq79 renders the detail; the live view moves in once it exists, and
@@ -493,11 +603,9 @@ export class Tester {
       // Which pad the view shows, next to the selection jq79 renders.
       root.dataset.view = pad.row.key;
     }
-    if (pad.source === "gamepad" && this.gamepads && this.live.view instanceof LiveView) {
-      const snapshot = this.gamepads.snapshot(pad.id);
-      if (snapshot === undefined) return;
-      const state = pad.info.canonical ? this.gamepads.state(pad.id) : undefined;
-      this.live.view.update(snapshot, state, pad.rate.rate(now), this.view.showValues);
+    const read = reads.get(pad.row.key);
+    if (read && this.live.view instanceof LiveView) {
+      this.live.view.update(read.snapshot, read.state, pad.rate.rate(now), this.view.showValues);
     }
   }
 }

@@ -24,6 +24,7 @@ App.mount("#app", {
   select: tester.select,
   toggleValues: tester.toggleValues,
   connectHid: tester.connectHid,
+  downloadLog: tester.downloadLog,
   rumble: tester.rumble,
 });
 tester.start(App.data as unknown as TesterView);

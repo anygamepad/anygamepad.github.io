@@ -6,12 +6,14 @@
 //
 // The generic layout follows pads like the Flydigi Vader 5 Pro: Xbox-style
 // positions, two extra buttons by the face buttons (C and Z) and four back
-// buttons. Which extra index C and Z report is a guess until device
-// profiles (D4) say it.
+// buttons. It is the Xbox illustration with all of them. Which extra index
+// C and Z report is a guess until device profiles (D4) say it.
 
 import type { Button, Family } from "./wasm/anygamepad_wasm.js";
 import dualsense from "./art/dualsense.svg?raw";
+import dualshock3 from "./art/dualshock3.svg?raw";
 import dualshock4 from "./art/dualshock4.svg?raw";
+import xbox from "./art/xbox.svg?raw";
 
 export type Point = readonly [number, number];
 
@@ -57,52 +59,33 @@ export interface ArtLayout {
   name: string;
   /** The SVG document. */
   svg: string;
+  /** Controls of the illustration this family does not have. */
+  hide?: readonly Button[];
+  /**
+   * Optional controls (`data-optional`) this family does not have, dimmed
+   * whatever buttons the pad reports.
+   */
+  dim?: readonly Button[];
 }
 
 export type Layout = ShapeLayout | ArtLayout;
 
-/** Xbox-style body: offset sticks, wide grips. */
-const OFFSET_BODY =
-  "M118 44 C150 38 250 38 282 44 C330 52 358 74 372 118 C386 162 394 208 372 236 " +
-  "C352 258 322 250 302 222 C288 202 270 190 246 190 H154 C130 190 112 202 98 222 " +
-  "C78 250 48 258 28 236 C6 208 14 162 28 118 C42 74 70 52 118 44 Z";
-
-const XBOX: ShapeLayout = {
-  kind: "shapes",
+// The owner's illustration (art/xbox.svg). Xbox pads have no back buttons
+// (the Elite's paddles are not told apart yet), and C and Z show dimmed:
+// Chromium reports an Xbox Series pad's share button as the first extra
+// button, so the buttons the pad reports cannot tell.
+const XBOX: ArtLayout = {
+  kind: "art",
   name: "Xbox controller",
-  height: 260,
-  body: OFFSET_BODY,
-  triggers: [88, 252],
-  sticks: [[112, 100], [242, 152]],
-  dpad: [158, 152],
-  face: [288, 100],
-  select: [172, 92],
-  start: [228, 92],
-  home: [200, 64],
-  extras: [{ button: "share", at: [200, 114], shape: "pill" }],
+  svg: xbox,
+  hide: ["left_paddle_1", "left_paddle_2", "right_paddle_1", "right_paddle_2"],
+  dim: ["extra_0", "extra_1"],
 };
 
-const GENERIC: ShapeLayout = {
-  kind: "shapes",
+const GENERIC: ArtLayout = {
+  kind: "art",
   name: "Controller",
-  height: 290,
-  body: OFFSET_BODY,
-  triggers: [88, 252],
-  sticks: [[112, 100], [242, 152]],
-  dpad: [158, 152],
-  face: [288, 100],
-  select: [172, 92],
-  start: [228, 92],
-  home: [200, 64],
-  extras: [
-    { button: "extra_0", at: [318, 62], shape: "circle", label: "C" },
-    { button: "extra_1", at: [340, 78], shape: "circle", label: "Z" },
-    // Back buttons, drawn below the body.
-    { button: "left_paddle_1", at: [70, 272], shape: "pill" },
-    { button: "left_paddle_2", at: [110, 272], shape: "pill" },
-    { button: "right_paddle_2", at: [290, 272], shape: "pill" },
-    { button: "right_paddle_1", at: [330, 272], shape: "pill" },
-  ],
+  svg: xbox,
 };
 
 const SWITCH_PRO: ShapeLayout = {
@@ -130,22 +113,11 @@ const DUALSENSE: ArtLayout = {
   svg: dualsense,
 };
 
-const DUALSHOCK3: ShapeLayout = {
-  kind: "shapes",
+// The owner's illustration (art/dualshock3.svg).
+const DUALSHOCK3: ArtLayout = {
+  kind: "art",
   name: "DualShock 3",
-  height: 260,
-  body:
-    "M104 54 C124 46 152 44 200 44 C248 44 276 46 296 54 C336 62 358 86 370 128 " +
-    "C384 176 392 220 368 242 C348 260 318 250 298 222 C286 204 274 196 254 196 H146 " +
-    "C126 196 114 204 102 222 C82 250 52 260 32 242 C8 220 16 176 30 128 C42 86 64 62 104 54 Z",
-  triggers: [76, 264],
-  sticks: [[154, 156], [246, 156]],
-  dpad: [88, 108],
-  face: [312, 108],
-  select: [180, 96],
-  start: [220, 96],
-  home: [200, 124],
-  extras: [],
+  svg: dualshock3,
 };
 
 // The owner's illustration (art/dualshock4.svg).

@@ -44,9 +44,7 @@ pub const AXES: [Axis; 4] = [
 /// axes.
 const TRIGGERS: [(usize, Axis); 2] = [(6, Axis::LeftTrigger), (7, Axis::RightTrigger)];
 
-/// A button counts as pressed from this value on: Chromium's threshold for
-/// analog buttons (30/255), which is also XInput's trigger threshold.
-pub const PRESS_THRESHOLD: f32 = 30.0 / 255.0;
+pub use crate::mapping::PRESS_THRESHOLD;
 
 /// The canonical button at a button index of the standard layout: the 17
 /// standard buttons, then extra buttons for the ones browsers append

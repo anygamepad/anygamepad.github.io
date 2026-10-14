@@ -35,10 +35,14 @@ cannot send headers); the dev server runs without one.
 | Path | Content |
 |------|---------|
 | `src/main.ts` | Entry point: loads the WebAssembly module, mounts the app |
-| `src/tester.ts` | Sampler and frame loops, device list, vibration test (logic stays in TypeScript) |
-| `src/live.ts` | Live part of a device card: update rate, drawing, raw buttons and axes |
-| `src/diagram.ts` | Controller drawing of the canonical state (standard mapping only) |
-| `src/rate.ts` | Update rate meter |
+| `src/tester.ts` | Sampler and frame loops, device list, vibration test, WebHID actions (logic stays in TypeScript) |
+| `src/activity.ts` | Activity log: what the tester detects, downloaded as JSON to share for analysis |
+| `src/live.ts` | Live view of a Gamepad API pad: update rate, drawing, raw buttons and axes |
+| `src/hid-live.ts` | Live view of a WebHID pad: report form, drawing, touchpad, motion, battery, raw reports |
+| `src/drawing.ts`, `src/layouts.ts` | Controller drawings of the canonical state, one per family |
+| `src/art/` | The owner's controller illustrations, marked up with data attributes |
+| `src/rate.ts` | Update rate meters |
+| `src/theme.ts` | Light, dark or system theme |
 | `src/*.html` | jq79 components (rendering only) |
 | `src/wasm/` | wasm-pack output (generated, not committed) |
 | `scripts/check-size.mjs` | Bundle size budget |

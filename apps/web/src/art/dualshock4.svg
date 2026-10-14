@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 150 1044 700" role="img">
   <!--
-    DualShock 4, front view: the project owner's design (2026-10-14).
+    DualShock 4, front view: the project owner's design (2026-10-14). The
+    sticks and touchpad take the DualSense's stick colours, as in every
+    drawing, and the D-pad and buttons the DualSense's light ones.
 
     Marked up for the tester like art/dualsense.svg (see there), with the
     same arrangement: the shapes on the top edge are the L1/R1 bumpers, and
@@ -16,17 +18,22 @@
       <stop offset="0" stop-color="#ececf0"/>
       <stop offset="1" stop-color="#dcdce2"/>
     </linearGradient>
-    <linearGradient id="ds4-black" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#3d3d40"/>
-      <stop offset="1" stop-color="#0c0c0d"/>
+    <!-- Buttons and bumpers: the DualSense's -->
+    <radialGradient id="ds4-btn" cx="0.4" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#fbfbfe"/>
+      <stop offset="1" stop-color="#e4e5ef"/>
+    </radialGradient>
+    <linearGradient id="ds4-bump" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f1f1f8"/>
+      <stop offset="1" stop-color="#dcdce8"/>
     </linearGradient>
     <linearGradient id="ds4-touch" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1c1c1e"/>
-      <stop offset="1" stop-color="#0b0b0c"/>
+      <stop offset="0" stop-color="#9ea3b5"/>
+      <stop offset="1" stop-color="#6a7083"/>
     </linearGradient>
     <radialGradient id="ds4-cap" cx="0.4" cy="0.35" r="0.8">
-      <stop offset="0" stop-color="#3a3a3d"/>
-      <stop offset="1" stop-color="#0e0e10"/>
+      <stop offset="0" stop-color="#9ea3b5"/>
+      <stop offset="1" stop-color="#6a7083"/>
     </radialGradient>
     <radialGradient id="ds4-ring" cx="0.5" cy="0.4" r="0.7">
       <stop offset="0" stop-color="#ffffff"/>
@@ -51,10 +58,10 @@
 
   <!-- Bumpers L1 / R1 -->
   <g data-button="left_shoulder">
-    <path class="shape" d="M138 217 C139 203 150 198 176 198 H225 C251 198 261 203 262 217 Z" fill="url(#ds4-black)"/>
+    <path class="shape" d="M138 217 C139 203 150 198 176 198 H225 C251 198 261 203 262 217 Z" fill="url(#ds4-bump)" stroke="#b4b8c8" stroke-width="2.5"/>
   </g>
   <g data-button="right_shoulder">
-    <path class="shape" d="M885 217 C884 203 873 198 847 198 H798 C772 198 762 203 761 217 Z" fill="url(#ds4-black)"/>
+    <path class="shape" d="M885 217 C884 203 873 198 847 198 H798 C772 198 762 203 761 217 Z" fill="url(#ds4-bump)" stroke="#b4b8c8" stroke-width="2.5"/>
   </g>
 
   <!-- Grip pads -->
@@ -76,10 +83,10 @@
 
   <!-- Share / Options -->
   <g data-button="select">
-    <rect class="shape" x="285" y="250" width="35" height="60" rx="16" fill="url(#ds4-black)" stroke="#4a4a4e" stroke-width="1.5"/>
+    <rect class="shape" x="285" y="250" width="35" height="60" rx="16" fill="#f4f4fa" stroke="#a9adbd" stroke-width="2.5"/>
   </g>
   <g data-button="start">
-    <rect class="shape" x="704" y="250" width="35" height="61" rx="16" fill="url(#ds4-black)" stroke="#4a4a4e" stroke-width="1.5"/>
+    <rect class="shape" x="704" y="250" width="35" height="61" rx="16" fill="#f4f4fa" stroke="#a9adbd" stroke-width="2.5"/>
   </g>
   <g font-family="Helvetica, Arial, sans-serif" font-size="13" letter-spacing="1" fill="#b8b8bd" text-anchor="middle">
     <text x="304" y="244">SHARE</text>
@@ -101,39 +108,39 @@
   <!-- D-pad: one arm, rotated around (191.5 381.5) -->
   <g data-button="dpad_up">
     <path class="shape" d="M166.800 353.800 L163.500 315 Q162.500 293.500 183 293.500 H200 Q220.500 293.500 219.500 315 L216.200 353.800 L191.500 376.500 Z"
-          fill="url(#ds4-black)" stroke="#4a4a4e" stroke-width="1.5" stroke-linejoin="round"/>
+          fill="#f6f6fb" stroke="#3a3c48" stroke-width="4" stroke-linejoin="round"/>
   </g>
   <g data-button="dpad_right" transform="rotate(90 191.500 381.500)">
     <path class="shape" d="M166.800 353.800 L163.500 315 Q162.500 293.500 183 293.500 H200 Q220.500 293.500 219.500 315 L216.200 353.800 L191.500 376.500 Z"
-          fill="url(#ds4-black)" stroke="#4a4a4e" stroke-width="1.5" stroke-linejoin="round"/>
+          fill="#f6f6fb" stroke="#3a3c48" stroke-width="4" stroke-linejoin="round"/>
   </g>
   <g data-button="dpad_down" transform="rotate(180 191.500 381.500)">
     <path class="shape" d="M166.800 353.800 L163.500 315 Q162.500 293.500 183 293.500 H200 Q220.500 293.500 219.500 315 L216.200 353.800 L191.500 376.500 Z"
-          fill="url(#ds4-black)" stroke="#4a4a4e" stroke-width="1.5" stroke-linejoin="round"/>
+          fill="#f6f6fb" stroke="#3a3c48" stroke-width="4" stroke-linejoin="round"/>
   </g>
   <g data-button="dpad_left" transform="rotate(270 191.500 381.500)">
     <path class="shape" d="M166.800 353.800 L163.500 315 Q162.500 293.500 183 293.500 H200 Q220.500 293.500 219.500 315 L216.200 353.800 L191.500 376.500 Z"
-          fill="url(#ds4-black)" stroke="#4a4a4e" stroke-width="1.5" stroke-linejoin="round"/>
+          fill="#f6f6fb" stroke="#3a3c48" stroke-width="4" stroke-linejoin="round"/>
   </g>
 
   <!-- Face buttons: triangle, square, circle, cross -->
   <g data-button="north">
-    <circle class="shape" cx="832" cy="307" r="35.500" fill="url(#ds4-cap)" stroke="#4a4a4e" stroke-width="1.5"/>
+    <circle class="shape" cx="832" cy="307" r="35.500" fill="url(#ds4-btn)" stroke="#aeb2c2" stroke-width="3.2"/>
     <path class="mark" d="M832 290 L848 317 H816 Z"
           fill="none" stroke="#5ec7bd" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
   <g data-button="west">
-    <circle class="shape" cx="756" cy="383" r="35.500" fill="url(#ds4-cap)" stroke="#4a4a4e" stroke-width="1.5"/>
+    <circle class="shape" cx="756" cy="383" r="35.500" fill="url(#ds4-btn)" stroke="#aeb2c2" stroke-width="3.2"/>
     <rect class="mark" x="741" y="368" width="30" height="30" rx="2"
           fill="none" stroke="#e3a9d4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
   <g data-button="east">
-    <circle class="shape" cx="907" cy="383" r="35.500" fill="url(#ds4-cap)" stroke="#4a4a4e" stroke-width="1.5"/>
+    <circle class="shape" cx="907" cy="383" r="35.500" fill="url(#ds4-btn)" stroke="#aeb2c2" stroke-width="3.2"/>
     <circle class="mark" cx="907" cy="383" r="16"
             fill="none" stroke="#e8697f" stroke-width="4"/>
   </g>
   <g data-button="south">
-    <circle class="shape" cx="832" cy="459" r="35.500" fill="url(#ds4-cap)" stroke="#4a4a4e" stroke-width="1.5"/>
+    <circle class="shape" cx="832" cy="459" r="35.500" fill="url(#ds4-btn)" stroke="#aeb2c2" stroke-width="3.2"/>
     <path class="mark" d="M818 445 L846 473 M846 445 L818 473"
           fill="none" stroke="#7b9bf0" stroke-width="4" stroke-linecap="round"/>
   </g>
@@ -142,17 +149,15 @@
   <g data-stick="left" data-travel="24" data-value-y="128" transform="translate(346 528)">
     <circle r="99" fill="url(#ds4-ring)" stroke="#dcdce1" stroke-width="2"/>
     <g data-cap="" data-button="left_stick">
-      <circle class="shape" r="64" fill="url(#ds4-cap)" stroke="#2a2a2d" stroke-width="2"/>
-      <circle class="shape" r="46" fill="#18181a" stroke="#333337" stroke-width="2"/>
-      <circle class="shape" r="38" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="2"/>
+      <circle class="shape" r="64" fill="url(#ds4-cap)" stroke="#5a5f71" stroke-width="2.5"/>
+      <circle class="shape" r="46" fill="none" stroke="#8a90a3" stroke-width="3"/>
     </g>
   </g>
   <g data-stick="right" data-travel="24" data-value-y="128" transform="translate(677 528)">
     <circle r="99" fill="url(#ds4-ring)" stroke="#dcdce1" stroke-width="2"/>
     <g data-cap="" data-button="right_stick">
-      <circle class="shape" r="64" fill="url(#ds4-cap)" stroke="#2a2a2d" stroke-width="2"/>
-      <circle class="shape" r="46" fill="#18181a" stroke="#333337" stroke-width="2"/>
-      <circle class="shape" r="38" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="2"/>
+      <circle class="shape" r="64" fill="url(#ds4-cap)" stroke="#5a5f71" stroke-width="2.5"/>
+      <circle class="shape" r="46" fill="none" stroke="#8a90a3" stroke-width="3"/>
     </g>
   </g>
 
@@ -174,8 +179,8 @@
 
   <!-- PS button -->
   <g data-button="home">
-    <circle class="shape" cx="511.500" cy="527.500" r="28" fill="url(#ds4-cap)" stroke="#d4d4d9" stroke-width="2"/>
-    <circle class="mark" cx="511.500" cy="527.500" r="11" fill="none" stroke="#f1f1f3" stroke-width="3.500"/>
+    <circle class="shape" cx="511.500" cy="527.500" r="28" fill="url(#ds4-btn)" stroke="#aeb2c2" stroke-width="3.2"/>
+    <circle class="mark" cx="511.500" cy="527.500" r="11" fill="none" stroke="#c3c7d6" stroke-width="3"/>
   </g>
 
   <!-- EXT port -->

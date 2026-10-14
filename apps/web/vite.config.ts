@@ -43,8 +43,26 @@ const profileSchema = (): Plugin => ({
   },
 });
 
+// Controller illustrations (src/art/*.svg, imported `?raw`) ship without
+// their comments and indentation, which document the markup in the source.
+const minifiedArt = (): Plugin => ({
+  name: "anygamepad:minified-art",
+  apply: "build",
+  enforce: "pre",
+  load(id) {
+    const [path, query] = id.split("?");
+    if (query !== "raw" || !path?.endsWith(".svg")) return null;
+    const svg = readFileSync(path, "utf8")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/>\s+</g, "><")
+      .replace(/\s+/g, " ")
+      .trim();
+    return `export default ${JSON.stringify(svg)};`;
+  },
+});
+
 export default defineConfig({
-  plugins: [jq79({ safeEval: true }), contentSecurityPolicy(), profileSchema()],
+  plugins: [jq79({ safeEval: true }), contentSecurityPolicy(), profileSchema(), minifiedArt()],
   build: {
     // Top-level await, which safeEval's component modules use.
     target: "es2022",
