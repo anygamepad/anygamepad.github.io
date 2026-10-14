@@ -57,6 +57,15 @@
       <button type="button" class="action" @click="connectHid()">Connect a pad with WebHID</button>
       <p :if="hidMessage" class="note">{{ hidMessage }}</p>
     </section>
+
+    <section class="activity">
+      <h2>Activity log</h2>
+      <p>
+        What the tester has detected since this page loaded: pads, inputs, reports and errors. It stays in
+        this tab until you download it, to share it for analysis.
+      </p>
+      <button type="button" class="action" @click="downloadLog()">Download the activity log</button>
+    </section>
   </aside>
 
   <section :if="current" class="detail">

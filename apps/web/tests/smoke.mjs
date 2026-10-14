@@ -554,6 +554,42 @@ try {
   await page.waitForSelector(".pads", { state: "detached" });
   await page.waitForSelector(".detail", { state: "detached" });
   await page.waitForSelector(".message");
+
+  // The activity log holds the whole session, in time order.
+  const [logDownload] = await Promise.all([
+    page.waitForEvent("download", { timeout: 10000 }),
+    page.getByRole("button", { name: "Download the activity log" }).click(),
+  ]);
+  assert.match(logDownload.suggestedFilename(), /^anygamepad-activity-\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d\.json$/);
+  const log = JSON.parse(await readFile(await logDownload.path(), "utf8"));
+  assert.equal(log.format, "anygamepad-activity-log-v1");
+  assert.match(log.library, /^\d+\.\d+\.\d+$/);
+  assert.equal(log.environment.browser.engine, target.engine);
+  assert.equal(log.dropped_input_events, 0);
+  assert.ok(log.events.every((event, i) => i === 0 || log.events[i - 1].t <= event.t), "events in time order");
+  const of = (type) => log.events.filter((event) => event.type === type);
+  assert.equal(log.events[0].type, "session");
+  assert.deepEqual(
+    of("gamepad_added").map((event) => event.identity.web.id),
+    // The DualSense's Gamepad API twin stays connected while WebHID reads
+    // the pad: the list only hides it.
+    [DUALSHOCK.id, GENERIC.id, XBOX.id, FLYDIGI.id, SN30.id, DUALSENSE.id],
+  );
+  assert.equal(of("gamepad_removed").length, of("gamepad_added").length);
+  const dualshock = of("gamepad_added")[0].pad;
+  assert.ok(of("button").some((event) => event.pad === dualshock && event.index === 0 && event.pressed));
+  assert.ok(of("axis").some((event) => event.pad === dualshock && event.index === 1 && event.value === -1));
+  assert.ok(of("canonical_buttons").some((event) => event.pad === dualshock && event.pressed.join() === "south,dpad_up,right_trigger"));
+  assert.deepEqual(of("vibration_test").map((event) => event.kind), ["strong", "triggers", "strong"]);
+  const [hid] = of("hid_added");
+  assert.equal(hid.identity.product_id, 0x0ce6);
+  assert.deepEqual(of("hid_chooser").map((event) => event.picked), [1]);
+  assert.deepEqual(
+    of("hid_report_sample").map((event) => [event.report_id, event.length]),
+    [[0x01, 9], [0x31, 77]],
+  );
+  assert.deepEqual(of("hid_report_form").map((event) => event.form), ["bluetooth_reduced", "bluetooth_full"]);
+  assert.ok(["hid_opened", "hid_switch_to_full", "hid_recording", "hid_removed", "power", "touches"].every((type) => of(type).length > 0));
   await context.close();
 
   // The theme follows the system until the viewer picks one, which a reload
