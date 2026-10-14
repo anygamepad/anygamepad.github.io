@@ -75,18 +75,27 @@
         <p class="facts">{{ current.facts }}</p>
         <p class="gamepad-id" title="Gamepad.id or WebHID product name, as the browser reports it"><code>{{ current.detail }}</code></p>
       </div>
-      <button
-        type="button"
-        class="toggle"
-        :class.on="showValues"
-        :aria-pressed="showValues ? 'true' : 'false'"
-        @click="toggleValues()"
-      >Show values</button>
+      <div class="detail-actions">
+        <button
+          :if="current.wizard && !wizardOpen"
+          type="button"
+          class="action"
+          title="Asks for each button, stick and trigger in turn, to tell which is which"
+          @click="startWizard(current.key)"
+        >Identify the buttons</button>
+        <button
+          type="button"
+          class="toggle"
+          :class.on="showValues"
+          :aria-pressed="showValues ? 'true' : 'false'"
+          @click="toggleValues()"
+        >Show values</button>
+      </div>
     </header>
 
     <div class="live" :data-key="current.key"></div>
 
-    <footer :if="current.source === 'gamepad'" class="vibration">
+    <footer :if="current.source === 'gamepad' && !wizardOpen" class="vibration">
       <span class="label">Vibration test</span>
       <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'strong')">Strong motor</button>
       <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'weak')">Weak motor</button>

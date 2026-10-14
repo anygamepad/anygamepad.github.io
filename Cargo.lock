@@ -70,6 +70,14 @@ dependencies = [
 [[package]]
 name = "anygamepad-report"
 version = "0.0.1"
+dependencies = [
+ "anygamepad-db",
+ "anygamepad-model",
+ "jsonschema",
+ "schemars",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "anygamepad-virtual"

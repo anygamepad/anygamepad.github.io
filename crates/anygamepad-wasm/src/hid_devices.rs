@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use anygamepad::model::hid::HidCollection;
 use anygamepad::model::identity::{DeviceIdentity, Fingerprint};
+use anygamepad::model::raw::RawState;
 use anygamepad::model::{FaceLayout, Family, GamepadState, TouchpadInfo, Transport};
 use anygamepad::protocol::playstation::{self, Model};
 use anygamepad::provider::{DeviceId, ProviderEvent};
@@ -13,7 +14,8 @@ use serde::{Deserialize, Serialize, Serializer};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use crate::gamepads::{DeviceEvent, device_id, error, js_id, to_js};
+use crate::gamepads::{DeviceEvent, device_id, error, js_id, to_js, unknown};
+use crate::wizard::{MappingWizard, canonical_layout, canonical_raw};
 
 /// Which devices the chooser offers. A device matches when every field that
 /// is set matches.
@@ -335,6 +337,31 @@ impl HidDevices {
             input: self.inputs.get(&id).map(|&input| input.into()),
             error,
         })
+    }
+
+    /// Starts the guided mapping wizard on a pad the library decodes
+    /// (PlayStation), over its canonical controls: it checks the decoding
+    /// against the person's presses. Throws for other devices.
+    pub fn wizard(&self, device: u32) -> Result<MappingWizard, JsError> {
+        let info = self.hid.info(device_id(device)).ok_or_else(unknown)?;
+        let decoded = Family::from_identity(&info.identity)
+            .and_then(Model::from_family)
+            .is_some();
+        if !decoded {
+            return Err(JsError::new("the library does not decode this device"));
+        }
+        Ok(MappingWizard::new(canonical_layout()))
+    }
+
+    /// Feeds `wizard` with a decoded pad's newest input (from `poll()`), at
+    /// `now` (`performance.now()`). Call it once a frame, after `poll()`.
+    #[wasm_bindgen(js_name = feedWizard)]
+    pub fn feed_wizard(&self, device: u32, wizard: &mut MappingWizard, now: f64) {
+        if let Some(input) = self.inputs.get(&device_id(device)) {
+            let mut raw = RawState::for_layout(wizard.layout());
+            canonical_raw(&input.state, &mut raw);
+            wizard.feed(&raw, now);
+        }
     }
 
     /// Switches a Bluetooth PlayStation pad to its full report (touchpad,

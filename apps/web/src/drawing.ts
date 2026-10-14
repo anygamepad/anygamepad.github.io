@@ -57,6 +57,7 @@ interface Stick {
 }
 
 interface Trigger {
+  track: SVGRectElement;
   fill: SVGRectElement;
   value: SVGTextElement;
   axis: Axis;
@@ -82,6 +83,7 @@ export class ControllerDrawing {
   private lastButtons = "";
   private lastAxes = "";
   private lastTouches = "";
+  private highlighted: Element[] = [];
 
   /**
    * `buttons` are the buttons the pad reports, when known: an illustration's
@@ -149,6 +151,24 @@ export class ControllerDrawing {
       finger.setAttribute("cx", (touchpad.x + point.x * touchpad.width).toFixed(1));
       finger.setAttribute("cy", (touchpad.y + point.y * touchpad.height).toFixed(1));
     });
+  }
+
+  /**
+   * Marks the controls the guided wizard asks for: buttons, trigger axes
+   * (their travel bar) and stick axes (their stick). An empty list clears
+   * the marks.
+   */
+  highlight(targets: readonly (Button | Axis)[]): void {
+    for (const element of this.highlighted) element.classList.remove("target");
+    this.highlighted = targets.flatMap((target) => {
+      const trigger = this.triggers.find((candidate) => candidate.axis === target);
+      if (trigger) return [trigger.track];
+      const stick = Object.entries(STICK_AXES).find(([, axes]) => (axes as readonly string[]).includes(target));
+      const button = (stick ? `${stick[0]}_stick` : target) as Button;
+      const control = this.controls.get(button);
+      return control ? [control] : [];
+    });
+    for (const element of this.highlighted) element.classList.add("target");
   }
 
   /** Builds a drawing from an illustration (see art/dualsense.svg). */
@@ -272,7 +292,7 @@ export class ControllerDrawing {
   /** A trigger's travel bar, with its value beside it, outwards. */
   private trigger(parent: Element, axis: Axis, x: number, y: number, width: number, height: number): void {
     const rx = Math.min(4 * this.scale, height / 2);
-    svg("rect", { class: "track", x, y, width, height, rx }, parent);
+    const track = svg("rect", { class: "track", x, y, width, height, rx }, parent);
     const fill = svg("rect", { class: "fill", x, y, width: 0, height, rx }, parent, axis);
     const left = axis === "left_trigger";
     const gap = 6 * this.scale;
@@ -280,7 +300,7 @@ export class ControllerDrawing {
     const value = svg("text", { class: "value", x: valueX, y: y + height - 3, "text-anchor": left ? "end" : "start" }, parent);
     value.style.fontSize = `${9 * this.scale}px`;
     value.textContent = "0.00";
-    this.triggers.push({ fill, value, axis, width });
+    this.triggers.push({ track, fill, value, axis, width });
   }
 
   private stick(at: Point, click: Button, axes: readonly [Axis, Axis]): void {

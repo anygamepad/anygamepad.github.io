@@ -21,7 +21,7 @@ npm run size       # check dist/ against the bundle size budget
 npm run preview    # serve dist/
 
 # Smoke test of dist/ with fake gamepads: loads under its CSP, live values,
-# drawing, update rate, vibration test, hotplug
+# drawing, update rate, vibration test, guided wizard, hotplug
 CHROME_PATH=/path/to/chrome npm run test:smoke
 npx playwright-core install firefox webkit   # once, for the other engines
 BROWSER=firefox npm run test:smoke           # or BROWSER=webkit (Safari's engine)
@@ -39,6 +39,7 @@ cannot send headers); the dev server runs without one.
 | `src/activity.ts` | Activity log: what the tester detects, downloaded as JSON to share for analysis |
 | `src/live.ts` | Live view of a Gamepad API pad: update rate, drawing, raw buttons and axes |
 | `src/hid-live.ts` | Live view of a WebHID pad: report form, drawing, touchpad, motion, battery, raw reports |
+| `src/wizard.ts` | The guided wizard's view: asks for each control in turn (the library's `MappingWizard` decides) |
 | `src/drawing.ts`, `src/layouts.ts` | Controller drawings of the canonical state, one per family |
 | `src/art/` | The owner's controller illustrations, marked up with data attributes |
 | `src/rate.ts` | Update rate meters |

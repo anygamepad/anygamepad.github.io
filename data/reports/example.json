@@ -1,0 +1,811 @@
+{
+  "format": "anygamepad-device-report",
+  "schema_version": 1,
+  "created": "2026-10-14",
+  "source": {
+    "app": "web",
+    "app_version": "0.1.0",
+    "library_version": "0.1.0"
+  },
+  "host": {
+    "os": "windows",
+    "browser": {
+      "engine": "blink",
+      "major_version": 141
+    }
+  },
+  "user": {
+    "product": "DualSense (PS5 controller)"
+  },
+  "views": [
+    {
+      "identity": {
+        "provider": "web",
+        "backend": "gamepad_api",
+        "os": "windows",
+        "transport": "unknown",
+        "vendor_id": 1356,
+        "product_id": 3302,
+        "version": null,
+        "vendor_name": null,
+        "product_name": "DualSense Wireless Controller",
+        "driver": null,
+        "descriptor_hash": null,
+        "browser": {
+          "engine": "blink",
+          "major_version": 141
+        },
+        "web": {
+          "id": "DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)",
+          "mapping": "standard"
+        }
+      },
+      "fingerprint": "7bf79abf9ff24a56",
+      "family": "dualsense",
+      "layout": {
+        "buttons": [
+          {
+            "index": 0
+          },
+          {
+            "index": 1
+          },
+          {
+            "index": 2
+          },
+          {
+            "index": 3
+          },
+          {
+            "index": 4
+          },
+          {
+            "index": 5
+          },
+          {
+            "index": 6
+          },
+          {
+            "index": 7
+          },
+          {
+            "index": 8
+          },
+          {
+            "index": 9
+          },
+          {
+            "index": 10
+          },
+          {
+            "index": 11
+          },
+          {
+            "index": 12
+          },
+          {
+            "index": 13
+          },
+          {
+            "index": 14
+          },
+          {
+            "index": 15
+          },
+          {
+            "index": 16
+          }
+        ],
+        "axes": [
+          {
+            "source": {
+              "index": 0
+            },
+            "min": -1.0,
+            "max": 1.0
+          },
+          {
+            "source": {
+              "index": 1
+            },
+            "min": -1.0,
+            "max": 1.0
+          },
+          {
+            "source": {
+              "index": 2
+            },
+            "min": -1.0,
+            "max": 1.0
+          },
+          {
+            "source": {
+              "index": 3
+            },
+            "min": -1.0,
+            "max": 1.0
+          }
+        ],
+        "hats": [],
+        "sensors": [],
+        "touchpads": [],
+        "battery": false
+      },
+      "outputs": [
+        "rumble"
+      ],
+      "capabilities": {
+        "buttons": [
+          "south",
+          "east",
+          "west",
+          "north",
+          "dpad_up",
+          "dpad_down",
+          "dpad_left",
+          "dpad_right",
+          "left_shoulder",
+          "right_shoulder",
+          "left_trigger",
+          "right_trigger",
+          "left_stick",
+          "right_stick",
+          "select",
+          "start",
+          "home"
+        ],
+        "axes": [
+          "left_stick_x",
+          "left_stick_y",
+          "right_stick_x",
+          "right_stick_y",
+          "left_trigger",
+          "right_trigger"
+        ],
+        "sensors": [],
+        "touchpads": [],
+        "outputs": [],
+        "battery": false
+      },
+      "confirmed": {
+        "buttons": {
+          "south": "b0",
+          "home": "b16"
+        },
+        "axes": {
+          "left_stick_y": "a1~"
+        }
+      }
+    },
+    {
+      "identity": {
+        "provider": "web",
+        "backend": "webhid",
+        "os": "windows",
+        "transport": "usb",
+        "vendor_id": 1356,
+        "product_id": 3302,
+        "version": null,
+        "vendor_name": null,
+        "product_name": "DualSense Wireless Controller",
+        "driver": null,
+        "descriptor_hash": null,
+        "browser": {
+          "engine": "blink",
+          "major_version": 141
+        },
+        "web": null
+      },
+      "fingerprint": "a10f7e4a9d9d71c0",
+      "family": "dualsense",
+      "layout": {
+        "buttons": [],
+        "axes": [],
+        "hats": [],
+        "sensors": [],
+        "touchpads": [],
+        "battery": false
+      },
+      "outputs": [],
+      "hid": {
+        "collections": [
+          {
+            "usage_page": 1,
+            "usage": 5,
+            "kind": 1,
+            "children": [],
+            "input_reports": [
+              {
+                "report_id": 1,
+                "items": [
+                  {
+                    "usages": [
+                      65584,
+                      65585,
+                      65586,
+                      65589,
+                      65587,
+                      65588
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 6,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  },
+                  {
+                    "usages": [
+                      4278190112
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 1,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  },
+                  {
+                    "usages": [
+                      65593
+                    ],
+                    "usage_range": null,
+                    "report_size": 4,
+                    "report_count": 1,
+                    "logical_minimum": 0,
+                    "logical_maximum": 7,
+                    "physical_minimum": 0,
+                    "physical_maximum": 315,
+                    "unit_system": "english_rotation",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable",
+                      "null_state"
+                    ]
+                  },
+                  {
+                    "usages": [],
+                    "usage_range": {
+                      "minimum": 589825,
+                      "maximum": 589839
+                    },
+                    "report_size": 1,
+                    "report_count": 15,
+                    "logical_minimum": 0,
+                    "logical_maximum": 1,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  },
+                  {
+                    "usages": [
+                      4278190113
+                    ],
+                    "usage_range": null,
+                    "report_size": 1,
+                    "report_count": 13,
+                    "logical_minimum": 0,
+                    "logical_maximum": 1,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  },
+                  {
+                    "usages": [
+                      4278190114
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 52,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "output_reports": [
+              {
+                "report_id": 2,
+                "items": [
+                  {
+                    "usages": [
+                      4278190115
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 47,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable",
+                      "non_linear"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "feature_reports": [
+              {
+                "report_id": 5,
+                "items": [
+                  {
+                    "usages": [
+                      4278190131
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 40,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 8,
+                "items": [
+                  {
+                    "usages": [
+                      4278190132
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 47,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 9,
+                "items": [
+                  {
+                    "usages": [
+                      4278190116
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 19,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 10,
+                "items": [
+                  {
+                    "usages": [
+                      4278190117
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 26,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 32,
+                "items": [
+                  {
+                    "usages": [
+                      4278190118
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 63,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 33,
+                "items": [
+                  {
+                    "usages": [
+                      4278190119
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 4,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 34,
+                "items": [
+                  {
+                    "usages": [
+                      4278190144
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 63,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 128,
+                "items": [
+                  {
+                    "usages": [
+                      4278190120
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 63,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 129,
+                "items": [
+                  {
+                    "usages": [
+                      4278190121
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 63,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 130,
+                "items": [
+                  {
+                    "usages": [
+                      4278190122
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 9,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 131,
+                "items": [
+                  {
+                    "usages": [
+                      4278190123
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 63,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 132,
+                "items": [
+                  {
+                    "usages": [
+                      4278190124
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 63,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 133,
+                "items": [
+                  {
+                    "usages": [
+                      4278190125
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 2,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 160,
+                "items": [
+                  {
+                    "usages": [
+                      4278190126
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 1,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 224,
+                "items": [
+                  {
+                    "usages": [
+                      4278190127
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 63,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 240,
+                "items": [
+                  {
+                    "usages": [
+                      4278190128
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 63,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 241,
+                "items": [
+                  {
+                    "usages": [
+                      4278190129
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 63,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 242,
+                "items": [
+                  {
+                    "usages": [
+                      4278190130
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 15,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 244,
+                "items": [
+                  {
+                    "usages": [
+                      4278190133
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 63,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              },
+              {
+                "report_id": 245,
+                "items": [
+                  {
+                    "usages": [
+                      4278190134
+                    ],
+                    "usage_range": null,
+                    "report_size": 8,
+                    "report_count": 3,
+                    "logical_minimum": 0,
+                    "logical_maximum": 255,
+                    "physical_minimum": 0,
+                    "physical_maximum": 0,
+                    "unit_system": "none",
+                    "unit_exponent": 0,
+                    "flags": [
+                      "variable"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "input_samples": [
+          {
+            "report_id": 1,
+            "data": "807f81800000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    }
+  ]
+}

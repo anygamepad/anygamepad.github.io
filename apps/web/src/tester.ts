@@ -17,7 +17,9 @@ import {
   type GamepadSnapshot,
   type GamepadState,
   type HidDeviceInfo,
+  type MappingWizard,
   type OutputCommand,
+  type WizardStatus,
 } from "./wasm/anygamepad_wasm.js";
 import { ActivityLog } from "./activity";
 import { ControllerDrawing } from "./drawing";
@@ -25,6 +27,7 @@ import { HidLiveView } from "./hid-live";
 import { layoutFor } from "./layouts";
 import { LiveView } from "./live";
 import { CountMeter, RateMeter } from "./rate";
+import { rawNames, WizardView } from "./wizard";
 
 /** One connected pad, as the page lists it. */
 export interface PadRow {
@@ -40,6 +43,8 @@ export interface PadRow {
   detail: string;
   rumble: boolean;
   triggerRumble: boolean;
+  /** Whether the guided wizard can identify its buttons. */
+  wizard: boolean;
 }
 
 /** The data the page renders. */
@@ -52,6 +57,8 @@ export interface TesterView {
   current: PadRow | null;
   /** Whether the drawing shows the values. */
   showValues: boolean;
+  /** Whether the selected pad shows the guided wizard. */
+  wizardOpen: boolean;
   /** Whether the browser has WebHID. */
   webhid: boolean;
   /** The outcome of the last WebHID action, when it needs saying. */
@@ -67,6 +74,7 @@ export const emptyView = (): TesterView => ({
   selected: null,
   current: null,
   showValues: false,
+  wizardOpen: false,
   webhid: false,
   hidMessage: null,
   error: null,
@@ -122,6 +130,7 @@ export const gamepadRow = (id: number, info: DeviceInfo): PadRow => {
     detail: info.identity.web?.id ?? "",
     rumble: info.outputs.includes("rumble"),
     triggerRumble: info.outputs.includes("trigger_rumble"),
+    wizard: true,
   };
 };
 
@@ -139,6 +148,9 @@ export const hidRow = (id: number, info: HidDeviceInfo): PadRow => {
     detail: info.identity.product_name ?? "",
     rumble: false,
     triggerRumble: false,
+    // The library checks its decoding of the pads it decodes; raw devices
+    // need a HID report parser first.
+    wizard: info.decoded,
   };
 };
 
@@ -155,6 +167,14 @@ const rumbleCommand = (kind: RumbleKind, strength: number): OutputCommand => {
   }
 };
 
+/** A run of the guided wizard on a pad, kept until the pad goes. */
+interface WizardRun {
+  wizard: MappingWizard;
+  /** Steps done, as last logged. */
+  logged: number;
+  done: boolean;
+}
+
 interface GamepadPad {
   source: "gamepad";
   id: number;
@@ -162,6 +182,7 @@ interface GamepadPad {
   row: PadRow;
   rate: RateMeter;
   rumbleTimer: number | undefined;
+  run: WizardRun | undefined;
 }
 
 interface Recording {
@@ -178,6 +199,7 @@ interface HidPad {
   open: boolean;
   switching: boolean;
   recording: Recording | undefined;
+  run: WizardRun | undefined;
 }
 
 type Pad = GamepadPad | HidPad;
@@ -208,7 +230,7 @@ export class Tester {
   private hids: HidDevices | undefined;
   private view: TesterView = emptyView();
   private readonly pads = new Map<string, Pad>();
-  private live: { key: string; root: HTMLElement; view: LiveView | HidLiveView } | undefined;
+  private live: { key: string; root: HTMLElement; view: LiveView | HidLiveView | WizardView } | undefined;
   private sampler: number | undefined;
   private frame = 0;
   private readonly log = new ActivityLog();
@@ -250,8 +272,36 @@ export class Tester {
 
   /** Shows a pad large. */
   readonly select = (key: string): void => {
+    if (key !== this.view.selected) this.view.wizardOpen = false;
     this.view.selected = key;
     this.view.current = this.pads.get(key)?.row ?? null;
+  };
+
+  /** Opens the guided wizard on a pad: a new run, or the one in progress. */
+  readonly startWizard = (key: string): void => {
+    const pad = this.pads.get(key);
+    if (!pad || this.view.selected !== key) return;
+    if (!pad.run) {
+      let wizard: MappingWizard | undefined;
+      try {
+        wizard = pad.source === "gamepad" ? this.gamepads?.wizard(pad.id) : this.hids?.wizard(pad.id);
+      } catch (error) {
+        this.fail(`The guided wizard cannot start (${String(error)}).`);
+        return;
+      }
+      if (!wizard) return;
+      pad.run = { wizard, logged: 0, done: false };
+    }
+    this.log.event("wizard_opened", { pad: key, step: pad.run.logged });
+    this.view.wizardOpen = true;
+    this.live = undefined;
+  };
+
+  /** Closes the guided wizard's view; its run stays for the pad. */
+  readonly closeWizard = (): void => {
+    this.log.event("wizard_closed", { pad: this.view.selected });
+    this.view.wizardOpen = false;
+    this.live = undefined;
   };
 
   /** Shows or hides the values on the drawing. */
@@ -311,6 +361,7 @@ export class Tester {
     cancelAnimationFrame(this.frame);
     for (const pad of this.pads.values()) {
       if (pad.source === "gamepad") window.clearTimeout(pad.rumbleTimer);
+      pad.run?.wizard.free();
     }
     this.gamepads?.free();
     this.gamepads = undefined;
@@ -371,7 +422,15 @@ export class Tester {
     // Shared access: the live view polls it, and the vibration test drives it.
     gamepads.open(id);
     const row = gamepadRow(id, info);
-    this.pads.set(row.key, { source: "gamepad", id, info, row, rate: new RateMeter(), rumbleTimer: undefined });
+    this.pads.set(row.key, {
+      source: "gamepad",
+      id,
+      info,
+      row,
+      rate: new RateMeter(),
+      rumbleTimer: undefined,
+      run: undefined,
+    });
     this.log.event("gamepad_added", {
       pad: row.key,
       identity: info.identity,
@@ -399,6 +458,7 @@ export class Tester {
       open: false,
       switching: false,
       recording: undefined,
+      run: undefined,
     };
     this.pads.set(row.key, pad);
     this.log.event("hid_added", {
@@ -425,6 +485,8 @@ export class Tester {
   private remove(key: string): void {
     const pad = this.pads.get(key);
     if (pad?.source === "gamepad") window.clearTimeout(pad.rumbleTimer);
+    pad?.run?.wizard.free();
+    if (key === this.view.selected) this.view.wizardOpen = false;
     this.pads.delete(key);
     this.log.event(key.startsWith("webhid:") ? "hid_removed" : "gamepad_removed", { pad: key });
     this.log.forget(key);
@@ -450,6 +512,7 @@ export class Tester {
       else {
         this.view.selected = null;
         this.view.current = null;
+        this.view.wizardOpen = false;
       }
     }
   }
@@ -589,23 +652,90 @@ export class Tester {
       this.drawPlaceholder();
       return;
     }
+    const run = pad.run;
+    const status = run ? this.feedWizard(pad, run, now) : undefined;
+    const wizardOpen = this.view.wizardOpen && run !== undefined;
     // jq79 renders the detail; the live view moves in once it exists, and
-    // again if it was rendered anew or another pad was selected.
-    if (this.live?.key !== pad.row.key || this.live.root !== root || !root.isConnected) {
-      const view =
-        pad.source === "gamepad"
-          ? new LiveView(root, pad.info)
-          : new HidLiveView(root, pad.info, {
-              switchToFull: () => this.switchToFull(pad),
-              record: () => this.record(pad),
-            });
-      this.live = { key: pad.row.key, root, view };
+    // again if it was rendered anew, another pad was selected, or the
+    // wizard opened or closed.
+    if (
+      this.live?.key !== pad.row.key ||
+      this.live.root !== root ||
+      !root.isConnected ||
+      (this.live.view instanceof WizardView) !== wizardOpen
+    ) {
+      this.live = { key: pad.row.key, root, view: this.buildView(pad, root, wizardOpen) };
       // Which pad the view shows, next to the selection jq79 renders.
       root.dataset.view = pad.row.key;
     }
-    const read = reads.get(pad.row.key);
-    if (read && this.live.view instanceof LiveView) {
-      this.live.view.update(read.snapshot, read.state, pad.rate.rate(now), this.view.showValues);
+    const view = this.live.view;
+    if (view instanceof WizardView && run && status) {
+      view.update(status, () => run.wizard.results(), run.wizard.mappedState(), this.view.showValues);
+      return;
     }
+    const read = reads.get(pad.row.key);
+    if (read && view instanceof LiveView) {
+      // After a finished run, the drawing shows the mapping it identified.
+      const state = run?.done ? run.wizard.mappedState() : read.state;
+      view.update(read.snapshot, state, pad.rate.rate(now), this.view.showValues);
+    }
+  }
+
+  /** The view of the selected pad: the guided wizard, or its live view. */
+  private buildView(pad: Pad, root: HTMLElement, wizardOpen: boolean): LiveView | HidLiveView | WizardView {
+    const run = pad.run;
+    if (wizardOpen && run) {
+      return new WizardView(root, layoutFor(pad.info.family), pad.info.face_layout, {
+        skip: () => {
+          this.log.event("wizard_skip", { pad: pad.row.key, step: run.logged });
+          run.wizard.skip();
+        },
+        back: () => run.wizard.back(),
+        restart: () => {
+          this.log.event("wizard_restart", { pad: pad.row.key });
+          run.wizard.restart();
+        },
+        close: this.closeWizard,
+      });
+    }
+    if (pad.source === "gamepad") {
+      const { buttons, axes } = pad.info.layout;
+      const identified = run?.done ? rawNames(run.wizard.results(), buttons.length, axes.length) : undefined;
+      return new LiveView(root, pad.info, identified);
+    }
+    return new HidLiveView(root, pad.info, {
+      switchToFull: () => this.switchToFull(pad),
+      record: () => this.record(pad),
+    });
+  }
+
+  /**
+   * Feeds a pad's wizard run with its latest values, and logs the steps it
+   * completed or undid. Returns its status.
+   */
+  private feedWizard(pad: Pad, run: WizardRun, now: number): WizardStatus | undefined {
+    try {
+      if (pad.source === "gamepad") this.gamepads?.feedWizard(pad.id, run.wizard, now);
+      else this.hids?.feedWizard(pad.id, run.wizard, now);
+    } catch {
+      // Unplugged since the last sample: its removal comes with the next one.
+      return undefined;
+    }
+    const status = run.wizard.status();
+    if (status.step > run.logged) {
+      const results = run.wizard.results();
+      for (const result of results.slice(run.logged, status.step)) {
+        this.log.event("wizard_step", { pad: pad.row.key, ...result });
+      }
+    } else if (status.step < run.logged) {
+      this.log.event("wizard_back", { pad: pad.row.key, step: status.step });
+    }
+    run.logged = status.step;
+    const done = status.phase === "done";
+    if (done && !run.done) {
+      this.log.event("wizard_done", { pad: pad.row.key, missing: run.wizard.missing() });
+    }
+    run.done = done;
+    return status;
   }
 }

@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use crate::wizard::MappingWizard;
 use anygamepad::model::identity::{Browser, DeviceIdentity, Fingerprint, Os};
 use anygamepad::model::raw::{RawLayout, RawState};
 use anygamepad::model::{
@@ -283,6 +284,26 @@ impl Gamepads {
             buttons: snapshot.buttons.iter().map(button_snapshot).collect(),
             axes: &snapshot.axes,
         })
+    }
+
+    /// Starts the guided mapping wizard on a gamepad's raw buttons and axes.
+    pub fn wizard(&self, device: u32) -> Result<MappingWizard, JsError> {
+        let info = self.provider.info(device_id(device)).ok_or_else(unknown)?;
+        Ok(MappingWizard::new(info.layout.clone()))
+    }
+
+    /// Feeds `wizard` with an open gamepad's raw values as read by the last
+    /// `update()`, at `now` (`performance.now()`). Call it once a frame.
+    #[wasm_bindgen(js_name = feedWizard)]
+    pub fn feed_wizard(
+        &mut self,
+        device: u32,
+        wizard: &mut MappingWizard,
+        now: f64,
+    ) -> Result<(), JsError> {
+        let raw = self.poll_raw(device_id(device))?;
+        wizard.feed(raw, now);
+        Ok(())
     }
 
     /// Drives an output of an open gamepad, for example

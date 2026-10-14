@@ -63,6 +63,10 @@ jobs:
       # GameControllerDB entry is valid.
       - run: cargo clippy -p anygamepad-db --all-targets --all-features --locked -- -D warnings
       - run: cargo test -p anygamepad-db --all-features --locked
+      # Optional features (json, schemars) of the device report format: the
+      # committed JSON Schema and example report are current.
+      - run: cargo clippy -p anygamepad-report --all-targets --all-features --locked -- -D warnings
+      - run: cargo test -p anygamepad-report --all-features --locked
       # The library without its default `web` provider.
       - run: cargo clippy -p anygamepad --all-targets --no-default-features --locked -- -D warnings
 
@@ -80,6 +84,7 @@ jobs:
       - run: cargo build --workspace --exclude anygamepad-virtual --target wasm32-unknown-unknown --locked
       - run: cargo clippy -p anygamepad-model --all-features --target wasm32-unknown-unknown --locked -- -D warnings
       - run: cargo clippy -p anygamepad-db --all-features --target wasm32-unknown-unknown --locked -- -D warnings
+      - run: cargo clippy -p anygamepad-report --all-features --target wasm32-unknown-unknown --locked -- -D warnings
       # wasm-bindgen-test-runner must match the wasm-bindgen version in Cargo.lock.
       - id: wasm-bindgen
         run: echo "version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')" >> "$GITHUB_OUTPUT"
@@ -113,6 +118,7 @@ jobs:
       - run: cargo +1.85 check --workspace --locked
       - run: cargo +1.85 check -p anygamepad-model --all-features --locked
       - run: cargo +1.85 check -p anygamepad-db --all-features --locked
+      - run: cargo +1.85 check -p anygamepad-report --all-features --locked
       - run: cargo +1.85 check --workspace --exclude anygamepad-virtual --target wasm32-unknown-unknown --locked
 
   # The web app and its WebAssembly bindings: the build artifacts.

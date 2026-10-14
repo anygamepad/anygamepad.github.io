@@ -1,6 +1,7 @@
 // The live view of a Gamepad API pad: the update rate, the controller
-// drawing (standard layout only, shaped by the pad's family), and every raw
-// button and axis as the browser reports it, folded under the drawing.
+// drawing (standard layout, or the mapping the guided wizard identified;
+// shaped by the pad's family), and every raw button and axis as the browser
+// reports it, folded under the drawing.
 // Built once per device; the frame loop calls `update`, which only touches
 // what changed (ADR 0005: no reactivity per frame).
 
@@ -33,27 +34,34 @@ export class LiveView {
   private readonly axes: AxisRow[] = [];
   private lastRate = -1;
 
-  constructor(root: HTMLElement, info: DeviceInfo) {
+  /**
+   * `identified` names the raw elements a finished guided wizard mapped
+   * (see `rawNames`); the drawing then shows the wizard's mapping.
+   */
+  constructor(root: HTMLElement, info: DeviceInfo, identified?: { buttons: string[]; axes: string[] }) {
     this.root = root;
     root.replaceChildren();
 
     this.rate = element("p", "rate", root, "Waiting for data…");
 
-    if (info.canonical) {
-      this.drawing = new ControllerDrawing(layoutFor(info.family), info.face_layout, info.capabilities?.buttons);
+    const names = identified ?? info.canonical;
+    if (names) {
+      // Buttons the pad reports, when the browser's standard mapping says.
+      const buttons = identified ? undefined : info.capabilities?.buttons;
+      this.drawing = new ControllerDrawing(layoutFor(info.family), info.face_layout, buttons);
       root.append(this.drawing.element);
     }
 
     // Folded under a drawing; open when there is none to show.
     const raw = element("details", "raw-values", root);
-    raw.open = !info.canonical;
+    raw.open = !names;
     element("summary", "", raw, "Raw values");
     const buttons = element("section", "raw raw-buttons", raw);
     element("h3", "", buttons, `Buttons (${info.layout.buttons.length})`);
     const buttonList = element("ol", "buttons", buttons);
     info.layout.buttons.forEach((_, index) => {
       const cell = element("li", "button", buttonList);
-      const name = info.canonical?.buttons[index] ?? "";
+      const name = names?.buttons[index] ?? "";
       element("span", "index", cell, String(index));
       // Names can be wider than the cell; the tooltip shows them whole.
       element("span", "name", cell, name).title = name;
@@ -69,7 +77,7 @@ export class LiveView {
     info.layout.axes.forEach((_, index) => {
       const row = element("li", "axis", axisList);
       element("span", "index", row, String(index));
-      element("span", "name", row, info.canonical?.axes[index] ?? "");
+      element("span", "name", row, names?.axes[index] ?? "");
       const track = element("span", "track", row);
       const bar = element("span", "bar", track);
       const value = element("span", "value", row, axisText(0));

@@ -4,8 +4,9 @@
 //
 // - Gamepad API: the pad list and the selection, hotplug, raw values, the
 //   drawing of each pad's family, the values shown on it, the update rate,
-//   the vibration test, and the hint shown in Chromium on macOS while no
-//   gamepad shows.
+//   the vibration test, the guided wizard on a pad without the standard
+//   mapping, and the hint shown in Chromium on macOS while no gamepad
+//   shows.
 // - WebHID: a Bluetooth DualSense picked in the chooser hides its Gamepad API
 //   twin, is decoded (reduced report, then the full one after the switch),
 //   shows its touchpad, motion and battery, records its reports to a file,
@@ -262,6 +263,26 @@ const readDetail = () => {
   };
 };
 
+// Runs in the page: what the guided wizard shows.
+const readWizard = () => {
+  const box = document.querySelector(".wizard");
+  if (!box) return null;
+  const text = (element) => element?.textContent.replace(/\s+/g, " ").trim() || null;
+  return {
+    progress: text(box.querySelector(".wizard-progress")),
+    prompt: text(box.querySelector(".wizard-prompt")),
+    note: text(box.querySelector(".wizard-note")),
+    hint: text(box.querySelector(".wizard-hint")),
+    targets: [...box.querySelectorAll(".diagram .target")].map((element) => text(element.querySelector("title"))),
+    on: [...box.querySelectorAll(".diagram .control.on")].map((element) => text(element.querySelector("title"))),
+    summary: text(box.querySelector(".wizard-summary")),
+    results: [...box.querySelectorAll(".wizard-results li")].map((row) =>
+      [...row.children].map((part) => part.textContent).join(" "),
+    ),
+    back: box.querySelector(".wizard-actions button:nth-child(2)").disabled ? "disabled" : "enabled",
+  };
+};
+
 const DUALSHOCK = {
   id: "Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)",
   mapping: "standard",
@@ -470,6 +491,111 @@ try {
   );
   assert.equal(calls.at(-1).call, "reset");
 
+  // The guided wizard on the pad without the standard mapping: buttons by
+  // index, the d-pad on axes 3 and 4, sticks on axes 0 to 2. Pressing the
+  // first two buttons it identified together says a control is not there,
+  // as the "Not on this pad" button does.
+  await select("USB Gamepad");
+  await until("the generic pad", detail, (d) => d.ready && d.name === "USB Gamepad");
+  await page.getByRole("button", { name: "Identify the buttons" }).click();
+  const wizard = () => page.evaluate(readWizard);
+  let step = await until("the first step", wizard, (w) => w?.note === null && w.prompt !== null);
+  assert.deepEqual(step, {
+    progress: "Step 1 of 21",
+    prompt: "Press the bottom face button.",
+    note: null,
+    hint: null,
+    targets: ["south"],
+    on: [],
+    summary: null,
+    results: [],
+    back: "disabled",
+  });
+  assert.equal(await page.locator(".vibration").count(), 0);
+  const axesWith = (index, value) => GENERIC.axes.map((rest, i) => (i === index ? value : rest));
+  // Uses the pad as `change` says, waits for `note`, lets go and waits for
+  // the next step.
+  const answer = async (change, note) => {
+    const before = (await wizard()).progress;
+    await setGamepads([DUALSHOCK, with_(GENERIC, change)]);
+    await until(`"${note}" at ${before}`, wizard, (w) => w.note === note);
+    await setGamepads([DUALSHOCK, GENERIC]);
+    await until(`the step after ${before}`, wizard, (w) => w.progress !== before);
+  };
+  const skipButton = async () => {
+    const before = (await wizard()).progress;
+    await page.getByRole("button", { name: "Not on this pad" }).click();
+    await until(`the step after ${before}`, wizard, (w) => w.progress !== before);
+  };
+  const chord = { buttons: { 2: 1, 1: 1 } };
+  const skipping = "Not on this pad: let go to confirm.";
+  await answer({ buttons: { 2: 1 } }, "Detected b2. Let go to confirm.");
+  await answer({ buttons: { 1: 1 } }, "Detected b1. Let go to confirm.");
+  step = await wizard();
+  assert.equal(step.prompt, "Press the left face button.");
+  assert.equal(step.hint, "Not on this pad? Press the bottom and right face buttons together.");
+  // The bottom face button alone is taken.
+  await setGamepads([DUALSHOCK, with_(GENERIC, { buttons: { 2: 1 } })]);
+  await until("the conflict", wizard, (w) => w.note === "That one is already the bottom face button.");
+  await setGamepads([DUALSHOCK, GENERIC]);
+  await answer(chord, skipping);
+  await answer({ buttons: { 0: 1 } }, "Detected b0. Let go to confirm.");
+  await answer({ axes: axesWith(4, -1) }, "Detected -a4. Let go to confirm.");
+  await answer({ axes: axesWith(4, 1) }, "Detected +a4. Let go to confirm.");
+  await answer({ axes: axesWith(3, -1) }, "Detected -a3. Let go to confirm.");
+  await answer({ axes: axesWith(3, 1) }, "Detected +a3. Let go to confirm.");
+  for (const index of [4, 5, 6, 7, 8, 9]) {
+    await answer({ buttons: { [index]: 1 } }, `Detected b${index}. Let go to confirm.`);
+  }
+  await skipButton(); // home
+  await answer({ axes: axesWith(0, 1) }, "Detected a0. Let go to confirm.");
+  await answer({ axes: axesWith(1, -1) }, "Detected a1~. Let go to confirm.");
+  await answer({ buttons: { 3: 1 } }, "Detected b3. Let go to confirm.");
+  await answer({ axes: axesWith(2, 1) }, "Detected a2. Let go to confirm.");
+  await answer(chord, skipping); // right stick, up
+  step = await wizard();
+  assert.equal(step.prompt, "Press the right stick, pushed in like a button (R3).");
+  await skipButton();
+  step = await until("the summary", wizard, (w) => w.summary !== null);
+  assert.equal(step.progress, "All 21 steps done");
+  assert.equal(step.prompt, "All set.");
+  assert.equal(step.summary, "17 controls identified, 4 not on this pad.");
+  assert.deepEqual(step.results.slice(0, 5), [
+    "The bottom face button b2",
+    "The right face button b1",
+    "The left face button not on this pad",
+    "The top face button b0",
+    "Up on the d-pad -a4",
+  ]);
+  assert.deepEqual(step.results.slice(10, 12), [
+    "The left trigger (LT, L2, ZL) b6",
+    "The right trigger (RT, R2, ZR) b7",
+  ]);
+  assert.equal(step.results.length, 21);
+  // Back to the last step, and done again.
+  await page.getByRole("button", { name: "Back" }).click();
+  await until("the last step again", wizard, (w) => w.progress === "Step 21 of 21");
+  await skipButton();
+  // What was identified drives the drawing, here and once closed.
+  await setGamepads([DUALSHOCK, with_(GENERIC, { buttons: { 2: 1 }, axes: axesWith(4, -1) })]);
+  step = await until("the identified controls", wizard, (w) => w.on.length === 2);
+  assert.deepEqual(step.on, ["dpad_up", "south"]);
+  await page.getByRole("button", { name: "Close" }).click();
+  pad = await until("the live view", detail, (d) => d.ready && d.buttons.length === 10 && d.diagram?.on.length === 2);
+  assert.equal(pad.diagram.label, "Controller, canonical positions");
+  assert.deepEqual(pad.diagram.on, ["dpad_up", "south"]);
+  assert.deepEqual(
+    pad.buttons.map((button) => button.name),
+    ["north", "east", "south", "left_stick", "left_shoulder", "right_shoulder", "left_trigger", "right_trigger", "select", "start"],
+  );
+  assert.deepEqual(
+    pad.axes.map((axis) => axis.name),
+    ["left_stick_x", "left_stick_y", "right_stick_x", "dpad_left dpad_right", "dpad_up dpad_down"],
+  );
+  assert.equal(pad.rawOpen, false);
+  await setGamepads([DUALSHOCK, GENERIC]);
+  await select("Wireless Controller");
+
   // Unplugging one gamepad leaves the other live.
   await setGamepads([with_(DUALSHOCK, { buttons: { 1: 1 } })]);
   await until("one pad", padNames, (names) => names.length === 1);
@@ -535,6 +661,21 @@ try {
   assert.equal(pad.touch, "Needs the full report");
   assert.equal(pad.battery, "Needs the full report");
   assert.deepEqual(await page.evaluate(() => window.__hid.features), []);
+
+  // The guided wizard checks the decoding: the decoded controls answer.
+  const hidButtons = (buttons) => page.evaluate((value) => (window.__hid.state.buttons = value), buttons);
+  await hidButtons([0x08, 0, 0]);
+  await page.getByRole("button", { name: "Identify the buttons" }).click();
+  step = await until("the DualSense's first step", wizard, (w) => w?.note === null && w.prompt !== null);
+  assert.equal(step.prompt, "Press the bottom face button (Cross).");
+  await hidButtons([0x28, 0, 0]); // Cross
+  await until("Cross", wizard, (w) => w.note === "Detected b{button:south}. Let go to confirm.");
+  await hidButtons([0x08, 0, 0]);
+  step = await until("the second step", wizard, (w) => w.progress === "Step 2 of 21");
+  assert.equal(step.prompt, "Press the right face button (Circle).");
+  await page.getByRole("button", { name: "Close" }).click();
+  await until("the WebHID view", detail, (d) => d.form !== null && d.diagram !== null);
+  await hidButtons([0x20 | 0x00, 0x01, 0x01]);
 
   // The switch reads the calibration report, and only it; then the full
   // report brings the touchpad, motion and battery.
@@ -611,6 +752,19 @@ try {
   );
   assert.deepEqual(of("hid_report_form").map((event) => event.form), ["bluetooth_reduced", "bluetooth_full"]);
   assert.ok(["hid_opened", "hid_switch_to_full", "hid_recording", "hid_removed", "power", "touches"].every((type) => of(type).length > 0));
+  // The guided wizard: every step, the one done again, and the result.
+  const genericPad = of("gamepad_added")[1].pad;
+  const steps = of("wizard_step").filter((event) => event.pad === genericPad);
+  assert.equal(steps.length, 22);
+  assert.deepEqual(steps[0].step, { kind: "button", button: "south" });
+  assert.deepEqual(steps[0].inputs, [{ target: { kind: "button", button: "south" }, input: "b2" }]);
+  assert.equal(steps[2].missing, true);
+  assert.equal(of("wizard_back").length, 1);
+  assert.deepEqual(of("wizard_done").at(-1).missing, { buttons: ["west", "right_stick", "home"], axes: ["right_stick_y"] });
+  assert.deepEqual(
+    of("wizard_step").filter((event) => event.pad === hid.pad).map((event) => event.inputs[0].input),
+    ["b{button:south}"],
+  );
   await context.close();
 
   // The theme follows the system until the viewer picks one, which a reload

@@ -14,3 +14,25 @@ authors.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+# Read and write reports as JSON (`Report::from_json`, `Report::to_json`):
+# files, downloads and GitHub issues (ADR 0007).
+json = ["dep:serde_json"]
+# JSON Schema of the report format (`json_schema`).
+schemars = ["dep:schemars", "anygamepad-model/schemars", "anygamepad-db/schemars"]
+
+[dependencies]
+anygamepad-db.workspace = true
+anygamepad-model = { workspace = true, features = ["serde"] }
+schemars = { workspace = true, optional = true }
+serde.workspace = true
+serde_json = { workspace = true, optional = true }
+
+[dev-dependencies]
+jsonschema = { version = "0.58.6", default-features = false }
+serde_json.workspace = true
+
+[[test]]
+name = "schema"
+required-features = ["json", "schemars"]

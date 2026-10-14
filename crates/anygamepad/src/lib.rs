@@ -9,7 +9,9 @@
 //!
 //! Providers ([`provider`]) read the raw elements of each device; the
 //! mapping engine ([`mapping`]) applies the device's profile
-//! ([`db`]) to turn them into the canonical model ([`model`]).
+//! ([`db`]) to turn them into the canonical model ([`model`]). The guided
+//! mapping wizard ([`wizard`]) records a device's mapping by asking the
+//! person to use each control in turn.
 //!
 //! # Features
 //!
@@ -22,6 +24,7 @@ pub mod protocol;
 pub mod provider;
 #[cfg(feature = "web")]
 pub mod web;
+pub mod wizard;
 
 pub use anygamepad_db as db;
 pub use anygamepad_model as model;

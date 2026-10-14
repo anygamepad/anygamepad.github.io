@@ -25,8 +25,8 @@ pub use input::{AxisRange, Input, ParseInputError};
 #[cfg(feature = "toml")]
 pub use profile::ProfileError;
 pub use profile::{
-    AxisMapping, Indices, InvalidProfile, Mapping, MatchRule, MatchScore, Profile, ProfileSource,
-    SCHEMA_VERSION, best_match,
+    AxisMapping, Indices, InvalidMapping, InvalidProfile, Mapping, MatchRule, MatchScore, Profile,
+    ProfileSource, SCHEMA_VERSION, best_match,
 };
 
 /// The JSON Schema of the profile format, as committed in

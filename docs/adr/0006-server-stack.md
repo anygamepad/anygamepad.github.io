@@ -3,6 +3,9 @@
 - Status: accepted (2026-10-10)
 - Date: 2026-10-10
 - Roadmap: F3 (ADR 5, server part); used by P2, P5
+- Timing changed by [ADR 0007](0007-local-first-device-reports.md)
+  (2026-10-14): reports are stored locally first, and this server becomes
+  a sync target after the web launch (M2). The stack below is unchanged.
 
 ## Context
 
