@@ -32,9 +32,24 @@ export interface TesterView {
   environment: Environment | null;
   devices: DeviceRow[];
   error: string | null;
+  /** Why a gamepad may not show in this browser, while none does. */
+  hint: string | null;
 }
 
-export const emptyView = (): TesterView => ({ environment: null, devices: [], error: null });
+export const emptyView = (): TesterView => ({ environment: null, devices: [], error: null, hint: null });
+
+/**
+ * A known reason for a gamepad not to show in this browser, if any.
+ *
+ * macOS switches the DualSense to its extended report, which Chromium's HID
+ * reader cannot decode, so Chromium never sees an input and never exposes it
+ * (docs/research/06-browser-gamepad-api.md).
+ */
+export const missingGamepadHint = (environment: Environment): string | null =>
+  environment.browser.engine === "blink" && environment.os === "macos"
+    ? "A DualSense does not show in Chrome, Edge or other Chromium browsers on macOS: " +
+      "macOS switches it to a report mode they cannot read. Try Safari, which reads it through macOS."
+    : null;
 
 /** Which motors a vibration test runs. */
 export type RumbleKind = "strong" | "weak" | "both" | "triggers";
@@ -102,6 +117,7 @@ export class Tester {
       return;
     }
     view.environment = this.gamepads.environment();
+    view.hint = missingGamepadHint(view.environment);
     document.addEventListener("visibilitychange", this.onVisibility);
     this.onVisibility();
     this.frame = requestAnimationFrame(this.draw);

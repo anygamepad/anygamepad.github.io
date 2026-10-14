@@ -1,8 +1,9 @@
 // Smoke test of the built site (dist/) in a browser: it loads under its
 // Content Security Policy without errors or warnings, the WebAssembly module
 // starts, and the live tester follows gamepads: hotplug, raw values, the
-// controller drawing, the update rate and the vibration test. The Gamepad API
-// has no test hooks, so the gamepads are fakes behind `navigator.getGamepads()`.
+// controller drawing, the update rate and the vibration test, and the hint
+// shown in Chromium on macOS while no gamepad shows. The Gamepad API has no
+// test hooks, so the gamepads are fakes behind `navigator.getGamepads()`.
 //
 // BROWSER picks the engine: `chromium` (the default; CHROME_PATH must point at
 // a Chrome or Chromium binary), `firefox` or `webkit` (Playwright's builds,
@@ -122,6 +123,9 @@ const GENERIC = {
   buttons: Array.from({ length: 10 }, () => 0),
   axes: [0, 0, 0, 0, 0],
 };
+
+const MAC_CHROME =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
 
 const with_ = (pad, { buttons = {}, axes = pad.axes }) => ({
   ...pad,
@@ -248,6 +252,20 @@ try {
   await setGamepads([]);
   await page.waitForSelector(".devices", { state: "detached" });
   await page.waitForSelector(".message");
+  assert.equal(await page.locator(".hint").count(), 0);
+
+  // Chromium on macOS (by its user agent) explains why a DualSense may not
+  // show, until a gamepad does.
+  const mac = await browser.newContext({ userAgent: MAC_CHROME });
+  const macPage = await mac.newPage();
+  macPage.on("pageerror", (error) => problems.push(`page error (macOS): ${error.message}`));
+  await macPage.addInitScript(fakeGamepads);
+  await macPage.goto(url, { waitUntil: "networkidle" });
+  assert.match(await macPage.innerText(".environment"), /^blink \d+ on macos$/);
+  assert.match(await macPage.locator(".hint").innerText(), /^A DualSense does not show in Chrome.*Try Safari/);
+  await macPage.evaluate((pads) => window.__setGamepads(pads), [DUALSHOCK]);
+  await macPage.waitForSelector(".hint", { state: "detached" });
+  await mac.close();
 
   assert.deepEqual(problems, []);
   console.log(`smoke test passed in ${browserName} (${url})`);

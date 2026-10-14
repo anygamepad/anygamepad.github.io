@@ -5,9 +5,10 @@
 
 <main>
   <p :if="error" class="message error">{{ error }}</p>
-  <p :if="devices.length === 0" class="message">
-    Connect a gamepad and press one of its buttons: browsers only show a gamepad after that.
-  </p>
+  <div :if="devices.length === 0" class="empty">
+    <p class="message">Connect a gamepad and press one of its buttons: browsers only show a gamepad after that.</p>
+    <p :if="hint" class="message hint">{{ hint }}</p>
+  </div>
   <ul :else class="devices">
     <li :each="device in devices" :key="device.id" class="device">
       <header class="device-head">
