@@ -38,7 +38,8 @@ WebHID can read that report ([research note 09](../../docs/research/09-dualsense
   example becomes that integration, and motorust's own gamepad code (gilrs,
   plus GameController on macOS for the DualSense, rumble and adaptive
   triggers) is what C6, C7, C14 and C9 must replace without losing
-  anything. This pulls those tasks forward; it needs a re-plan.
+  anything. Not urgent (owner, same day): controller support comes first,
+  so the schedule stays as it is.
 - **Owner direction (2026-10-14), not yet re-planned:** the desktop
   binaries write device reports to files, and the web app keeps them in
   IndexedDB, synchronized with a database later. This changes the
