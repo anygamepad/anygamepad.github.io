@@ -30,6 +30,8 @@ import type {
   WizardStatus,
   WizardStep,
   WizardTarget,
+  Redaction,
+  ScrubResult,
 } from "./anygamepad_wasm.js";
 
 /** Reads the guided wizard as the web app does. */
@@ -125,6 +127,9 @@ export async function main(): Promise<void> {
       const wizard: MappingWizard = gamepads.wizard(device);
       gamepads.feedWizard(device, wizard, performance.now());
       readWizard(wizard);
+      const rep: ScrubResult = gamepads.buildReport(device);
+      const repWiz: ScrubResult = gamepads.buildReportWithWizard(device, wizard);
+      console.log(rep.redactions.length, repWiz.redactions.length);
       wizard.free();
 
       gamepads.open(device, "observe_only");
@@ -174,6 +179,9 @@ export async function webHid(button: HTMLButtonElement): Promise<void> {
       const wizard: MappingWizard = devices.wizard(device);
       devices.feedWizard(device, wizard, performance.now());
       readWizard(wizard);
+      const rep: ScrubResult = devices.buildReport(device);
+      const repWiz: ScrubResult = devices.buildReportWithWizard(device, wizard);
+      console.log(rep.redactions.length, repWiz.redactions.length);
       wizard.free();
     }
     const feature: DataView = await devices.receiveFeatureReport(device, 5);

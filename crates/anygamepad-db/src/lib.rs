@@ -17,10 +17,13 @@
 //! - `schemars`: [`json_schema`].
 #![forbid(unsafe_code)]
 
+pub mod database;
 mod input;
 mod profile;
 pub mod sdl;
+pub mod wire;
 
+pub use database::Database;
 pub use input::{AxisRange, Input, ParseInputError};
 #[cfg(feature = "toml")]
 pub use profile::ProfileError;

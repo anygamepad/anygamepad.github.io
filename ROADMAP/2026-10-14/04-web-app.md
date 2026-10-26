@@ -40,9 +40,9 @@ gantt
     W8 Tester layout and device drawings :done, w8, 2026-10-14, 1d
     W3 WebHID mode with PlayStation decoding :w3, after w2 c15 w8, 15d
     W4 Guided mapping wizard (shared with desktop) :done, w4, 2026-10-14, 1d
-    W5 Normalized view (mapping engine + profiles) :crit, w5, after w2 c3 d2 d4, 10d
-    W6 Local report store, sharing and consent flow :w6, after w4 p1 p3, 10d
-    W7 Public launch of the web tester :crit, w7, after w5 w6, 5d
+    W5 Normalized view (mapping engine + profiles) :crit, done, w5, 2026-10-21, 4d
+    W6 Local report store, sharing and consent flow :crit, done, w6, after w4 p1 p3, 10d
+    W7 Public launch of the web tester :crit, done, w7, after w5 w6, 5d
 ```
 
 ## Tasks
@@ -53,9 +53,9 @@ gantt
 | W2 | Live tester on the core web backend | 15 | W1, C11 | W3, W4, W5, W8 | 2026-10-13 | 2026-10-14 | done |
 | W3 | WebHID mode with PlayStation decoding | 15 | W2, C15, W8 | - | 2026-10-24 | 2026-11-08 | 62 |
 | W4 | Guided mapping wizard (shared with desktop) | 15 | W2 | A3, W6 | 2026-10-14 | 2026-10-14 | done |
-| W5 | **Normalized view (mapping engine + profiles)** | 10 | W2, C3, D2, D4 | W7 | 2026-10-21 | 2026-10-31 | 0 |
-| W6 | Local report store, sharing and consent flow | 10 | W4, P1, P3 | P6, W7 | 2026-10-14 | 2026-10-24 | 7 |
-| W7 | **Public launch of the web tester** | 5 | W5, W6 | M2 | 2026-10-31 | 2026-11-05 | 0 |
+| W5 | **Normalized view (mapping engine + profiles)** | 10 | W2, C3, D2, D4 | W7 | 2026-10-21 | 2026-10-25 | done |
+| W6 | **Local report store, sharing and consent flow** | 10 | W4, P1, P3 | P6, W7 | 2026-10-14 | 2026-10-25 | done |
+| W7 | **Public launch of the web tester** | 5 | W5, W6 | M2 | 2026-10-25 | 2026-10-25 | done |
 | W8 | Tester layout and device drawings | 7 | W2 | W3 | 2026-10-14 | 2026-10-14 | done |
 
 ### W1 — Web app scaffolding and WASM build pipeline
@@ -205,6 +205,9 @@ profiles (D4, bootstrapped with the SDL GameControllerDB import D2) next to the
 raw values, and highlight where it disagrees with what the user confirmed in
 the wizard.
 
+Status (2026-10-25): done
+(`RECORD/2026-10-25.w5-normalized-view.completed.md`).
+
 ### W6 — Local report store, sharing and consent flow
 
 Re-planned on 2026-10-14
@@ -232,9 +235,16 @@ and shared through the issue form in Chromium, Firefox and WebKit (smoke
 test with fake pads), and what the form receives reads back with
 `Report::from_json`.
 
+Status (2026-10-25): done
+([`RECORD/2026-10-25.w6-local-report-store.completed.md`](../../RECORD/2026-10-25.w6-local-report-store.completed.md)).
+
 ### W7 — Public launch
 
 Production deployment of the web app on GitHub Pages
 (<https://anygamepad.github.io>), with local reports and sharing through
 issues (W6). Reaching this milestone (M2) starts the data collection loop;
 sync with the server (P6) follows.
+
+Status (2026-10-25): done
+([`RECORD/2026-10-25.w7-public-launch.completed.md`](../../RECORD/2026-10-25.w7-public-launch.completed.md)),
+achieving Milestone M2.

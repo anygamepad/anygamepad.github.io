@@ -20,6 +20,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 anygamepad.workspace = true
+anygamepad-report.workspace = true
 # Same crate as `anygamepad::model`, with the TypeScript declarations.
 anygamepad-model = { workspace = true, features = ["tsify"] }
 js-sys.workspace = true
@@ -29,6 +30,7 @@ tsify.workspace = true
 wasm-bindgen.workspace = true
 
 [dev-dependencies]
+anygamepad-report = { workspace = true, features = ["json"] }
 wasm-bindgen-futures.workspace = true
 wasm-bindgen-test.workspace = true
 

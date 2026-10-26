@@ -73,7 +73,8 @@
 
 use std::collections::BTreeMap;
 
-use anygamepad_db::{AxisMapping, AxisRange, Input, Mapping};
+use anygamepad_db::{AxisMapping, AxisRange, Database, Input, Mapping, Profile};
+use anygamepad_model::identity::DeviceIdentity;
 use anygamepad_model::raw::{RawAxisInfo, RawLayout, RawSource, RawState};
 use anygamepad_model::{Axis, Button, Capabilities, GamepadState, OutputSet};
 
@@ -291,6 +292,18 @@ pub struct Mapper {
 }
 
 impl Mapper {
+    /// Picks the best matching profile for `identity` in `database` and
+    /// resolves its mapping for `identity` against `layout`.
+    pub fn from_database<'a>(
+        database: &'a Database,
+        identity: &DeviceIdentity,
+        layout: &RawLayout,
+    ) -> Option<(Self, &'a Profile)> {
+        let profile = database.best_match(identity)?;
+        let mapping = profile.mapping_for(identity);
+        Some((Self::new(&mapping, layout), profile))
+    }
+
     /// Resolves `mapping` against the elements of `layout`.
     ///
     /// Canonical sources in the layout drive their own control unless

@@ -30,6 +30,7 @@ use wasm_bindgen::prelude::*;
 mod gamepads;
 #[cfg(target_arch = "wasm32")]
 mod hid_devices;
+mod report;
 mod wizard;
 
 pub use gamepads::{
@@ -40,6 +41,7 @@ pub use gamepads::{
 pub use hid_devices::{
     DecodedInput, HidDeviceInfo, HidDevices, HidFilter, HidInputReport, HidPoll, RawImu, ReportForm,
 };
+pub use report::{Redaction, ScrubResult};
 pub use wizard::{
     MappingWizard, WizardInput, WizardMissing, WizardPhase, WizardResult, WizardStatus, WizardStep,
     WizardTarget,

@@ -20,7 +20,7 @@ gantt
     D1 Device profile format and JSON Schema :done, d1, 2026-10-14, 1d
     D2 SDL GameControllerDB importer :done, d2, 2026-10-14, 1d
     D3 Initial curated profiles (top devices) :d3, after d1 c4 f4, 20d
-    D4 Profile embedding and runtime overrides :crit, d4, after d1 c3, 7d
+    D4 Profile embedding and runtime overrides :done, d4, 2026-10-25, 1d
 ```
 
 ## Tasks
@@ -30,7 +30,7 @@ gantt
 | D1 | Device profile format and JSON Schema | 10 | C2 | C3, D2, D3, D4, P1, P4 | 2026-10-14 | 2026-10-14 | done |
 | D2 | SDL GameControllerDB importer | 7 | D1 | W5 | 2026-10-14 | 2026-10-14 | done |
 | D3 | Initial curated profiles (top devices) | 20 | D1, C4, F4 | C8 | 2026-11-03 | 2026-11-23 | 17 |
-| D4 | **Profile embedding and runtime overrides** | 7 | D1, C3 | C10, W5, M1 | 2026-10-14 | 2026-10-21 | 0 |
+| D4 | **Profile embedding and runtime overrides** | 7 | D1, C3 | C10, W5, M1 | 2026-10-25 | 2026-10-25 | done |
 
 ### D1 — Device profile format and JSON Schema
 
@@ -79,3 +79,11 @@ Profiles are embedded at compile time (no network access needed by games) and
 can be overridden by a user/game-provided file at runtime. The same embedded
 database ships inside the web app's `.wasm` bundle, so a compact encoding may
 be needed to keep the bundle small.
+
+Status (2026-10-25): done (`RECORD/2026-10-25.d4-profile-embedding.completed.md`).
+`anygamepad_db::wire` encodes profiles compactly with `postcard`. Build script
+embeds curated profiles (`data/profiles/`) and SDL GameControllerDB (`data/sdl-gamecontrollerdb/`).
+`Database::embedded()` provides immediate in-memory lookups, with `load_override_toml()`
+and `add_override()` for runtime overrides. On WebAssembly targets, SDL entries
+are omitted to preserve the 128 KiB bundle budget (current `.wasm` size: 105.9 KiB gzip).
+`Mapper::from_database` resolves mappings against raw layouts directly.

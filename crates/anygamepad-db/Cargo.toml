@@ -16,6 +16,10 @@ authors.workspace = true
 workspace = true
 
 [features]
+default = ["embedded-sdl"]
+# Embeds the copy of SDL GameControllerDB in `data/sdl-gamecontrollerdb/`.
+# On non-wasm32 targets, includes the converted database for instant coverage.
+embedded-sdl = []
 # Read and write profiles as TOML (`Profile::from_toml`, `Profile::to_toml`):
 # the source format of `data/profiles/` and of runtime overrides (ADR 0003).
 toml = ["dep:toml"]
@@ -24,9 +28,17 @@ schemars = ["dep:schemars", "anygamepad-model/schemars"]
 
 [dependencies]
 anygamepad-model = { workspace = true, features = ["serde"] }
+postcard.workspace = true
 schemars = { workspace = true, optional = true }
 serde.workspace = true
 toml = { workspace = true, optional = true }
+
+[build-dependencies]
+anygamepad-model = { workspace = true, features = ["serde", "schemars"] }
+postcard.workspace = true
+schemars.workspace = true
+serde.workspace = true
+toml = { workspace = true }
 
 [dev-dependencies]
 jsonschema = { version = "0.58.6", default-features = false }
@@ -39,6 +51,10 @@ required-features = ["toml", "schemars"]
 [[test]]
 name = "sdl_gamecontrollerdb"
 required-features = ["toml", "schemars"]
+
+[[test]]
+name = "database"
+required-features = ["toml"]
 
 [[example]]
 name = "sdl_import"

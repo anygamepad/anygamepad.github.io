@@ -20,7 +20,10 @@ import {
   type MappingWizard,
   type OutputCommand,
   type WizardStatus,
+  type ScrubResult,
+  type Redaction,
 } from "./wasm/anygamepad_wasm.js";
+import { deleteReport, listReports, markReportShared, saveReport, type StoredReport } from "./storage";
 import { ActivityLog } from "./activity";
 import { ControllerDrawing } from "./drawing";
 import { HidLiveView } from "./hid-live";
@@ -47,6 +50,17 @@ export interface PadRow {
   wizard: boolean;
 }
 
+/** State of the active share modal. */
+export interface ActiveShare {
+  id: number;
+  report: string;
+  scrubbedReport: string;
+  redactions: Redaction[];
+  redactionPaths: string;
+  copied: boolean;
+  copyError: boolean;
+}
+
 /** The data the page renders. */
 export interface TesterView {
   environment: Environment | null;
@@ -66,6 +80,12 @@ export interface TesterView {
   error: string | null;
   /** Why a gamepad may not show in this browser, while none does. */
   hint: string | null;
+  /** Device reports saved locally in IndexedDB. */
+  savedReports: StoredReport[];
+  /** Active report in the share view modal. */
+  activeShare: ActiveShare | null;
+  /** Temporary notice shown after saving a report. */
+  saveNotice: string | null;
 }
 
 export const emptyView = (): TesterView => ({
@@ -79,6 +99,9 @@ export const emptyView = (): TesterView => ({
   hidMessage: null,
   error: null,
   hint: null,
+  savedReports: [],
+  activeShare: null,
+  saveNotice: null,
 });
 
 /**
@@ -267,6 +290,13 @@ export class Tester {
     });
     document.addEventListener("visibilitychange", this.onVisibility);
     this.onVisibility();
+    listReports()
+      .then((reports) => {
+        this.view.savedReports = reports;
+      })
+      .catch(() => {
+        // Storage unavailable or blocked
+      });
     this.frame = requestAnimationFrame(this.draw);
   }
 
@@ -326,6 +356,124 @@ export class Tester {
   /** Downloads the activity log (call it from a click). */
   readonly downloadLog = (): void => {
     saveJson(`anygamepad-activity-${fileTime()}.json`, this.log.toJSON(version(), this.view.environment));
+  };
+
+  /** Saves a device report of the currently selected pad to IndexedDB. */
+  readonly saveCurrentReport = async (): Promise<void> => {
+    if (!this.view.current || !this.view.selected) return;
+    const pad = this.pads.get(this.view.selected);
+    if (!pad) return;
+
+    try {
+      let scrubResult: ScrubResult;
+      const wizard = pad.run?.wizard;
+      if (pad.source === "gamepad") {
+        if (!this.gamepads) throw new Error("Gamepads provider not available");
+        if (wizard) {
+          scrubResult = this.gamepads.buildReportWithWizard(pad.id, wizard, undefined, undefined, Date.now());
+        } else {
+          scrubResult = this.gamepads.buildReport(pad.id, undefined, undefined, Date.now());
+        }
+      } else {
+        if (!this.hids) throw new Error("WebHID provider not available");
+        if (wizard) {
+          scrubResult = this.hids.buildReportWithWizard(pad.id, wizard, undefined, undefined, Date.now());
+        } else {
+          scrubResult = this.hids.buildReport(pad.id, undefined, undefined, Date.now());
+        }
+      }
+
+      const reportJson = JSON.stringify(scrubResult.report);
+      if (reportJson.length > 60000) {
+        throw new Error(`Report exceeds maximum size of 60,000 bytes (${reportJson.length} bytes)`);
+      }
+      const saved = await saveReport(reportJson, scrubResult.redactions);
+      this.view.savedReports = await listReports();
+      this.view.saveNotice = `Report saved for ${saved.name}.`;
+      this.log.event("report_saved", { pad: pad.row.key, id: saved.id });
+      setTimeout(() => {
+        if (this.view.saveNotice) this.view.saveNotice = null;
+      }, 4000);
+    } catch (err) {
+      this.fail(`Failed to save report: ${String(err)}`);
+    }
+  };
+
+  /** Downloads a saved report as a JSON file. */
+  readonly downloadSavedReport = (id: number): void => {
+    const report = this.view.savedReports.find((r) => r.id === id);
+    if (!report) return;
+    this.log.event("report_downloaded", { id });
+    const filename = `${report.fingerprint || "device"}-${report.created}.json`;
+    const blob = new Blob([report.report], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  };
+
+  /** Deletes a saved report from this browser. */
+  readonly deleteSavedReport = async (id: number): Promise<void> => {
+    if (!window.confirm("Delete this report from this browser?")) return;
+    try {
+      await deleteReport(id);
+      this.view.savedReports = await listReports();
+      this.log.event("report_deleted", { id });
+      if (this.view.activeShare?.id === id) {
+        this.view.activeShare = null;
+      }
+    } catch (err) {
+      this.fail(`Failed to delete report: ${String(err)}`);
+    }
+  };
+
+  /** Opens the "Share this report" view. */
+  readonly openShare = (id: number): void => {
+    const report = this.view.savedReports.find((r) => r.id === id);
+    if (!report) return;
+    try {
+      const redactions = report.redactions || [];
+      const redactionPaths = redactions.map((r: Redaction) => r.field).join(", ");
+      this.view.activeShare = {
+        id,
+        report: report.report,
+        scrubbedReport: report.report,
+        redactions,
+        redactionPaths,
+        copied: false,
+        copyError: false,
+      };
+      this.log.event("report_share_opened", { id });
+    } catch (err) {
+      this.fail(`Failed to prepare report for sharing: ${String(err)}`);
+    }
+  };
+
+  /** Closes the share modal. */
+  readonly closeShare = (): void => {
+    this.view.activeShare = null;
+  };
+
+  /** Copies the scrubbed report and opens the GitHub issue form. */
+  readonly copyAndOpenIssue = async (): Promise<void> => {
+    if (!this.view.activeShare) return;
+    const share = this.view.activeShare;
+    const report = this.view.savedReports.find((r) => r.id === share.id);
+    const title = `Report: ${report?.name || "Game Controller"} (${report?.fingerprint || ""})`;
+    const issueUrl = `https://github.com/anygamepad/anygamepad.github.io/issues/new?template=device-report.yml&title=${encodeURIComponent(title)}`;
+
+    try {
+      await navigator.clipboard.writeText(share.scrubbedReport);
+      share.copied = true;
+      share.copyError = false;
+      await markReportShared(share.id);
+      this.view.savedReports = await listReports();
+      this.log.event("report_shared_issue", { id: share.id });
+      window.open(issueUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      share.copyError = true;
+    }
   };
 
   /** Runs a short vibration test on a Gamepad API pad. */

@@ -27,5 +27,11 @@ App.mount("#app", {
   connectHid: tester.connectHid,
   downloadLog: tester.downloadLog,
   rumble: tester.rumble,
+  saveCurrentReport: tester.saveCurrentReport,
+  downloadSavedReport: tester.downloadSavedReport,
+  deleteSavedReport: tester.deleteSavedReport,
+  openShare: tester.openShare,
+  closeShare: tester.closeShare,
+  copyAndOpenIssue: tester.copyAndOpenIssue,
 });
 tester.start(App.data as unknown as TesterView);

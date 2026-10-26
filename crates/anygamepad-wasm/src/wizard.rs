@@ -208,6 +208,27 @@ impl MappingWizard {
             self.mapper.apply(raw, &mut self.state);
         }
     }
+
+    /// Whether the wizard has finished every step.
+    pub(crate) fn is_done(&self) -> bool {
+        self.wizard.status().phase == Phase::Done
+    }
+
+    /// The missing buttons and axes reported during the wizard run.
+    pub(crate) fn missing_controls(
+        &self,
+    ) -> (anygamepad::model::ButtonSet, anygamepad::model::AxisSet) {
+        self.wizard.missing()
+    }
+
+    /// The mapping confirmed by the user, if the wizard finished.
+    pub(crate) fn confirmed_mapping(&self) -> Option<anygamepad::db::Mapping> {
+        if self.is_done() {
+            Some(self.wizard.mapping())
+        } else {
+            None
+        }
+    }
 }
 
 #[wasm_bindgen]

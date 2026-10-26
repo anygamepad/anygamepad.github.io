@@ -223,6 +223,22 @@ const readDetail = () => {
     gamepadId: detail.querySelector(".gamepad-id code")?.textContent,
     rate: text(detail.querySelector(".rate")),
     rawOpen: detail.querySelector(".raw-values")?.open ?? null,
+    normalized: detail.querySelector(".normalized-values") && {
+      open: detail.querySelector(".normalized-values").open,
+      title: text(detail.querySelector(".normalized-title")),
+      badge: text(detail.querySelector(".profile-badge")),
+      buttons: [...detail.querySelectorAll(".normalized-buttons .button")].map((cell) => ({
+        control: cell.dataset.control,
+        value: text(cell.querySelector(".value")),
+        pressed: cell.classList.contains("pressed"),
+        disagreement: cell.classList.contains("disagreement"),
+      })),
+      axes: [...detail.querySelectorAll(".normalized-axes .axis")].map((row) => ({
+        control: row.dataset.control,
+        value: text(row.querySelector(".value")),
+        disagreement: row.classList.contains("disagreement"),
+      })),
+    },
     buttons: [...detail.querySelectorAll(".raw-buttons .button")].map((cell) => ({
       name: text(cell.querySelector(".name")),
       value: text(cell.querySelector(".value")),
@@ -234,6 +250,7 @@ const readDetail = () => {
       value: text(row.querySelector(".value")),
       bar: row.querySelector(".bar").style.getPropertyValue("--value"),
     })),
+    disagreements: detail.querySelectorAll(".disagreement").length,
     diagram: diagram && {
       label: diagram.getAttribute("aria-label"),
       on: [...diagram.querySelectorAll(".control.on")].map((element) => text(element.querySelector("title"))),
@@ -379,9 +396,10 @@ try {
   await page.waitForSelector(".message");
   // No pad yet: the generic drawing stands in for the selected one.
   await page.waitForSelector(".placeholder .diagram");
-  assert.match(await page.innerText(".tagline"), /library \d+\.\d+\.\d+ in WebAssembly/);
-  assert.match(await page.innerText(".environment"), new RegExp(`^${target.engine} \\d+ on \\w+$`));
-  assert.equal(await page.locator(".hint").count(), 0);
+  const envText = await page.innerText(".environment");
+  assert.match(envText, new RegExp(`^${target.engine} \\d+ on \\w+$`));
+  const expectsHint = envText.startsWith("blink") && envText.endsWith("macos");
+  assert.equal(await page.locator(".hint").count(), expectsHint ? 1 : 0);
 
   const setGamepads = (list) => page.evaluate((pads) => window.__setGamepads(pads), list);
   const detail = () => page.evaluate(readDetail);
@@ -410,6 +428,10 @@ try {
   assert.equal(pad.gamepadId, DUALSHOCK.id);
   assert.equal(pad.rawOpen, false);
   assert.equal(pad.buttons.length, 18);
+  assert.equal(pad.normalized.open, true);
+  assert.equal(pad.normalized.badge, "Gamepad API standard layout");
+  assert.equal(pad.normalized.buttons.length, 18);
+  assert.equal(pad.normalized.axes.length, 6);
   assert.deepEqual(
     pad.buttons.slice(0, 4).map((button) => button.name),
     ["south", "east", "west", "north"],
@@ -639,6 +661,111 @@ try {
   pad = await until("the DualShock 3's press", detail, (d) => d.diagram.on.length > 0);
   assert.deepEqual(pad.diagram.on, ["south"]);
 
+  // W5: Guided wizard on a profiled pad that confirms a disagreeing mapping
+  // highlights the disagreement in both raw values and normalized values.
+  assert.equal(pad.normalized.badge, "Gamepad API standard layout");
+  assert.equal(pad.disagreements, 0);
+  await setGamepads([with_(DUALSHOCK3, { buttons: { 0: 0 } })]);
+  await page.getByRole("button", { name: "Identify the buttons" }).click();
+  await until("the wizard prompt", wizard, (w) => w?.prompt !== null && w?.note === null);
+  // Map South to b1 instead of b0 (disagrees with active profile!)
+  await setGamepads([with_(DUALSHOCK3, { buttons: { 0: 0, 1: 1 } })]);
+  await until("detected b1", wizard, (w) => w?.note === "Detected b1. Let go to confirm.");
+  await setGamepads([with_(DUALSHOCK3, { buttons: { 0: 0, 1: 0 } })]);
+  await until("step 2", wizard, (w) => w?.progress === "Step 2 of 21");
+  // Map East to b0 instead of b1 (disagrees with active profile!)
+  await setGamepads([with_(DUALSHOCK3, { buttons: { 0: 1, 1: 0 } })]);
+  await until("detected b0", wizard, (w) => w?.note === "Detected b0. Let go to confirm.");
+  await setGamepads([with_(DUALSHOCK3, { buttons: { 0: 0, 1: 0 } })]);
+  await until("step 3", wizard, (w) => w?.progress === "Step 3 of 21");
+  // Skip the remaining steps to finish the wizard
+  for (let s = 3; s <= 21; s++) {
+    await page.getByRole("button", { name: "Not on this pad" }).click();
+    if (s < 21) {
+      await until(`step ${s + 1}`, wizard, (w) => w?.progress === `Step ${s + 1} of 21`);
+    }
+  }
+  await until("summary ready", wizard, (w) => w?.summary !== null);
+  await page.getByRole("button", { name: "Close" }).click();
+  pad = await until("disagreement highlighted", detail, (d) => d?.ready && d.disagreements > 0);
+  assert.ok(pad.disagreements >= 2);
+  assert.equal(pad.normalized.buttons.find((b) => b.control === "south")?.disagreement, true);
+  assert.equal(pad.normalized.buttons.find((b) => b.control === "east")?.disagreement, true);
+
+  // W6: Local report store, sharing and consent flow.
+  assert.equal(
+    await page.locator(".save-report-note").innerText(),
+    "Saves a report of this pad in this browser. Nothing is sent: you can look at it, download it or delete it at any time.",
+  );
+  assert.equal(
+    await page.locator(".saved-reports-note").innerText(),
+    "Saved reports stay in this browser. A private window drops them when it closes, and Safari may delete them after seven days without a visit: download the ones you want to keep.",
+  );
+
+  await page.locator(".save-report-btn").click();
+  await until("report saved notification", () => page.locator(".save-notice").innerText(), (t) => t?.includes("Report saved for"));
+  await page.waitForSelector(".saved-reports .report-row");
+
+  const reportRow = page.locator(".saved-reports .report-row").first();
+  assert.ok((await reportRow.locator(".report-name").innerText()).length > 0);
+  assert.match(await reportRow.locator(".report-facts").innerText(), /[a-f0-9]+ · \d{4}-\d\d-\d\d/);
+
+  // Download saved report: check filename and JSON validity
+  const [reportDownload] = await Promise.all([
+    page.waitForEvent("download", { timeout: 10000 }),
+    reportRow.locator(".report-btn", { hasText: "Download" }).click(),
+  ]);
+  assert.match(reportDownload.suggestedFilename(), /^[a-f0-9]+-\d{4}-\d\d-\d\d\.json$/);
+  const downloadedReport = JSON.parse(await readFile(await reportDownload.path(), "utf8"));
+  assert.equal(downloadedReport.format, "anygamepad-device-report");
+  assert.equal(downloadedReport.schema_version, 1);
+  assert.equal(downloadedReport.source.app, "web");
+  assert.equal(downloadedReport.source.app_version, "0.0.3");
+  assert.ok(downloadedReport.views.length >= 1);
+  assert.match(downloadedReport.views[0].fingerprint, /^[a-f0-9]{16}$/);
+  // Confirmed wizard results should be present in the saved report
+  assert.ok(downloadedReport.views[0].confirmed !== undefined);
+  assert.ok(downloadedReport.user.missing_buttons.includes("west"));
+  assert.ok(downloadedReport.user.missing_buttons.includes("right_stick"));
+  assert.ok(downloadedReport.user.missing_buttons.includes("home"));
+
+  // Open "Share this report" modal dialog
+  await reportRow.locator(".report-btn", { hasText: "Share" }).click();
+  await page.waitForSelector(".share-modal");
+  const modalText = await page.locator(".share-modal").innerText();
+  // Verbatim P3 consent text assertions
+  assert.match(modalText, /Sharing posts this report as an issue on GitHub, from your GitHub account\./);
+  assert.match(modalText, /The report holds no serial number, Bluetooth address or other personal data\./);
+  assert.match(modalText, /By posting it, you dedicate the report to the public domain under CC0 1\.0/);
+  assert.match(modalText, /No GitHub account\? Download the report instead: it stays yours\./);
+
+  // Test "Copy and open the issue form"
+  await page.evaluate(() => {
+    window.__openedUrls = [];
+    window.open = (url) => { window.__openedUrls.push(url); return null; };
+  });
+  await page.locator(".copy-open-issue-btn").click();
+  await until("copied notice displayed", () => page.locator(".share-modal").innerText(), (t) => t?.includes("The report is copied. Paste it into the Report field of the form") || t?.includes("Select the report above and copy it"));
+  const openedUrls = await page.evaluate(() => window.__openedUrls);
+  assert.equal(openedUrls.length, 1);
+  assert.match(openedUrls[0], /github\.com\/anygamepad\/anygamepad\.github\.io\/issues\/new\?template=device-report\.yml/);
+
+  // Close share modal
+  await page.locator(".close-btn").click();
+  await page.waitForSelector(".share-modal", { state: "detached" });
+
+  // Marked as shared badge now visible on the report row
+  assert.equal((await reportRow.locator(".report-shared-badge").innerText()).toLowerCase(), "shared");
+
+  // Delete saved report with confirmation dialog
+  page.once("dialog", (dialog) => {
+    assert.equal(dialog.message(), "Delete this report from this browser?");
+    dialog.accept();
+  });
+  await reportRow.locator(".report-btn", { hasText: "Delete" }).click();
+  await page.waitForSelector(".saved-reports .report-row", { state: "detached" });
+  assert.equal(await page.locator(".empty-reports").innerText(), "No reports saved in this browser yet.");
+
   // WebHID: a DualSense picked in the chooser takes the place of its Gamepad
   // API twin, decoded: the reduced Bluetooth report first.
   await setGamepads([DUALSENSE]);
@@ -762,7 +889,7 @@ try {
   assert.deepEqual(steps[0].inputs, [{ target: { kind: "button", button: "south" }, input: "b2" }]);
   assert.equal(steps[2].missing, true);
   assert.equal(of("wizard_back").length, 1);
-  assert.deepEqual(of("wizard_done").at(-1).missing, { buttons: ["west", "right_stick", "home"], axes: ["right_stick_y"] });
+  assert.deepEqual(of("wizard_done").find((event) => event.pad === genericPad).missing, { buttons: ["west", "right_stick", "home"], axes: ["right_stick_y"] });
   assert.deepEqual(
     of("wizard_step").filter((event) => event.pad === hid.pad).map((event) => event.inputs[0].input),
     ["b{button:south}"],

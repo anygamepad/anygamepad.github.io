@@ -85,6 +85,11 @@ WebHID can read that report ([research note 09](../../docs/research/09-dualsense
   issues as the only contact, curated report issues closed and kept). The
   critical path to M2 is now D4 -> W5 -> W7: M2 moves to 2026-11-05, M4 to
   2027-01-09, M5 to 2026-12-30 (slack 10). W6 has 7 days of slack.
+- **Status update (2026-10-25, in place):** D4, embedded device database
+  (curated + SDL), W5, normalized view, W6, local report store, sharing
+  and consent flow, and W7, public launch of the web tester, are done (grey).
+  Milestone M2 is reached. The critical path now runs through the desktop
+  app tracks (M2 -> A1/A4 ... -> M4), with M4 on 2026-12-29 and M5 on 2026-12-24.
 
 ## Vision
 
@@ -228,7 +233,7 @@ gantt
     D2 SDL GameControllerDB importer :done, d2, 2026-10-14, 1d
     D3 Initial curated profiles (top devices) :d3, after d1 c4 f4, 20d
     C8 Mode and clone detection heuristics :c8, after c3 c4 d3, 20d
-    D4 Profile embedding and runtime overrides :crit, d4, after d1 c3, 7d
+    D4 Profile embedding and runtime overrides :done, d4, 2026-10-21, 4d
     C10 Library 0.1.0 release :c10, after c5 c6 c7 c8 c9 c11 c12 c14 d4, 5d
     section Collection pipeline
     P1 Device report schema (shared crate) :done, p1, 2026-10-14, 1d
@@ -242,12 +247,12 @@ gantt
     W8 Tester layout and device drawings :done, w8, 2026-10-14, 1d
     W3 WebHID mode with PlayStation decoding :w3, after w2 c15 w8, 15d
     W4 Guided mapping wizard (shared with desktop) :done, w4, 2026-10-14, 1d
-    W5 Normalized view (mapping engine + profiles) :crit, w5, after w2 c3 d2 d4, 10d
-    W6 Local report store, sharing and consent flow :w6, after w4 p1 p3, 10d
-    W7 Public launch of the web tester :crit, w7, after w5 w6, 5d
+    W5 Normalized view (mapping engine + profiles) :crit, done, w5, 2026-10-21, 4d
+    W6 Local report store, sharing and consent flow :crit, done, w6, after w4 p1 p3, 10d
+    W7 Public launch of the web tester :crit, done, w7, after w5 w6, 5d
     section Milestones
     M1 Core runs in the browser :milestone, m1, after c3 c11 d4, 0d
-    M2 Web tester live and collecting :milestone, crit, m2, after w7, 0d
+    M2 Web tester live and collecting :milestone, crit, done, m2, after w7, 0d
     M3 Library 0.1.0 :milestone, m3, after c10, 0d
     section Desktop app
     A1 App shell (UI toolkit, tray, settings) :crit, a1, after f3 m2, 15d
@@ -269,21 +274,11 @@ gantt
 
 ### Critical path
 
-Zero-slack chains (they share most tasks). With the device report schema
-(P1), the guided mapping wizard (W4) and the privacy texts (P3) done and
-the server after M2 (ADR 0007), the path up to M2 runs through profile
-embedding (D4) and the normalized view (W5).
+Zero-slack chains (they share most tasks). The web launch (milestone M2) is
+achieved. From M2 to the desktop release (M4), the zero-slack critical paths are:
 
-Up to the web launch (M2):
-
-1. D4 -> W5 -> W7 -> M2
-
-From M2 to the desktop release (M4):
-
-2. M2 -> A1 -> A2 -> A3 -> A9 -> A10 -> M4
-3. M2 -> A4 -> A5 -> A6 -> A9 -> A10 -> M4
-
-Close to it: W6 (7 days of slack, it blocks W7).
+1. M2 -> A1 -> A2 -> A3 -> A9 -> A10 -> M4
+2. M2 -> A4 -> A5 -> A6 -> A9 -> A10 -> M4
 
 Any delay on these tasks delays the web launch (M2) and therefore the desktop
 0.1.0 release. Everything else has slack (see the `Slack` column in each
@@ -473,16 +468,16 @@ flowchart LR
     p6 --> m5
     classDef crit fill:#fdd,stroke:#c00,stroke-width:2px
     classDef done fill:#eee,stroke:#999,color:#666
-    class d4,w5,w7,a1,a4,a5,a2,a3,a6,a9,a10,m2,m4 crit
-    class f1,f2,f3,c1,c2,c3,c11,d1,d2,p1,p3,w1,w2,w4,w8 done
+    class a1,a4,a5,a2,a3,a6,a9,a10,m4 crit
+    class f1,f2,f3,c1,c2,c3,c11,d1,d2,d4,p1,p3,w1,w2,w4,w5,w6,w7,w8,m2 done
 ```
 
 ## Milestones
 
 | Milestone | Blocked by | Target date |
 |-----------|------------|-------------|
-| M1 Core runs in the browser | C3, C11, D4 | 2026-10-21 |
-| M2 Web tester live and collecting (reports saved locally and shared as issues) | W7 | 2026-11-05 |
+| M1 Core runs in the browser | C3, C11, D4 | 2026-10-21 (done) |
+| M2 Web tester live and collecting (reports saved locally and shared as issues) | W7 | 2026-10-25 (done) |
 | M3 Library 0.1.0 | C10 | 2026-12-18 |
 | M4 Desktop app 0.1.0 | A10 | 2027-01-09 |
 | M5 Reports synchronized with the sync server | P5, P6 | 2026-12-30 |

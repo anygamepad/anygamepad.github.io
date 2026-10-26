@@ -1,0 +1,25 @@
+name: Device report
+description: Share a controller report made by the anygamepad tester or desktop app
+title: "Report: "
+labels: ["device-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This form shares a device report made by the anygamepad tester or desktop app. Issues are public and show your GitHub account.
+        Privacy policy: https://anygamepad.github.io/privacy/
+  - type: textarea
+    id: report
+    attributes:
+      label: Report
+      description: "Paste the report the app copied, without editing it: reports are checked when they are read."
+      render: json
+    validations:
+      required: true
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Review and license
+      options:
+        - label: "I reviewed this report: it holds no personal data, and I dedicate it to the public domain under CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)."
+          required: true

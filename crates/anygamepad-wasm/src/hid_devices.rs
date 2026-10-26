@@ -285,6 +285,70 @@ impl HidDevices {
         self.hid.close(device_id(device))
     }
 
+    /// Builds a device report for WebHID `device`.
+    #[wasm_bindgen(js_name = buildReport, unchecked_return_type = "ScrubResult")]
+    pub fn build_report(
+        &self,
+        device: u32,
+        user_product: Option<String>,
+        controller_mode: Option<String>,
+        now_ms: Option<f64>,
+    ) -> Result<JsValue, JsError> {
+        self.build_report_inner(device, None, user_product, controller_mode, now_ms)
+    }
+
+    /// Builds a device report for WebHID `device` including wizard findings.
+    #[wasm_bindgen(js_name = buildReportWithWizard, unchecked_return_type = "ScrubResult")]
+    pub fn build_report_with_wizard(
+        &self,
+        device: u32,
+        wizard: &MappingWizard,
+        user_product: Option<String>,
+        controller_mode: Option<String>,
+        now_ms: Option<f64>,
+    ) -> Result<JsValue, JsError> {
+        self.build_report_inner(device, Some(wizard), user_product, controller_mode, now_ms)
+    }
+
+    fn build_report_inner(
+        &self,
+        device: u32,
+        wizard: Option<&MappingWizard>,
+        user_product: Option<String>,
+        controller_mode: Option<String>,
+        now_ms: Option<f64>,
+    ) -> Result<JsValue, JsError> {
+        let id = device_id(device);
+        let info = self.hid.info(id).ok_or_else(unknown)?;
+        let mut report = crate::report::base_web_report(
+            info.identity.os,
+            info.identity.browser,
+            now_ms,
+            user_product,
+            controller_mode,
+        )?;
+        let mut view = anygamepad_report::View::new(
+            info.identity.clone(),
+            anygamepad::model::raw::RawLayout::default(),
+            anygamepad::model::OutputSet::EMPTY,
+        );
+        let hid_data = anygamepad_report::HidData {
+            collections: info.collections.clone(),
+            ..anygamepad_report::HidData::default()
+        };
+        view.hid = Some(hid_data);
+        if let Some(w) = wizard {
+            let (missing_buttons, missing_axes) = w.missing_controls();
+            report.user.missing_buttons = missing_buttons;
+            report.user.missing_axes = missing_axes;
+            if let Some(confirmed) = w.confirmed_mapping() {
+                view.confirmed = Some(confirmed);
+            }
+        }
+        report.views.push(view);
+        crate::report::finish_report(report)
+    }
+
     /// The input reports of an open device received since the last call,
     /// oldest first.
     #[wasm_bindgen(unchecked_return_type = "HidInputReport[]")]

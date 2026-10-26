@@ -40,8 +40,10 @@ undocumented_unsafe_blocks = "deny"
 # Whole-program optimization: the web app's WebAssembly module is about 5%
 # smaller (gzip) after wasm-opt; opt-level "s" or "z" do not beat it.
 [profile.release]
+opt-level = "z"
 lto = true
 codegen-units = 1
+panic = "abort"
 
 # The TypeScript declarations of the model (feature `tsify`) are custom
 # sections in its object files, and the linker drops the object files that the

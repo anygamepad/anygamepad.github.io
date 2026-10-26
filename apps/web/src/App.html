@@ -58,6 +58,41 @@
       <p :if="hidMessage" class="note">{{ hidMessage }}</p>
     </section>
 
+    <section class="saved-reports">
+      <h2>Saved reports</h2>
+      <p class="saved-reports-note">
+        Saved reports stay in this browser. A private window drops them when it closes, and Safari may delete them after seven days without a visit: download the ones you want to keep.
+      </p>
+      <p :if="savedReports.length === 0" class="note empty-reports">No reports saved in this browser yet.</p>
+      <ul :else class="reports">
+        <li :each="report in savedReports" :key="report.id" class="report-row">
+          <div class="report-meta">
+            <span class="report-name">{{ report.name }}</span>
+            <span class="report-facts">{{ report.fingerprint }} · {{ report.created }}</span>
+            <span :if="report.shared" class="report-shared-badge">shared</span>
+          </div>
+          <div class="report-actions">
+            <button
+              type="button"
+              class="action report-btn"
+              title="Saves the report as a JSON file on this device."
+              @click="downloadSavedReport(report.id)"
+            >Download</button>
+            <button
+              type="button"
+              class="action report-btn"
+              @click="openShare(report.id)"
+            >Share</button>
+            <button
+              type="button"
+              class="action report-btn"
+              @click="deleteSavedReport(report.id)"
+            >Delete</button>
+          </div>
+        </li>
+      </ul>
+    </section>
+
     <section class="activity">
       <h2>Activity log</h2>
       <p>
@@ -91,6 +126,15 @@
           @click="toggleValues()"
         >Show values</button>
       </div>
+      <div class="save-report-bar">
+        <button
+          type="button"
+          class="action save-report-btn"
+          @click="saveCurrentReport()"
+        >Save a report</button>
+        <span class="save-report-note">Saves a report of this pad in this browser. Nothing is sent: you can look at it, download it or delete it at any time.</span>
+        <span :if="saveNotice" class="save-notice">{{ saveNotice }}</span>
+      </div>
     </header>
 
     <div class="live" :data-key="current.key"></div>
@@ -109,6 +153,55 @@
     <p>The selected gamepad shows here, drawn live as you use it.</p>
   </section>
 </main>
+
+<div :if="activeShare" class="modal-backdrop" @click="closeShare()">
+  <div class="share-modal" role="dialog" aria-modal="true" aria-labelledby="share-title" @click="(event) => event.stopPropagation()">
+    <header class="share-modal-head">
+      <h2 id="share-title">Share this report</h2>
+      <button type="button" class="close-btn" aria-label="Close" @click="closeShare()">✕</button>
+    </header>
+    <div class="share-modal-body">
+      <blockquote class="share-notice">
+        <p>Sharing posts this report as an issue on GitHub, from your GitHub account. Issues are public: anyone can read the report and see who posted it, and it stays public until you ask for its deletion.</p>
+        <p>The report holds no serial number, Bluetooth address or other personal data. Below is exactly what you will share: read it before you post.</p>
+        <p>By posting it, you dedicate the report to the public domain under CC0 1.0, so that anyone can use it, the anygamepad library included.</p>
+      </blockquote>
+
+      <pre class="report-json-view"><code>{{ activeShare.scrubbedReport }}</code></pre>
+
+      <p :if="activeShare.redactions.length > 0" class="redaction-note">
+        Replaced with [redacted] before sharing: {{ activeShare.redactions.length }} texts that looked like identifiers ({{ activeShare.redactionPaths }}).
+      </p>
+
+      <p class="privacy-link-p">
+        <a href="/privacy/" target="_blank" rel="noopener">Privacy policy</a>
+      </p>
+
+      <div class="share-actions">
+        <button
+          type="button"
+          class="action primary-btn copy-open-issue-btn"
+          @click="copyAndOpenIssue()"
+        >Copy and open the issue form</button>
+        <button
+          type="button"
+          class="action cancel-btn"
+          @click="closeShare()"
+        >Cancel</button>
+      </div>
+
+      <p :if="activeShare.copied" class="copied-note">
+        The report is copied. Paste it into the Report field of the form, check it and submit the issue: nothing is shared until you submit it.
+      </p>
+      <p :if="activeShare.copyError" class="copy-error-note">
+        This browser did not let the page copy the report. Select the report above and copy it, or download it and paste the file's contents.
+      </p>
+      <p class="no-github-note">
+        No GitHub account? Download the report instead: it stays yours.
+      </p>
+    </div>
+  </div>
+</div>
 
 <footer class="site">
   <span :if="environment" class="environment">

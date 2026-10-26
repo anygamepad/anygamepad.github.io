@@ -72,12 +72,15 @@ pub struct DeviceInfo {
     pub layout: RawLayout,
     /// Outputs `send()` can drive.
     pub outputs: OutputSet,
-    /// Canonical controls, for gamepads the browser maps to the standard
-    /// layout; `undefined` for others, until device profiles exist.
+    /// Canonical controls, for gamepads the active profile or standard layout maps;
+    /// `undefined` for others.
     pub capabilities: Option<Capabilities>,
     /// Which canonical control each raw button and axis drives, under the
     /// same condition as `capabilities`.
     pub canonical: Option<CanonicalLayout>,
+    /// Human-readable name of the matched profile or standard layout;
+    /// `undefined` when not recognized.
+    pub profile_name: Option<String>,
 }
 
 /// The canonical control of each raw element, by raw index (`undefined`
@@ -130,6 +133,8 @@ pub struct Gamepads {
     events: Vec<ProviderEvent>,
     /// Raw state of each open gamepad, reused by every poll.
     raw: BTreeMap<DeviceId, RawState>,
+    db: anygamepad::db::Database,
+    mappers: BTreeMap<DeviceId, anygamepad::mapping::Mapper>,
 }
 
 #[wasm_bindgen]
@@ -142,6 +147,8 @@ impl Gamepads {
             provider: WebProvider::new().map_err(error)?,
             events: Vec::new(),
             raw: BTreeMap::new(),
+            db: anygamepad::db::Database::embedded(),
+            mappers: BTreeMap::new(),
         })
     }
 
@@ -163,6 +170,7 @@ impl Gamepads {
         for event in &self.events {
             if let ProviderEvent::Removed(id) = event {
                 self.raw.remove(id);
+                self.mappers.remove(id);
             }
         }
         let events: Vec<DeviceEvent> = self.events.iter().map(|&event| event.into()).collect();
@@ -180,12 +188,47 @@ impl Gamepads {
         let Some(info) = self.provider.info(device_id(device)) else {
             return Ok(JsValue::UNDEFINED);
         };
+        let (buttons, axes) = (info.layout.buttons.len(), info.layout.axes.len());
+        if let Some((mapper, profile)) =
+            anygamepad::mapping::Mapper::from_database(&self.db, &info.identity, &info.layout)
+        {
+            let mut capabilities = mapper.capabilities().clone();
+            capabilities.outputs = info.outputs;
+            let standard = info
+                .identity
+                .web
+                .as_ref()
+                .is_some_and(|web| web.mapping == standard::MAPPING);
+            if standard {
+                for i in 0..buttons {
+                    if let Some(b) = standard::button(i) {
+                        capabilities.buttons.insert(b);
+                    }
+                }
+            }
+            let family = profile
+                .family
+                .or_else(|| Family::from_identity(&info.identity));
+            let face_layout = profile.face.or_else(|| family.map(Family::face_layout));
+            let mapping = profile.mapping_for(&info.identity);
+            let canonical = canonical_layout_from_mapping(&mapping, &info.layout, standard);
+            return to_js(&DeviceInfo {
+                fingerprint: info.identity.fingerprint(),
+                family,
+                face_layout,
+                identity: info.identity.clone(),
+                layout: info.layout.clone(),
+                outputs: info.outputs,
+                capabilities: Some(capabilities),
+                canonical: Some(canonical),
+                profile_name: Some(profile.name.clone()),
+            });
+        }
         let standard = info
             .identity
             .web
             .as_ref()
             .is_some_and(|web| web.mapping == standard::MAPPING);
-        let (buttons, axes) = (info.layout.buttons.len(), info.layout.axes.len());
         let family = Family::from_identity(&info.identity);
         to_js(&DeviceInfo {
             fingerprint: info.identity.fingerprint(),
@@ -201,6 +244,7 @@ impl Gamepads {
                     .map(|index| standard::AXES.get(index).copied())
                     .collect(),
             }),
+            profile_name: standard.then(|| "Gamepad API standard layout".to_string()),
         })
     }
 
@@ -218,10 +262,15 @@ impl Gamepads {
             Some(other) => return Err(JsError::new(&format!("unknown access mode `{other}`"))),
         };
         self.provider.open(id, access).map_err(error)?;
-        let layout = &self.provider.info(id).ok_or_else(unknown)?.layout;
+        let info = self.provider.info(id).ok_or_else(unknown)?;
         self.raw
             .entry(id)
-            .or_insert_with(|| RawState::for_layout(layout));
+            .or_insert_with(|| RawState::for_layout(&info.layout));
+        if let Some((mapper, _)) =
+            anygamepad::mapping::Mapper::from_database(&self.db, &info.identity, &info.layout)
+        {
+            self.mappers.insert(id, mapper);
+        }
         Ok(())
     }
 
@@ -230,6 +279,97 @@ impl Gamepads {
         let id = device_id(device);
         self.provider.close(id);
         self.raw.remove(&id);
+        self.mappers.remove(&id);
+    }
+
+    /// Builds a device report for `device`.
+    #[wasm_bindgen(js_name = buildReport, unchecked_return_type = "ScrubResult")]
+    pub fn build_report(
+        &self,
+        device: u32,
+        user_product: Option<String>,
+        controller_mode: Option<String>,
+        now_ms: Option<f64>,
+    ) -> Result<JsValue, JsError> {
+        self.build_report_inner(device, None, user_product, controller_mode, now_ms)
+    }
+
+    /// Builds a device report for `device` including wizard findings.
+    #[wasm_bindgen(js_name = buildReportWithWizard, unchecked_return_type = "ScrubResult")]
+    pub fn build_report_with_wizard(
+        &self,
+        device: u32,
+        wizard: &MappingWizard,
+        user_product: Option<String>,
+        controller_mode: Option<String>,
+        now_ms: Option<f64>,
+    ) -> Result<JsValue, JsError> {
+        self.build_report_inner(device, Some(wizard), user_product, controller_mode, now_ms)
+    }
+
+    fn build_report_inner(
+        &self,
+        device: u32,
+        wizard: Option<&MappingWizard>,
+        user_product: Option<String>,
+        controller_mode: Option<String>,
+        now_ms: Option<f64>,
+    ) -> Result<JsValue, JsError> {
+        let id = device_id(device);
+        let info = self.provider.info(id).ok_or_else(unknown)?;
+        let mut report = crate::report::base_web_report(
+            self.provider.os(),
+            Some(self.provider.browser()),
+            now_ms,
+            user_product,
+            controller_mode,
+        )?;
+        let mut view =
+            anygamepad_report::View::new(info.identity.clone(), info.layout.clone(), info.outputs);
+        if let Some((mapper, profile)) =
+            anygamepad::mapping::Mapper::from_database(&self.db, &info.identity, &info.layout)
+        {
+            let mut capabilities = mapper.capabilities().clone();
+            capabilities.outputs = info.outputs;
+            let standard = info
+                .identity
+                .web
+                .as_ref()
+                .is_some_and(|web| web.mapping == standard::MAPPING);
+            if standard {
+                for i in 0..info.layout.buttons.len() {
+                    if let Some(b) = standard::button(i) {
+                        capabilities.buttons.insert(b);
+                    }
+                }
+            }
+            view.profile = Some(profile.name.clone());
+            view.capabilities = Some(capabilities);
+        } else {
+            let standard = info
+                .identity
+                .web
+                .as_ref()
+                .is_some_and(|web| web.mapping == standard::MAPPING);
+            if standard {
+                view.profile = Some("Gamepad API standard layout".into());
+                view.capabilities = Some(standard::capabilities(
+                    info.layout.buttons.len(),
+                    info.layout.axes.len(),
+                    info.outputs,
+                ));
+            }
+        }
+        if let Some(w) = wizard {
+            let (missing_buttons, missing_axes) = w.missing_controls();
+            report.user.missing_buttons = missing_buttons;
+            report.user.missing_axes = missing_axes;
+            if let Some(confirmed) = w.confirmed_mapping() {
+                view.confirmed = Some(confirmed);
+            }
+        }
+        report.views.push(view);
+        crate::report::finish_report(report)
     }
 
     /// Raw values of an open gamepad, as read by the last `update()`: each
@@ -239,9 +379,9 @@ impl Gamepads {
         to_js(self.poll_raw(device_id(device))?)
     }
 
-    /// Canonical state of an open gamepad that the browser maps to the
+    /// Canonical state of an open gamepad, mapped according to its profile or
     /// standard layout, as read by the last `update()`; `undefined` for
-    /// other gamepads.
+    /// unmapped gamepads.
     #[wasm_bindgen(unchecked_return_type = "GamepadState | undefined")]
     pub fn state(&mut self, device: u32) -> Result<JsValue, JsError> {
         let id = device_id(device);
@@ -250,12 +390,25 @@ impl Gamepads {
             .info(id)
             .and_then(|info| info.identity.web.as_ref())
             .is_some_and(|web| web.mapping == standard::MAPPING);
-        let raw = self.poll_raw(id)?;
-        if !standard {
+        let has_mapper = self.mappers.contains_key(&id);
+        if !has_mapper && !standard {
             return Ok(JsValue::UNDEFINED);
         }
+        self.poll_raw(id)?;
+        let raw = &self.raw[&id];
         let mut state = GamepadState::new();
-        standard::map(raw, &mut state);
+        if let Some(mapper) = self.mappers.get(&id) {
+            mapper.apply(raw, &mut state);
+            if standard {
+                for (index, &value) in raw.buttons.iter().enumerate().skip(17) {
+                    if let Some(b) = standard::button(index) {
+                        state.set_pressed(b, value >= anygamepad::mapping::PRESS_THRESHOLD);
+                    }
+                }
+            }
+        } else {
+            standard::map(raw, &mut state);
+        }
         to_js(&state)
     }
 
@@ -342,6 +495,59 @@ fn button_snapshot(button: &web::ButtonSnapshot) -> ButtonSnapshot {
         touched: button.touched,
         value: button.value,
     }
+}
+
+fn canonical_layout_from_mapping(
+    mapping: &anygamepad::db::Mapping,
+    layout: &RawLayout,
+    is_standard: bool,
+) -> CanonicalLayout {
+    let mut buttons = vec![None; layout.buttons.len()];
+    for (&button, &input) in &mapping.buttons {
+        if let anygamepad::db::Input::Button(anygamepad::model::raw::RawSource::Index(i)) = input {
+            if let Some(slot) = buttons.get_mut(i as usize) {
+                *slot = Some(button);
+            }
+        }
+    }
+
+    let mut axes = vec![None; layout.axes.len()];
+    for (&axis, axis_mapping) in &mapping.axes {
+        let input = axis_mapping
+            .input
+            .or(axis_mapping.positive)
+            .or(axis_mapping.negative);
+        if let Some(anygamepad::db::Input::Axis {
+            source: anygamepad::model::raw::RawSource::Index(i),
+            ..
+        }) = input
+        {
+            if let Some(slot) = axes.get_mut(i as usize) {
+                *slot = Some(axis);
+            }
+        }
+    }
+
+    for (i, &source) in layout.buttons.iter().enumerate() {
+        if buttons[i].is_none() {
+            if let anygamepad::model::raw::RawSource::Button(b) = source {
+                buttons[i] = Some(b);
+            } else if is_standard {
+                buttons[i] = standard::button(i);
+            }
+        }
+    }
+    for (i, info) in layout.axes.iter().enumerate() {
+        if axes[i].is_none() {
+            if let anygamepad::model::raw::RawSource::Axis(a) = info.source {
+                axes[i] = Some(a);
+            } else if is_standard {
+                axes[i] = standard::AXES.get(i).copied();
+            }
+        }
+    }
+
+    CanonicalLayout { buttons, axes }
 }
 
 /// The JavaScript form of a device id. The web providers count ids up from

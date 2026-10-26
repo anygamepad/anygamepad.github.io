@@ -49,6 +49,7 @@ version = "0.0.3"
 dependencies = [
  "anygamepad-model",
  "jsonschema",
+ "postcard",
  "schemars",
  "serde",
  "serde_json",
@@ -89,6 +90,7 @@ version = "0.0.3"
 dependencies = [
  "anygamepad",
  "anygamepad-model",
+ "anygamepad-report",
  "js-sys",
  "serde",
  "serde-wasm-bindgen",

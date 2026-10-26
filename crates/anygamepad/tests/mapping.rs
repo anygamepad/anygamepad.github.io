@@ -299,3 +299,26 @@ fn every_sdl_entry_resolves_against_its_own_size() {
     }
     assert!(count > 2000, "{count} entries");
 }
+
+#[test]
+fn mapper_from_embedded_database() {
+    use anygamepad::db::Database;
+    use anygamepad::model::identity::{Browser, BrowserEngine, DeviceIdentity, Os};
+
+    let db = Database::embedded();
+    let browser = Browser {
+        engine: BrowserEngine::Blink,
+        major_version: Some(141),
+    };
+    let identity = DeviceIdentity::from_gamepad_api(
+        "Standard Pad (STANDARD GAMEPAD Vendor: 045e Product: 028e)",
+        "standard",
+        browser,
+        Os::Linux,
+    );
+    let layout = indexed_layout(17, 4, 0, (-1.0, 1.0));
+    let (mapper, profile) =
+        Mapper::from_database(&db, &identity, &layout).expect("a matching profile");
+    assert_eq!(profile.name, "Gamepad API standard layout");
+    assert!(mapper.unresolved().is_empty());
+}

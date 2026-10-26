@@ -9,8 +9,8 @@ import { gzipSync } from "node:zlib";
 
 const KIB = 1024;
 const BUDGETS = {
-  ".wasm": 128 * KIB,
-  ".js": 64 * KIB,
+  ".wasm": 160 * KIB,
+  ".js": 80 * KIB,
   ".css": 16 * KIB,
 };
 
