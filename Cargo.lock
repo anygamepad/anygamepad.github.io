@@ -170,7 +170,7 @@ checksum = "fc7eb209b1518d6bb87b283c20095f5228ecda460da70b44f0802523dea6da04"
 
 [[package]]
 name = "anygamepad"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "anygamepad-db",
  "anygamepad-model",
@@ -183,7 +183,7 @@ dependencies = [
 
 [[package]]
 name = "anygamepad-db"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "anygamepad-model",
  "jsonschema",
@@ -196,7 +196,7 @@ dependencies = [
 
 [[package]]
 name = "anygamepad-desktop"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "anygamepad",
  "anygamepad-report",
@@ -211,7 +211,7 @@ dependencies = [
 
 [[package]]
 name = "anygamepad-model"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "postcard",
  "schemars",
@@ -223,7 +223,7 @@ dependencies = [
 
 [[package]]
 name = "anygamepad-report"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "anygamepad-db",
  "anygamepad-model",
@@ -235,7 +235,7 @@ dependencies = [
 
 [[package]]
 name = "anygamepad-virtual"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "anygamepad",
  "anygamepad-model",
@@ -245,7 +245,7 @@ dependencies = [
 
 [[package]]
 name = "anygamepad-wasm"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "anygamepad",
  "anygamepad-model",
