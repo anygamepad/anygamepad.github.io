@@ -1,13 +1,17 @@
 //! Lists the gamepads the Linux provider sees and prints their canonical
-//! state while buttons change (C4). Rumbles a pad briefly when its south
-//! button is pressed, if it can.
+//! state while buttons change (C4). Rumbles a pad while its south button
+//! is held, and moves its lights to the next player and colour when east
+//! is pressed, if it can.
 //!
 //! ```sh
 //! cargo run -p anygamepad --example linux_pads
+//! # The pads the protocol drivers drive through raw HID (C7):
+//! cargo run -p anygamepad --example linux_pads -- --hidraw
 //! ```
 //!
 //! Mappings come from the embedded database, else from the Linux gamepad
-//! specification for drivers that follow it.
+//! specification for drivers that follow it. Raw HID pads are decoded by
+//! their protocol driver and need no mapping.
 
 #[cfg(target_os = "linux")]
 fn main() {
@@ -17,13 +21,31 @@ fn main() {
     use anygamepad::db::Database;
     use anygamepad::mapping::Mapper;
     use anygamepad::model::raw::RawState;
-    use anygamepad::model::{Button, GamepadState, OutputCommand, Rumble};
+    use anygamepad::model::{Button, GamepadState, OutputCommand, Rgb, Rumble};
     use anygamepad::native::evdev::{follows_spec, spec_mapping};
+    use anygamepad::native::hidraw::HidrawProvider;
     use anygamepad::native::linux::LinuxProvider;
     use anygamepad::provider::{Access, Provider, ProviderEvent};
 
+    const COLOURS: [Rgb; 4] = [
+        Rgb { r: 0, g: 0, b: 255 },
+        Rgb { r: 255, g: 0, b: 0 },
+        Rgb { r: 0, g: 255, b: 0 },
+        Rgb {
+            r: 255,
+            g: 0,
+            b: 255,
+        },
+    ];
+
     let database = Database::embedded();
-    let mut provider = LinuxProvider::new();
+    let hidraw = std::env::args().any(|arg| arg == "--hidraw");
+    let mut provider: Box<dyn Provider> = if hidraw {
+        Box::new(HidrawProvider::new())
+    } else {
+        Box::new(LinuxProvider::new())
+    };
+    let mut player = 0u8;
     let mut pads = BTreeMap::new();
     let mut events = Vec::new();
     println!("Waiting for gamepads (Ctrl+C to quit)...");
@@ -37,7 +59,16 @@ fn main() {
                 ProviderEvent::Added(id) => {
                     let info = provider.info(id).expect("added device").clone();
                     let identity = &info.identity;
-                    let mapper = match Mapper::from_database(&database, identity, &info.layout) {
+                    let profile = if hidraw {
+                        None
+                    } else {
+                        Mapper::from_database(&database, identity, &info.layout)
+                    };
+                    let mapper = match profile {
+                        None if hidraw => {
+                            println!("  decoded by its protocol driver");
+                            Mapper::new(&Default::default(), &info.layout)
+                        }
                         Some((mapper, profile)) => {
                             println!("  profile: {}", profile.name);
                             mapper
@@ -113,6 +144,12 @@ fn main() {
                             high_frequency: strength,
                         }),
                     );
+                }
+                if state.pressed(Button::East) && !last.pressed(Button::East) {
+                    player = player % 4 + 1;
+                    let colour = COLOURS[usize::from(player) - 1];
+                    let _ = provider.send(id, OutputCommand::PlayerNumber(player));
+                    let _ = provider.send(id, OutputCommand::Lightbar(colour));
                 }
             }
             *last = state;

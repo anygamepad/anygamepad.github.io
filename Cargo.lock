@@ -176,6 +176,7 @@ dependencies = [
  "anygamepad-model",
  "evdev",
  "js-sys",
+ "nix",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

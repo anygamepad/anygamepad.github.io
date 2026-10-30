@@ -46,6 +46,10 @@ export interface PadRow {
   detail: string;
   rumble: boolean;
   triggerRumble: boolean;
+  /** Whether the page can set its light bar colour. */
+  lightbar: boolean;
+  /** Whether the page can set its player LEDs. */
+  playerLeds: boolean;
   /** Whether the guided wizard can identify its buttons. */
   wizard: boolean;
 }
@@ -153,6 +157,9 @@ export const gamepadRow = (id: number, info: DeviceInfo): PadRow => {
     detail: info.identity.web?.id ?? "",
     rumble: info.outputs.includes("rumble"),
     triggerRumble: info.outputs.includes("trigger_rumble"),
+    // The Gamepad API drives no lights.
+    lightbar: false,
+    playerLeds: false,
     wizard: true,
   };
 };
@@ -169,8 +176,11 @@ export const hidRow = (id: number, info: HidDeviceInfo): PadRow => {
     ids,
     facts: facts.filter(Boolean).join(" · "),
     detail: info.identity.product_name ?? "",
-    rumble: false,
+    // The library drives the outputs of the pads it decodes.
+    rumble: info.outputs.includes("rumble"),
     triggerRumble: false,
+    lightbar: info.outputs.includes("lightbar"),
+    playerLeds: info.outputs.includes("player_leds"),
     // The library checks its decoding of the pads it decodes; raw devices
     // need a HID report parser first.
     wizard: info.decoded,
@@ -188,6 +198,16 @@ const rumbleCommand = (kind: RumbleKind, strength: number): OutputCommand => {
     case "triggers":
       return { trigger_rumble: { left: strength, right: strength } };
   }
+};
+
+/** Light bar colours the light test offers. */
+export type LightColour = "blue" | "red" | "green" | "white";
+
+const COLOURS: Record<LightColour, { r: number; g: number; b: number }> = {
+  blue: { r: 0, g: 0, b: 255 },
+  red: { r: 255, g: 0, b: 0 },
+  green: { r: 0, g: 255, b: 0 },
+  white: { r: 255, g: 255, b: 255 },
 };
 
 /** A run of the guided wizard on a pad, kept until the pad goes. */
@@ -222,6 +242,7 @@ interface HidPad {
   open: boolean;
   switching: boolean;
   recording: Recording | undefined;
+  rumbleTimer: number | undefined;
   run: WizardRun | undefined;
 }
 
@@ -467,40 +488,66 @@ export class Tester {
       await navigator.clipboard.writeText(share.scrubbedReport);
       share.copied = true;
       share.copyError = false;
+      // Before the storage writes: browsers block pop-ups opened too long
+      // after the click.
+      window.open(issueUrl, "_blank", "noopener,noreferrer");
+      this.log.event("report_shared_issue", { id: share.id });
       await markReportShared(share.id);
       this.view.savedReports = await listReports();
-      this.log.event("report_shared_issue", { id: share.id });
-      window.open(issueUrl, "_blank", "noopener,noreferrer");
     } catch {
       share.copyError = true;
     }
   };
 
-  /** Runs a short vibration test on a Gamepad API pad. */
+  /** Runs a short vibration test. */
   readonly rumble = (key: string, kind: RumbleKind): void => {
     const pad = this.pads.get(key);
-    if (!this.gamepads || pad?.source !== "gamepad") return;
+    if (!pad) return;
     this.log.event("vibration_test", { pad: key, kind });
-    try {
-      this.gamepads.send(pad.id, rumbleCommand(kind, 1));
-    } catch (error) {
-      this.fail(`Vibration failed (${String(error)}).`);
-      return;
-    }
+    if (!this.output(pad, rumbleCommand(kind, 1), "Vibration")) return;
     // One timer stops every motor, including those of a test it cut short.
     window.clearTimeout(pad.rumbleTimer);
     pad.rumbleTimer = window.setTimeout(() => {
       pad.rumbleTimer = undefined;
-      try {
-        this.gamepads?.send(pad.id, rumbleCommand("both", 0));
-        if (pad.info.outputs.includes("trigger_rumble")) {
-          this.gamepads?.send(pad.id, rumbleCommand("triggers", 0));
-        }
-      } catch {
-        // The gamepad went away; its rumble stopped with it.
-      }
+      // The pad may have gone away; its rumble stopped with it.
+      this.output(pad, rumbleCommand("both", 0));
+      if (pad.row.triggerRumble) this.output(pad, rumbleCommand("triggers", 0));
     }, RUMBLE_MS);
   };
+
+  /** Sets the light bar of a pad the library drives through WebHID. */
+  readonly light = (key: string, colour: LightColour): void => {
+    const pad = this.pads.get(key);
+    if (!pad) return;
+    this.log.event("light_test", { pad: key, colour });
+    this.output(pad, { lightbar: COLOURS[colour] }, "Setting the light bar");
+  };
+
+  /** Shows a player number on a pad's LEDs; 0 turns them off. */
+  readonly player = (key: string, player: number): void => {
+    const pad = this.pads.get(key);
+    if (!pad) return;
+    this.log.event("player_leds_test", { pad: key, player });
+    this.output(pad, { player_number: player }, "Setting the player LEDs");
+  };
+
+  /**
+   * Sends a command to a pad; failures show as "`what` failed", or pass
+   * silently without `what`. Returns whether the command went out.
+   */
+  private output(pad: Pad, command: OutputCommand, what?: string): boolean {
+    const failed = (error: unknown): void => {
+      if (what) this.fail(`${what} failed (${String(error)}).`);
+    };
+    try {
+      if (pad.source === "gamepad") this.gamepads?.send(pad.id, command);
+      else this.hids?.send(pad.id, command).catch(failed);
+    } catch (error) {
+      failed(error);
+      return false;
+    }
+    return true;
+  }
 
   /** Stops both loops and releases the devices. */
   stop(): void {
@@ -508,7 +555,7 @@ export class Tester {
     window.clearInterval(this.sampler);
     cancelAnimationFrame(this.frame);
     for (const pad of this.pads.values()) {
-      if (pad.source === "gamepad") window.clearTimeout(pad.rumbleTimer);
+      window.clearTimeout(pad.rumbleTimer);
       pad.run?.wizard.free();
     }
     this.gamepads?.free();
@@ -606,6 +653,7 @@ export class Tester {
       open: false,
       switching: false,
       recording: undefined,
+      rumbleTimer: undefined,
       run: undefined,
     };
     this.pads.set(row.key, pad);
@@ -632,7 +680,7 @@ export class Tester {
 
   private remove(key: string): void {
     const pad = this.pads.get(key);
-    if (pad?.source === "gamepad") window.clearTimeout(pad.rumbleTimer);
+    window.clearTimeout(pad?.rumbleTimer);
     pad?.run?.wizard.free();
     if (key === this.view.selected) this.view.wizardOpen = false;
     this.pads.delete(key);

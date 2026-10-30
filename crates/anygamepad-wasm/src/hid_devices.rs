@@ -1,18 +1,25 @@
 //! The `HidDevices` class: WebHID access for JavaScript (Chromium only).
 
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet};
+use std::rc::Rc;
 
 use anygamepad::model::hid::HidCollection;
 use anygamepad::model::identity::{DeviceIdentity, Fingerprint};
 use anygamepad::model::raw::RawState;
-use anygamepad::model::{FaceLayout, Family, GamepadState, TouchpadInfo, Transport};
+use anygamepad::model::{
+    FaceLayout, Family, GamepadState, MotionSample, OutputCommand, OutputSet, TouchpadInfo,
+    Transport,
+};
+use anygamepad::protocol::driver::{HidDriver, Request};
 use anygamepad::protocol::playstation::{self, Model};
 use anygamepad::provider::{DeviceId, ProviderEvent};
 use anygamepad::web::hid::{self as web_hid, WebHid};
-use js_sys::Promise;
+use js_sys::{DataView, Promise, Uint8Array};
 use serde::{Deserialize, Serialize, Serializer};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen_futures::{JsFuture, spawn_local};
 
 use crate::gamepads::{DeviceEvent, device_id, error, js_id, to_js, unknown};
 use crate::wizard::{MappingWizard, canonical_layout, canonical_raw};
@@ -66,6 +73,8 @@ pub struct HidDeviceInfo {
     pub decoded: bool,
     /// The touchpad of a decoded pad that has one.
     pub touchpad: Option<TouchpadInfo>,
+    /// The outputs `send()` drives once the device is open.
+    pub outputs: OutputSet,
     /// Top-level collections: the structure of the device's reports.
     pub collections: Vec<HidCollection>,
 }
@@ -99,6 +108,11 @@ pub struct HidPoll<'a> {
     pub input: Option<DecodedInput>,
     /// Why the newest report did not decode, if it did not.
     pub error: Option<String>,
+    /// For decoded pads with motion sensors: the newest motion sample in SI
+    /// units, with the pad's calibration once it was read (on USB once the
+    /// device is open; on Bluetooth after `switchToFullReports()`), with
+    /// nominal scales before.
+    pub motion: Option<MotionSample>,
 }
 
 /// Which form of input report a PlayStation pad sends.
@@ -186,6 +200,13 @@ pub struct HidDevices {
     models: BTreeMap<DeviceId, Option<Model>>,
     /// The newest decoded input of each device.
     inputs: BTreeMap<DeviceId, playstation::Input>,
+    /// The protocol driver of each decoded device: outputs, calibration
+    /// and motion. Shared with the tasks that wait for feature reports.
+    drivers: BTreeMap<DeviceId, Rc<RefCell<HidDriver>>>,
+    /// Devices whose driver was started.
+    started: BTreeSet<DeviceId>,
+    /// A report with its ID first, for the driver.
+    buffer: Vec<u8>,
 }
 
 #[wasm_bindgen]
@@ -206,6 +227,9 @@ impl HidDevices {
             reports: Vec::new(),
             models: BTreeMap::new(),
             inputs: BTreeMap::new(),
+            drivers: BTreeMap::new(),
+            started: BTreeSet::new(),
+            buffer: Vec::new(),
         })
     }
 
@@ -239,6 +263,8 @@ impl HidDevices {
             if let ProviderEvent::Removed(id) = event {
                 self.models.remove(id);
                 self.inputs.remove(id);
+                self.drivers.remove(id);
+                self.started.remove(id);
             }
         }
         let events: Vec<DeviceEvent> = self.events.iter().map(|&event| event.into()).collect();
@@ -258,15 +284,18 @@ impl HidDevices {
         };
         let family = Family::from_identity(&info.identity);
         let model = family.and_then(Model::from_family);
+        let transport = model.map_or(Transport::Unknown, |model| {
+            playstation::transport_from_collections(model, &info.collections)
+        });
+        let outputs = new_driver(&info).map_or(OutputSet::EMPTY, |driver| driver.outputs());
         to_js(&HidDeviceInfo {
             fingerprint: info.identity.fingerprint(),
             family,
             face_layout: family.map(Family::face_layout),
-            transport: model.map_or(Transport::Unknown, |model| {
-                playstation::transport_from_collections(model, &info.collections)
-            }),
+            transport,
             decoded: model.is_some(),
             touchpad: model.map(Model::touchpad),
+            outputs,
             identity: info.identity,
             collections: info.collections,
         })
@@ -377,6 +406,26 @@ impl HidDevices {
             Family::from_identity(&info.identity).and_then(Model::from_family)
         });
         let mut error = None;
+        let driver = self.driver(id);
+        if let Some(driver) = &driver {
+            let mut driver = driver.borrow_mut();
+            for report in &self.reports {
+                self.buffer.clear();
+                self.buffer.push(report.report_id);
+                self.buffer.extend_from_slice(&report.data);
+                // Errors show through the decoding below.
+                let _ = driver.receive(&self.buffer);
+            }
+        }
+        if let Some(driver) = &driver {
+            // Reading the calibration over USB changes nothing for other
+            // applications: start the driver once the device sends.
+            let usb = driver.borrow().transport() == Transport::Usb;
+            if usb && !self.reports.is_empty() && self.started.insert(id) {
+                driver.borrow_mut().start();
+            }
+            flush(&self.hid, id, driver);
+        }
         if let Some(model) = model {
             for report in &self.reports {
                 match playstation::decode(model, report.report_id, &report.data) {
@@ -400,6 +449,7 @@ impl HidDevices {
             },
             input: self.inputs.get(&id).map(|&input| input.into()),
             error,
+            motion: driver.and_then(|driver| driver.borrow().state().motion),
         })
     }
 
@@ -429,20 +479,45 @@ impl HidDevices {
     }
 
     /// Switches a Bluetooth PlayStation pad to its full report (touchpad,
-    /// motion, battery) by reading its calibration feature report. The pad
+    /// motion, battery) by reading its calibration feature report, which
+    /// `poll()` then applies to the motion sensors. The pad
     /// stays switched for every application on the host until it is
     /// power-cycled, and some of them (DirectInput games, the Gamepad API
     /// in some browsers) then get no input from it: tell the user first.
     /// Reads nothing else.
-    #[wasm_bindgen(
-        js_name = switchToFullReports,
-        unchecked_return_type = "Promise<DataView>"
-    )]
-    pub fn switch_to_full_reports(&self, device: u32) -> Promise {
-        self.hid
-            .receive_feature_report(device_id(device), playstation::CALIBRATION_REPORT)
+    #[wasm_bindgen(js_name = switchToFullReports, unchecked_return_type = "Promise<unknown>")]
+    pub fn switch_to_full_reports(&mut self, device: u32) -> Promise {
+        let id = device_id(device);
+        let Some(driver) = self.driver(id) else {
+            return self
+                .hid
+                .receive_feature_report(id, playstation::CALIBRATION_REPORT);
+        };
+        self.started.insert(id);
+        driver.borrow_mut().start();
+        flush(&self.hid, id, &driver).unwrap_or_else(|| Promise::resolve(&JsValue::UNDEFINED))
     }
 
+    /// Drives an output of an open pad the library decodes, for example
+    /// `{ lightbar: { r: 0, g: 0, b: 255 } }` or `{ player_number: 1 }`;
+    /// see `HidDeviceInfo.outputs`. Resolves once the output report is
+    /// written. Throws for outputs the pad does not have.
+    #[wasm_bindgen(unchecked_return_type = "Promise<void>")]
+    pub fn send(
+        &mut self,
+        device: u32,
+        #[wasm_bindgen(unchecked_param_type = "OutputCommand")] command: JsValue,
+    ) -> Result<Promise, JsError> {
+        let command: OutputCommand =
+            serde_wasm_bindgen::from_value(command).map_err(|e| JsError::new(&e.to_string()))?;
+        let id = device_id(device);
+        let driver = self.driver(id).ok_or_else(unknown)?;
+        if !driver.borrow_mut().send(command) {
+            return Err(JsError::new("this device has no such output"));
+        }
+        let written = flush(&self.hid, id, &driver);
+        Ok(written.unwrap_or_else(|| Promise::resolve(&JsValue::UNDEFINED)))
+    }
     /// Input reports of a device dropped so far because `reports()` was not
     /// called often enough; `undefined` for an unknown id.
     #[wasm_bindgen(js_name = droppedReports)]
@@ -475,5 +550,76 @@ impl HidDevices {
     pub fn send_feature_report(&self, device: u32, report_id: u8, data: &[u8]) -> Promise {
         self.hid
             .send_feature_report(device_id(device), report_id, data)
+    }
+}
+
+impl HidDevices {
+    /// The protocol driver of a decoded device, created on first use.
+    fn driver(&mut self, id: DeviceId) -> Option<Rc<RefCell<HidDriver>>> {
+        if let Some(driver) = self.drivers.get(&id) {
+            return Some(driver.clone());
+        }
+        let driver = Rc::new(RefCell::new(new_driver(&self.hid.info(id)?)?));
+        self.drivers.insert(id, driver.clone());
+        Some(driver)
+    }
+}
+
+/// The protocol driver of a WebHID device the library decodes.
+fn new_driver(info: &web_hid::HidDeviceInfo) -> Option<HidDriver> {
+    let model = Family::from_identity(&info.identity).and_then(Model::from_family)?;
+    let transport = playstation::transport_from_collections(model, &info.collections);
+    HidDriver::new(
+        info.identity.vendor_id?,
+        info.identity.product_id?,
+        transport,
+    )
+}
+
+/// Sends what a driver asks for. Feature reports are read in the
+/// background and handed to the driver when they arrive. Returns the
+/// promise of the last report sent or read, if any.
+fn flush(hid: &WebHid, id: DeviceId, driver: &Rc<RefCell<HidDriver>>) -> Option<Promise> {
+    let mut last = None;
+    loop {
+        // The PlayStation drivers WebHID gets have no timeouts.
+        let request = driver.borrow_mut().transmit(0);
+        let promise = match request {
+            None => return last,
+            Some(Request::Output(report)) => {
+                let Some((&report_id, data)) = report.split_first() else {
+                    continue;
+                };
+                let promise = hid.send_report(id, report_id, data);
+                // Failures show through the returned promise only.
+                let watched = promise.clone();
+                spawn_local(async move {
+                    let _ = JsFuture::from(watched).await;
+                });
+                promise
+            }
+            Some(Request::ReadFeature(report_id)) => {
+                let promise = hid.receive_feature_report(id, report_id);
+                let driver = driver.clone();
+                let read = promise.clone();
+                spawn_local(async move {
+                    match JsFuture::from(read).await {
+                        Ok(view) => {
+                            let view: DataView = view.unchecked_into();
+                            let bytes = Uint8Array::new_with_byte_offset_and_length(
+                                &view.buffer(),
+                                view.byte_offset() as u32,
+                                view.byte_length() as u32,
+                            )
+                            .to_vec();
+                            driver.borrow_mut().feature(&bytes);
+                        }
+                        Err(_) => driver.borrow_mut().feature_failed(),
+                    }
+                });
+                promise
+            }
+        };
+        last = Some(promise);
     }
 }

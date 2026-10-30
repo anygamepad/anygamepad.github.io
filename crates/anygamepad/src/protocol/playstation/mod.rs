@@ -45,6 +45,8 @@ mod output;
 
 pub use calibration::{Calibration, MotionTracker};
 pub use output::OutputReport;
+#[cfg(all(feature = "native", target_os = "linux"))]
+pub(crate) use output::player_pattern;
 
 /// A PlayStation controller model.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

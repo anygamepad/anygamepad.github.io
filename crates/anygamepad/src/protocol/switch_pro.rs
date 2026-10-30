@@ -395,6 +395,12 @@ impl Setup {
         }
     }
 
+    /// How many messages were answered (or sent, for those the pad does
+    /// not answer): it changes when the exchange moves on.
+    pub fn progress(&self) -> usize {
+        self.next
+    }
+
     /// Whether every message was answered.
     pub fn is_done(&self) -> bool {
         self.next >= self.steps.len()

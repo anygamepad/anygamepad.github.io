@@ -6,6 +6,7 @@
 //! gives raw reports: WebHID in the browser, and hidraw, Windows HID and
 //! IOKit natively.
 
+pub mod driver;
 pub mod playstation;
 pub mod switch_pro;
 

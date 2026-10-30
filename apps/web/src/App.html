@@ -141,13 +141,25 @@
 
     <div class="live" :data-key="current.key"></div>
 
-    <footer :if="current.source === 'gamepad' && !wizardOpen" class="vibration">
+    <footer :if="!wizardOpen" class="vibration">
       <span class="label">Vibration test</span>
       <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'strong')">Strong motor</button>
       <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'weak')">Weak motor</button>
       <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'both')">Both</button>
       <button type="button" :if="current.triggerRumble" @click="rumble(current.key, 'triggers')">Triggers</button>
       <small :if="!current.rumble" class="note">This browser cannot vibrate this gamepad.</small>
+    </footer>
+    <footer :if="(current.lightbar || current.playerLeds) && !wizardOpen" class="vibration">
+      <span class="label">Lights</span>
+      <button type="button" :if="current.lightbar" @click="light(current.key, 'blue')">Blue</button>
+      <button type="button" :if="current.lightbar" @click="light(current.key, 'red')">Red</button>
+      <button type="button" :if="current.lightbar" @click="light(current.key, 'green')">Green</button>
+      <button type="button" :if="current.lightbar" @click="light(current.key, 'white')">White</button>
+      <button type="button" :if="current.playerLeds" @click="player(current.key, 1)">Player 1</button>
+      <button type="button" :if="current.playerLeds" @click="player(current.key, 2)">Player 2</button>
+      <button type="button" :if="current.playerLeds" @click="player(current.key, 3)">Player 3</button>
+      <button type="button" :if="current.playerLeds" @click="player(current.key, 4)">Player 4</button>
+      <button type="button" :if="current.playerLeds" @click="player(current.key, 0)">LEDs off</button>
     </footer>
   </section>
   <section :else class="placeholder">

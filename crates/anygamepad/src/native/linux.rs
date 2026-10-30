@@ -11,6 +11,15 @@
 //! of it exists and udev has set its permissions; the first scan reports
 //! what is already plugged in.
 //!
+//! # LEDs
+//!
+//! Kernel drivers expose a pad's light bar and player LEDs in the LED class
+//! (`<HID device>/leds`): `hid-playstation`'s multicolor `rgb:indicator`
+//! and `player-1` to `player-5`, `hid-sony`'s separate red, green and blue
+//! LEDs, `hid-nintendo`'s `player-1` to `player-4`. The provider offers
+//! [`Output::Lightbar`] and [`Output::PlayerLeds`] when it can write them,
+//! which needs a udev rule (`docs/linux-permissions.md`).
+//!
 //! # Permissions
 //!
 //! Desktop distributions let the logged-in user read and write gamepad
@@ -33,12 +42,13 @@ use std::time::{Duration, Instant};
 
 use anygamepad_model::identity::{Backend, DescriptorHash, DeviceIdentity, Os, ProviderKind};
 use anygamepad_model::raw::{RawSource, RawState};
-use anygamepad_model::{Button, Output, OutputCommand, OutputSet};
+use anygamepad_model::{Button, Output, OutputCommand, OutputSet, Rgb};
 use evdev::{Device, FFEffect, FFEffectCode, FFEffectData, FFEffectKind, KeyCode};
 
 use super::evdev::{
     AbsInfo, GamepadNode, MotionNode, NodeKind, TouchpadNode, classify, parse_bitmap, transport,
 };
+use crate::protocol::playstation::player_pattern;
 use crate::provider::{
     Access, DeviceId, DeviceInfo, DeviceLocation, Provider, ProviderError, ProviderEvent,
 };
@@ -85,6 +95,7 @@ struct Entry {
     /// The motion and touchpad decoders as found when the device appeared.
     motion: Option<MotionNode>,
     touchpad: Option<TouchpadNode>,
+    leds: Leds,
     open: Option<OpenNodes>,
     disconnected: bool,
 }
@@ -216,11 +227,11 @@ impl LinuxProvider {
         let rumble = gamepad
             .supported_ff()
             .is_some_and(|ff| ff.contains(FFEffectCode::FF_RUMBLE));
-        let outputs = if rumble {
-            OutputSet::from([Output::Rumble])
-        } else {
-            OutputSet::EMPTY
-        };
+        let leds = Leds::find(container);
+        let mut outputs = OutputSet::EMPTY;
+        outputs.set(Output::Rumble, rumble);
+        outputs.set(Output::Lightbar, leds.lightbar.is_some());
+        outputs.set(Output::PlayerLeds, !leds.players.is_empty());
         let info = DeviceInfo {
             identity,
             location: DeviceLocation::new(
@@ -236,6 +247,7 @@ impl LinuxProvider {
             node,
             motion,
             touchpad,
+            leds,
             open: None,
             disconnected: false,
         })
@@ -547,8 +559,15 @@ impl Provider for LinuxProvider {
         if open.access == Access::ObserveOnly {
             return Err(ProviderError::Unsupported);
         }
-        let OutputCommand::Rumble(rumble) = command else {
-            return Err(ProviderError::Unsupported);
+        let rumble = match command {
+            OutputCommand::Rumble(rumble) => rumble,
+            OutputCommand::Lightbar(rgb) => {
+                return entry.leds.set_lightbar(rgb).map_err(|e| error(&e));
+            }
+            OutputCommand::PlayerNumber(player) => {
+                return entry.leds.set_player(player).map_err(|e| error(&e));
+            }
+            _ => return Err(ProviderError::Unsupported),
         };
         let magnitude = |value: f32| (value.clamp(0.0, 1.0) * f32::from(u16::MAX)).round() as u16;
         let data = FFEffectData {
@@ -582,6 +601,122 @@ impl Provider for LinuxProvider {
         }
         Ok(())
     }
+}
+
+/// A light bar in the LED class.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Lightbar {
+    /// One multicolor LED whose `multi_intensity` is red, green, blue.
+    Multi(PathBuf),
+    /// Red, green and blue LEDs.
+    Split([PathBuf; 3]),
+}
+
+/// A pad's LEDs that the provider can write (see the
+/// [module documentation](self)): LED class directories.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct Leds {
+    lightbar: Option<Lightbar>,
+    /// Player LEDs, left to right.
+    players: Vec<PathBuf>,
+}
+
+impl Leds {
+    /// The writable LEDs under a HID device's `leds` directory.
+    fn find(container: &Path) -> Self {
+        let Ok(dir) = fs::read_dir(container.join("leds")) else {
+            return Self::default();
+        };
+        let mut found: Vec<(String, PathBuf)> = dir
+            .flatten()
+            .filter_map(|entry| Some((entry.file_name().into_string().ok()?, entry.path())))
+            .filter(|(_, path)| writable(&path.join("brightness")))
+            .collect();
+        found.sort();
+        let named = |suffix: &str| {
+            found
+                .iter()
+                .find(|(name, _)| name.ends_with(suffix))
+                .map(|(_, path)| path.clone())
+        };
+        let multi = found
+            .iter()
+            .find(|(name, path)| {
+                name.contains(":rgb:")
+                    && writable(&path.join("multi_intensity"))
+                    && fs::read_to_string(path.join("multi_index"))
+                        .is_ok_and(|index| index.trim() == "red green blue")
+            })
+            .map(|(_, path)| Lightbar::Multi(path.clone()));
+        let split = match (named(":red"), named(":green"), named(":blue")) {
+            (Some(r), Some(g), Some(b)) => Some(Lightbar::Split([r, g, b])),
+            _ => None,
+        };
+        let mut players: Vec<(u8, PathBuf)> = found
+            .iter()
+            .filter_map(|(name, path)| {
+                let number = name.rsplit_once("player-")?.1.parse().ok()?;
+                Some((number, path.clone()))
+            })
+            .collect();
+        players.sort();
+        Self {
+            lightbar: multi.or(split),
+            players: players.into_iter().map(|(_, path)| path).collect(),
+        }
+    }
+
+    fn set_lightbar(&self, rgb: Rgb) -> io::Result<()> {
+        match &self.lightbar {
+            Some(Lightbar::Multi(led)) => {
+                fs::write(
+                    led.join("multi_intensity"),
+                    format!("{} {} {}", rgb.r, rgb.g, rgb.b),
+                )?;
+                set_brightness(led, 1.0)
+            }
+            Some(Lightbar::Split(leds)) => {
+                for (led, value) in leds.iter().zip([rgb.r, rgb.g, rgb.b]) {
+                    set_brightness(led, f32::from(value) / 255.0)?;
+                }
+                Ok(())
+            }
+            None => Err(io::ErrorKind::Unsupported.into()),
+        }
+    }
+
+    /// Shows `player` as the pad's own driver does: the DualSense's five
+    /// LEDs in its patterns, one LED per player otherwise.
+    fn set_player(&self, player: u8) -> io::Result<()> {
+        let count = self.players.len();
+        if count == 0 {
+            return Err(io::ErrorKind::Unsupported.into());
+        }
+        let pattern = match player {
+            0 => 0,
+            n if count == 5 => u32::from(player_pattern(n)),
+            n => 1 << ((usize::from(n) - 1) % count),
+        };
+        for (i, led) in self.players.iter().enumerate() {
+            set_brightness(led, if pattern & (1 << i) != 0 { 1.0 } else { 0.0 })?;
+        }
+        Ok(())
+    }
+}
+
+/// Whether a sysfs attribute can be written (opening it writes nothing).
+fn writable(path: &Path) -> bool {
+    fs::OpenOptions::new().write(true).open(path).is_ok()
+}
+
+/// Sets an LED's brightness to `level` in `[0, 1]` of its maximum.
+fn set_brightness(led: &Path, level: f32) -> io::Result<()> {
+    let max: u32 = fs::read_to_string(led.join("max_brightness"))
+        .ok()
+        .and_then(|text| text.trim().parse().ok())
+        .unwrap_or(1);
+    let value = (level.clamp(0.0, 1.0) * max as f32).round() as u32;
+    fs::write(led.join("brightness"), value.to_string())
 }
 
 /// The absolute axis codes `evdev` knows, to check the kernel's constants
@@ -674,6 +809,61 @@ mod tests {
             provider.poll(DeviceId(1), &mut state),
             Err(ProviderError::UnknownDevice)
         );
+    }
+
+    /// A fake HID device directory with `hid-playstation`'s LEDs.
+    fn fake_leds(root: &Path) {
+        let leds = root.join("leds");
+        let led = |name: &str, max: &str| {
+            let dir = leds.join(name);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join("brightness"), "0").unwrap();
+            fs::write(dir.join("max_brightness"), max).unwrap();
+            dir
+        };
+        let rgb = led("input9:rgb:indicator", "255");
+        fs::write(rgb.join("multi_intensity"), "0 0 0").unwrap();
+        fs::write(rgb.join("multi_index"), "red green blue\n").unwrap();
+        for n in 1..=5 {
+            led(&format!("input9:white:player-{n}"), "1");
+        }
+    }
+
+    #[test]
+    fn leds_are_found_and_written() {
+        let dir = std::env::temp_dir().join(format!("anygamepad-leds-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fake_leds(&dir);
+        let leds = Leds::find(&dir);
+        assert!(matches!(leds.lightbar, Some(Lightbar::Multi(_))));
+        assert_eq!(leds.players.len(), 5);
+
+        leds.set_lightbar(Rgb { r: 1, g: 2, b: 3 }).unwrap();
+        let rgb = dir.join("leds/input9:rgb:indicator");
+        assert_eq!(
+            fs::read_to_string(rgb.join("multi_intensity")).unwrap(),
+            "1 2 3"
+        );
+        assert_eq!(fs::read_to_string(rgb.join("brightness")).unwrap(), "255");
+
+        // Player 2 on the DualSense: the second and fourth LEDs.
+        leds.set_player(2).unwrap();
+        let lit: Vec<String> = (1..=5)
+            .map(|n| {
+                fs::read_to_string(dir.join(format!("leds/input9:white:player-{n}/brightness")))
+                    .unwrap()
+            })
+            .collect();
+        assert_eq!(lit, ["0", "1", "0", "1", "0"]);
+
+        // Four LEDs (hid-nintendo): one per player.
+        let mut four = leds.clone();
+        four.players.pop();
+        four.set_player(3).unwrap();
+        let third = dir.join("leds/input9:white:player-3/brightness");
+        assert_eq!(fs::read_to_string(third).unwrap(), "1");
+        assert!(Leds::find(Path::new("/nonexistent")).players.is_empty());
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -170,8 +170,9 @@ const fakeHid = () => {
       this.full = true;
       return Promise.resolve(new DataView(new ArrayBuffer(41)));
     }
-    sendReport() {
-      return Promise.reject(new Error("unexpected output report"));
+    sendReport(reportId, data) {
+      window.__hid.outputs.push([reportId, ...data]);
+      return Promise.resolve();
     }
     sendFeatureReport() {
       return Promise.reject(new Error("unexpected feature report"));
@@ -195,6 +196,7 @@ const fakeHid = () => {
   window.__hid = {
     state,
     features: [],
+    outputs: [],
     requests: [],
     disconnect() {
       const device = hid.granted.pop();
@@ -815,8 +817,42 @@ try {
   assert.deepEqual(await page.evaluate(() => window.__hid.features), [0x05]);
   assert.equal(pad.switchShown, false);
   assert.equal(pad.touch, "#5 0.50, 0.50");
-  assert.deepEqual(pad.motion, ["-100", "0", "0", "8192", "0", "0"]);
+  // In °/s and m/s²: the fake calibration report is empty, so the nominal
+  // scales apply (16 counts per °/s, 8192 per g).
+  assert.deepEqual(pad.motion, ["-6", "0", "0", "9.81", "0.00", "0.00"]);
   assert.equal(pad.battery, "55% · charging");
+
+  // Outputs: the library writes the DualSense's Bluetooth output report
+  // (0x31, numbered, with the light bar and player LED flags), sending
+  // nothing until asked.
+  assert.deepEqual(await page.evaluate(() => window.__hid.outputs), []);
+  assert.deepEqual(pad.vibration, [
+    "Strong motor",
+    "Weak motor",
+    "Both",
+    "Blue",
+    "Red",
+    "Green",
+    "White",
+    "Player 1",
+    "Player 2",
+    "Player 3",
+    "Player 4",
+    "LEDs off",
+  ]);
+  await page.getByRole("button", { name: "Blue", exact: true }).click();
+  await page.getByRole("button", { name: "Player 2", exact: true }).click();
+  const outputs = await until(
+    "two output reports",
+    () => page.evaluate(() => window.__hid.outputs),
+    (sent) => sent.length === 2,
+  );
+  const [blue, player] = outputs;
+  assert.equal(blue.length, 78);
+  assert.deepEqual(blue.slice(0, 5), [0x31, 0x00, 0x10, 0x00, 0x04]);
+  assert.deepEqual(blue.slice(47, 50), [0, 0, 255]);
+  assert.deepEqual(player.slice(0, 5), [0x31, 0x10, 0x10, 0x00, 0x14]);
+  assert.equal(player[46], 0x0a);
 
   // Recording: two seconds of reports, downloaded as JSON.
   await page.locator(".raw-report summary").click();
