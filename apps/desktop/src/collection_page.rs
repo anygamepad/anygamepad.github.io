@@ -177,10 +177,16 @@ impl CollectionPage {
         if let Some(error) = &self.error {
             ui.colored_label(ui.visuals().error_fg_color, error);
         }
-        ui.separator();
-        self.connected(ui, settings, snapshot);
-        ui.separator();
-        self.saved_list(ui);
+        ui.add_space(8.0);
+        crate::style::card(ui, false).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            self.connected(ui, settings, snapshot);
+        });
+        ui.add_space(8.0);
+        crate::style::card(ui, false).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            self.saved_list(ui);
+        });
         self.share_window(ui.ctx());
         changed
     }

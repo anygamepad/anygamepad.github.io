@@ -75,10 +75,19 @@ impl DevicesPage {
                 _ => identity.transport.to_string(),
             };
             let selected = Some(device.id) == self.selected;
-            let response = ui.selectable_label(selected, format!("{name}\n{ids}"));
+            // A card, as the web's pad list.
+            let response = crate::style::card(ui, selected)
+                .show(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    ui.label(egui::RichText::new(name).strong());
+                    ui.label(egui::RichText::new(ids).small().weak());
+                })
+                .response
+                .interact(Sense::click());
             if response.clicked() {
                 self.selected = Some(device.id);
             }
+            ui.add_space(2.0);
         }
         if snapshot.inaccessible > 0 {
             ui.add_space(8.0);
@@ -183,7 +192,10 @@ fn canonical(ui: &mut egui::Ui, state: &GamepadState) {
         ("Right trigger", Axis::RightTrigger),
     ] {
         let value = state.axis(axis);
-        ui.add(egui::ProgressBar::new(value).text(format!("{label} {value:.2}")));
+        ui.horizontal(|ui| {
+            crate::style::meter(ui, value, 160.0);
+            ui.label(format!("{label} {value:.2}"));
+        });
     }
     ui.add_space(6.0);
     ui.horizontal_wrapped(|ui| {
@@ -191,7 +203,7 @@ fn canonical(ui: &mut egui::Ui, state: &GamepadState) {
             let pressed = state.pressed(button);
             let text = egui::RichText::new(button.as_str()).small();
             let text = if pressed {
-                text.strong().color(ui.visuals().selection.stroke.color)
+                text.strong().color(crate::style::palette(ui).accent)
             } else {
                 text.weak()
             };
@@ -218,7 +230,7 @@ fn stick(ui: &mut egui::Ui, label: &str, position: Stick, clicked: bool) {
             center.x + position.x * radius,
             center.y - position.y * radius,
         );
-        let color = visuals.selection.stroke.color;
+        let color = crate::style::palette(ui).accent;
         if clicked {
             painter.circle_filled(dot, 8.0, color);
         } else {
@@ -257,15 +269,14 @@ fn raw(ui: &mut egui::Ui, device: &DeviceView) {
                 } else {
                     0.0
                 };
-                ui.add(
-                    egui::ProgressBar::new(t.clamp(0.0, 1.0))
-                        .desired_width(140.0)
-                        .text(if value.fract() == 0.0 {
-                            format!("{value}")
-                        } else {
-                            format!("{value:.3}")
-                        }),
-                );
+                ui.horizontal(|ui| {
+                    crate::style::meter(ui, t, 120.0);
+                    ui.label(if value.fract() == 0.0 {
+                        format!("{value}")
+                    } else {
+                        format!("{value:.3}")
+                    });
+                });
                 ui.end_row();
             }
             for (source, hat) in layout.hats.iter().zip(&raw.hats) {

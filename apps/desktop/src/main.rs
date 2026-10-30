@@ -16,6 +16,7 @@ mod devices_page;
 mod logging;
 mod paths;
 mod settings;
+mod style;
 mod tray;
 mod widget;
 

@@ -26,8 +26,8 @@ pub enum WidgetSkin {
     Compact,
 }
 
-/// Lit controls.
-const ON: Color32 = Color32::from_rgb(0x00, 0xd0, 0xeb);
+/// Lit controls: the web's dark accent.
+const ON: Color32 = crate::style::DARK.accent;
 /// Controls at rest.
 const OFF: Color32 = Color32::from_rgb(0x9a, 0xa3, 0xb5);
 /// Text.

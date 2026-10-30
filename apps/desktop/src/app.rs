@@ -84,6 +84,7 @@ impl DesktopApp {
             egui::TextureOptions::LINEAR,
         );
         let tray = Tray::spawn(&cc.egui_ctx, &icon);
+        crate::style::install(&cc.egui_ctx);
         apply_theme(&cc.egui_ctx, settings.theme);
         Self {
             settings,
@@ -151,17 +152,39 @@ impl DesktopApp {
             // The logo's two-tone wordmark.
             ui.spacing_mut().item_spacing.x = 0.0;
             ui.label(egui::RichText::new("Any").size(20.0).strong());
+            // The web's --brand-muted.
+            let brand_muted = if ui.visuals().dark_mode {
+                egui::Color32::from_rgb(0xaa, 0xb3, 0xc4)
+            } else {
+                egui::Color32::from_rgb(0x6b, 0x74, 0x89)
+            };
             ui.label(
                 egui::RichText::new("Gamepad")
                     .size(20.0)
                     .strong()
-                    .color(ui.visuals().weak_text_color()),
+                    .color(brand_muted),
             );
             ui.spacing_mut().item_spacing.x = 8.0;
             ui.add_space(16.0);
             for tab in Tab::ALL {
                 ui.selectable_value(&mut self.tab, tab, tab.label());
             }
+            // The theme switch, at the right as on the web.
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+                let before = self.settings.theme;
+                for (theme, label) in [
+                    (Theme::Dark, "Dark"),
+                    (Theme::Light, "Light"),
+                    (Theme::System, "Auto"),
+                ] {
+                    ui.selectable_value(&mut self.settings.theme, theme, label);
+                }
+                if self.settings.theme != before {
+                    apply_theme(ui.ctx(), self.settings.theme);
+                    self.save_settings();
+                }
+            });
         });
     }
 
@@ -169,94 +192,96 @@ impl DesktopApp {
         let before = self.settings.clone();
         ui.heading("Settings");
         ui.add_space(8.0);
-        egui::Grid::new("settings")
-            .num_columns(2)
-            .spacing([24.0, 10.0])
-            .show(ui, |ui| {
-                ui.label("Theme");
-                ui.horizontal(|ui| {
-                    let theme = &mut self.settings.theme;
-                    ui.selectable_value(theme, Theme::System, "System");
-                    ui.selectable_value(theme, Theme::Light, "Light");
-                    ui.selectable_value(theme, Theme::Dark, "Dark");
-                });
-                ui.end_row();
-
-                ui.label("System tray");
-                ui.vertical(|ui| {
-                    let tray = self.tray.is_some();
-                    ui.add_enabled_ui(tray, |ui| {
-                        ui.checkbox(
-                            &mut self.settings.start_minimized,
-                            "Start hidden in the tray",
-                        );
-                        ui.checkbox(
-                            &mut self.settings.close_to_tray,
-                            "Closing the window keeps the app in the tray",
-                        );
+        crate::style::card(ui, false).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            egui::Grid::new("settings")
+                .num_columns(2)
+                .spacing([24.0, 10.0])
+                .show(ui, |ui| {
+                    ui.label("Theme");
+                    ui.horizontal(|ui| {
+                        let theme = &mut self.settings.theme;
+                        ui.selectable_value(theme, Theme::System, "System");
+                        ui.selectable_value(theme, Theme::Light, "Light");
+                        ui.selectable_value(theme, Theme::Dark, "Dark");
                     });
-                    if !tray {
-                        ui.label(
-                            egui::RichText::new(
-                                "This desktop shows no tray icon, so the window stays open.",
-                            )
-                            .small()
-                            .weak(),
-                        );
-                    }
-                });
-                ui.end_row();
+                    ui.end_row();
 
-                ui.label("Widget");
-                ui.vertical(|ui| {
-                    ui.checkbox(
-                        &mut self.settings.widget,
-                        "Show a small window with a controller above other windows",
-                    );
-                    ui.add_enabled_ui(self.settings.widget, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label("Controller");
-                            let snapshot = self.devices.snapshot();
-                            let name = |id| {
-                                snapshot
-                                    .devices
-                                    .iter()
-                                    .find(|d| Some(d.id) == id)
-                                    .and_then(|d| d.info.identity.product_name.clone())
-                                    .unwrap_or_else(|| "The first one".into())
-                            };
-                            egui::ComboBox::from_id_salt("widget-device")
-                                .selected_text(name(self.widget.device))
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(
-                                        &mut self.widget.device,
-                                        None,
-                                        "The first one",
-                                    );
-                                    for device in &snapshot.devices {
+                    ui.label("System tray");
+                    ui.vertical(|ui| {
+                        let tray = self.tray.is_some();
+                        ui.add_enabled_ui(tray, |ui| {
+                            ui.checkbox(
+                                &mut self.settings.start_minimized,
+                                "Start hidden in the tray",
+                            );
+                            ui.checkbox(
+                                &mut self.settings.close_to_tray,
+                                "Closing the window keeps the app in the tray",
+                            );
+                        });
+                        if !tray {
+                            ui.label(
+                                egui::RichText::new(
+                                    "This desktop shows no tray icon, so the window stays open.",
+                                )
+                                .small()
+                                .weak(),
+                            );
+                        }
+                    });
+                    ui.end_row();
+
+                    ui.label("Widget");
+                    ui.vertical(|ui| {
+                        ui.checkbox(
+                            &mut self.settings.widget,
+                            "Show a small window with a controller above other windows",
+                        );
+                        ui.add_enabled_ui(self.settings.widget, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label("Controller");
+                                let snapshot = self.devices.snapshot();
+                                let name = |id| {
+                                    snapshot
+                                        .devices
+                                        .iter()
+                                        .find(|d| Some(d.id) == id)
+                                        .and_then(|d| d.info.identity.product_name.clone())
+                                        .unwrap_or_else(|| "The first one".into())
+                                };
+                                egui::ComboBox::from_id_salt("widget-device")
+                                    .selected_text(name(self.widget.device))
+                                    .show_ui(ui, |ui| {
                                         ui.selectable_value(
                                             &mut self.widget.device,
-                                            Some(device.id),
-                                            name(Some(device.id)),
+                                            None,
+                                            "The first one",
                                         );
-                                    }
-                                });
+                                        for device in &snapshot.devices {
+                                            ui.selectable_value(
+                                                &mut self.widget.device,
+                                                Some(device.id),
+                                                name(Some(device.id)),
+                                            );
+                                        }
+                                    });
+                            });
+                            ui.horizontal(|ui| {
+                                let skin = &mut self.settings.widget_skin;
+                                ui.selectable_value(skin, WidgetSkin::Pad, "Controller");
+                                ui.selectable_value(skin, WidgetSkin::Compact, "Compact");
+                            });
+                            ui.add(
+                                egui::Slider::new(&mut self.settings.widget_opacity, 0..=100)
+                                    .text("Background opacity (%)"),
+                            );
+                            ui.checkbox(
+                                &mut self.settings.widget_click_through,
+                                "Let clicks through (turn off to move the widget by dragging it)",
+                            );
                         });
-                        ui.horizontal(|ui| {
-                            let skin = &mut self.settings.widget_skin;
-                            ui.selectable_value(skin, WidgetSkin::Pad, "Controller");
-                            ui.selectable_value(skin, WidgetSkin::Compact, "Compact");
-                        });
-                        ui.add(
-                            egui::Slider::new(&mut self.settings.widget_opacity, 0..=100)
-                                .text("Background opacity (%)"),
-                        );
-                        ui.checkbox(
-                            &mut self.settings.widget_click_through,
-                            "Let clicks through (turn off to move the widget by dragging it)",
-                        );
-                    });
-                    ui.label(
+                        ui.label(
                         egui::RichText::new(
                             "On Wayland, keep it above other windows from your desktop's window \
                              menu. Games in exclusive full screen cover it: use borderless \
@@ -265,19 +290,20 @@ impl DesktopApp {
                         .small()
                         .weak(),
                     );
-                });
-                ui.end_row();
+                    });
+                    ui.end_row();
 
-                ui.label("Log");
-                ui.horizontal(|ui| {
-                    let level = &mut self.settings.log_level;
-                    ui.selectable_value(level, LogLevel::Error, "Errors");
-                    ui.selectable_value(level, LogLevel::Warn, "Warnings");
-                    ui.selectable_value(level, LogLevel::Info, "Normal");
-                    ui.selectable_value(level, LogLevel::Debug, "Everything");
+                    ui.label("Log");
+                    ui.horizontal(|ui| {
+                        let level = &mut self.settings.log_level;
+                        ui.selectable_value(level, LogLevel::Error, "Errors");
+                        ui.selectable_value(level, LogLevel::Warn, "Warnings");
+                        ui.selectable_value(level, LogLevel::Info, "Normal");
+                        ui.selectable_value(level, LogLevel::Debug, "Everything");
+                    });
+                    ui.end_row();
                 });
-                ui.end_row();
-            });
+        });
         if let Some(error) = &self.settings_error {
             ui.add_space(8.0);
             ui.colored_label(ui.visuals().error_fg_color, error);
@@ -354,10 +380,11 @@ impl eframe::App for DesktopApp {
         egui::TopBottomPanel::top("header")
             .frame(
                 egui::Frame::side_top_panel(&ctx.style())
-                    .inner_margin(egui::Margin::symmetric(12, 8)),
+                    .inner_margin(egui::Margin::symmetric(16, 10)),
             )
             .show(ctx, |ui| self.header(ui));
-        egui::CentralPanel::default().show(ctx, |ui| match self.tab {
+        let page = egui::Frame::central_panel(&ctx.style()).inner_margin(16);
+        egui::CentralPanel::default().frame(page).show(ctx, |ui| match self.tab {
             Tab::Devices => self.devices_page.show(ui, &self.devices),
             Tab::VirtualPad => Self::placeholder(
                 ui,
