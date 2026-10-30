@@ -488,10 +488,12 @@ export class Tester {
       await navigator.clipboard.writeText(share.scrubbedReport);
       share.copied = true;
       share.copyError = false;
+      // Before the storage writes: browsers block pop-ups opened too long
+      // after the click.
+      window.open(issueUrl, "_blank", "noopener,noreferrer");
+      this.log.event("report_shared_issue", { id: share.id });
       await markReportShared(share.id);
       this.view.savedReports = await listReports();
-      this.log.event("report_shared_issue", { id: share.id });
-      window.open(issueUrl, "_blank", "noopener,noreferrer");
     } catch {
       share.copyError = true;
     }
