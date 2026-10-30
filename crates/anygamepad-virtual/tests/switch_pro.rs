@@ -49,7 +49,10 @@ fn host_sets_up_the_emulated_pad() {
             Axis::RightStickX,
             Axis::RightStickY,
         ] {
-            assert!((input.state.axis(axis) - state.axis(axis)).abs() < 0.001, "{axis}");
+            assert!(
+                (input.state.axis(axis) - state.axis(axis)).abs() < 0.001,
+                "{axis}"
+            );
         }
     }
 }
