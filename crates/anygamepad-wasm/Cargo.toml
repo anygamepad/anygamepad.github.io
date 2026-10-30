@@ -28,10 +28,11 @@ serde.workspace = true
 serde-wasm-bindgen.workspace = true
 tsify.workspace = true
 wasm-bindgen.workspace = true
+# Feature reports the protocol drivers read through WebHID.
+wasm-bindgen-futures.workspace = true
 
 [dev-dependencies]
 anygamepad-report = { workspace = true, features = ["json"] }
-wasm-bindgen-futures.workspace = true
 wasm-bindgen-test.workspace = true
 
 # The web app runs wasm-opt itself, from the binaryen version pinned in

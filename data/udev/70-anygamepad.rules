@@ -7,3 +7,17 @@
 KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"
 # UHID: virtual HID controllers (DualShock 4, DualSense, Switch Pro).
 KERNEL=="uhid", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uhid"
+
+# hidraw: the pads anygamepad drives itself (DualShock 4, DualSense,
+# DualSense Edge, Switch Pro Controller), over USB and Bluetooth. KERNELS
+# matches the HID device name, `<bus>:<vendor>:<product>.<n>`.
+KERNEL=="hidraw*", KERNELS=="*054C:05C4*", TAG+="uaccess"
+KERNEL=="hidraw*", KERNELS=="*054C:09CC*", TAG+="uaccess"
+KERNEL=="hidraw*", KERNELS=="*054C:0CE6*", TAG+="uaccess"
+KERNEL=="hidraw*", KERNELS=="*054C:0DF2*", TAG+="uaccess"
+KERNEL=="hidraw*", KERNELS=="*057E:2009*", TAG+="uaccess"
+
+# LEDs of pads that kernel drivers drive (light bar, player LEDs). sysfs
+# attributes get no ACLs, so they are made writable by everyone; they only
+# set lights.
+ACTION=="add", SUBSYSTEM=="leds", DRIVERS=="playstation|sony|nintendo", RUN+="/bin/sh -c 'chmod a+w /sys%p/brightness; [ -e /sys%p/multi_intensity ] && chmod a+w /sys%p/multi_intensity; true'"

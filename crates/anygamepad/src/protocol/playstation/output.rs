@@ -22,6 +22,15 @@ const BLUETOOTH_LEN: usize = 78;
 /// Player LED patterns of the DualSense for players 1-5 (`hid-playstation`).
 const PLAYER_LEDS: [u8; 5] = [0x04, 0x0a, 0x15, 0x1b, 0x1f];
 
+/// The DualSense's five player LEDs for `player` (bit 0 the leftmost):
+/// 0 turns them off, players above 5 show 5.
+pub(crate) fn player_pattern(player: u8) -> u8 {
+    match player {
+        0 => 0,
+        n => PLAYER_LEDS[usize::from(n.min(PLAYER_LEDS.len() as u8)) - 1],
+    }
+}
+
 /// What to set on a pad's outputs.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutputReport {
@@ -131,10 +140,7 @@ impl OutputReport {
                 }
                 if let Some(player) = self.player {
                     c[1] |= 0x10;
-                    c[43] = match player {
-                        0 => 0,
-                        n => PLAYER_LEDS[usize::from(n) - 1],
-                    };
+                    c[43] = player_pattern(player);
                 }
             }
         }

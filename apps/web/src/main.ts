@@ -27,6 +27,8 @@ App.mount("#app", {
   connectHid: tester.connectHid,
   downloadLog: tester.downloadLog,
   rumble: tester.rumble,
+  light: tester.light,
+  player: tester.player,
   saveCurrentReport: tester.saveCurrentReport,
   downloadSavedReport: tester.downloadSavedReport,
   deleteSavedReport: tester.deleteSavedReport,

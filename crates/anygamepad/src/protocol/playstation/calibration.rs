@@ -138,6 +138,11 @@ impl MotionTracker {
         }
     }
 
+    /// Uses `calibration` from now on, keeping the clock.
+    pub fn set_calibration(&mut self, calibration: Calibration) {
+        self.calibration = calibration;
+    }
+
     /// The motion sample of one report's readings.
     pub fn sample(&mut self, imu: &RawImu) -> MotionSample {
         // The DualSense counts thirds of a microsecond on 32 bits, the

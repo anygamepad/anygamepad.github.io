@@ -18,8 +18,13 @@
 //! - `web` (default): the browser provider ([`web`]), active on
 //!   `wasm32-unknown-unknown`.
 //! - `native` (default): anygamepad's own OS backends ([`native`]); on
-//!   Linux, the evdev provider.
-#![forbid(unsafe_code)]
+//!   Linux, the evdev and hidraw providers.
+//!
+//! # Unsafe code
+//!
+//! Denied everywhere but one function: the hidraw provider's feature
+//! report ioctl (`HIDIOCGFEATURE`), which has no safe wrapper.
+#![deny(unsafe_code)]
 
 pub mod mapping;
 #[cfg(feature = "native")]
