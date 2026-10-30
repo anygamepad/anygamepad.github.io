@@ -57,6 +57,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "anygamepad-hid"
+version = "0.0.3"
+dependencies = [
+ "anygamepad",
+ "anygamepad-model",
+]
+
+[[package]]
 name = "anygamepad-model"
 version = "0.0.3"
 dependencies = [

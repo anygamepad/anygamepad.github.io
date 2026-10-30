@@ -16,6 +16,7 @@ mode, transport and operating system.
 | `crates/anygamepad` | Public facade crate used by games |
 | `crates/anygamepad-model` | Canonical gamepad model types |
 | `crates/anygamepad-db` | Device profile format and embedded database |
+| `crates/anygamepad-hid` | HID report descriptor parser and report reader (native and USB host backends) |
 | `crates/anygamepad-report` | Device report schema shared by apps and server |
 | `crates/anygamepad-virtual` | Virtual controller outputs (desktop app only) |
 | `crates/anygamepad-wasm` | `wasm-bindgen` bindings used by the web app |
