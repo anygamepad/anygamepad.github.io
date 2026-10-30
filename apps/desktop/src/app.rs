@@ -1,6 +1,6 @@
 //! The main window: a header with the logo, one page per tab: devices
-//! (A2), settings, about; collection mode (A3) and virtual pads (A5-A8)
-//! are placeholders.
+//! (A2), collection (A3), settings, about; virtual pads (A5-A8) are a
+//! placeholder.
 //!
 //! The window repaints only on input or when something wakes it (egui's
 //! reactive mode), so an idle app costs next to no CPU.
@@ -9,6 +9,7 @@ use std::path::PathBuf;
 
 use eframe::egui;
 
+use crate::collection_page::CollectionPage;
 use crate::devices::{Devices, native_provider};
 use crate::devices_page::DevicesPage;
 use crate::settings::{LogLevel, Settings, Theme};
@@ -58,6 +59,7 @@ pub struct DesktopApp {
     quitting: bool,
     devices: Devices,
     devices_page: DevicesPage,
+    collection_page: CollectionPage,
 }
 
 impl DesktopApp {
@@ -68,6 +70,7 @@ impl DesktopApp {
         settings_file: Option<PathBuf>,
         settings_error: Option<String>,
         log_file: Option<PathBuf>,
+        reports: Option<PathBuf>,
     ) -> Self {
         let icon = crate::Icon::app();
         let logo = cc.egui_ctx.load_texture(
@@ -91,6 +94,7 @@ impl DesktopApp {
             first_frame: true,
             devices: Devices::start(native_provider(), cc.egui_ctx.clone()),
             devices_page: DevicesPage::default(),
+            collection_page: CollectionPage::new(reports),
             quitting: false,
         }
     }
@@ -261,6 +265,10 @@ fn apply_theme(ctx: &egui::Context, theme: Theme) {
 impl eframe::App for DesktopApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_window(ctx);
+        if self.settings.collecting {
+            let snapshot = self.devices.snapshot();
+            self.collection_page.collect(&self.settings, &snapshot);
+        }
         egui::TopBottomPanel::top("header")
             .frame(
                 egui::Frame::side_top_panel(&ctx.style())
@@ -275,12 +283,12 @@ impl eframe::App for DesktopApp {
                 "Present a controller as an Xbox 360 Controller, DualShock 4, DualSense or Switch Pro \
                  Controller to games (roadmap tasks A5 to A8).",
             ),
-            Tab::Collection => Self::placeholder(
-                ui,
-                "Collection",
-                "Record what your system reports about a controller, keep the report on this computer, \
-                 and share it only if you choose to (roadmap task A3).",
-            ),
+            Tab::Collection => {
+                let snapshot = self.devices.snapshot();
+                if self.collection_page.show(ui, &mut self.settings, &snapshot) {
+                    self.save_settings();
+                }
+            }
             Tab::Settings => self.settings_page(ui),
             Tab::About => self.about_page(ui),
         });

@@ -12,7 +12,7 @@ use std::time::Duration;
 use anygamepad::db::Database;
 use anygamepad::mapping::Mapper;
 use anygamepad::model::raw::{RawLayout, RawSource, RawState};
-use anygamepad::model::{GamepadState, OutputCommand, OutputSet};
+use anygamepad::model::{Capabilities, GamepadState, OutputCommand, OutputSet};
 use anygamepad::provider::{Access, DeviceId, DeviceInfo, Provider, ProviderEvent};
 use eframe::egui;
 
@@ -42,6 +42,8 @@ pub struct DeviceView {
     pub raw: RawState,
     /// Latest canonical state.
     pub state: GamepadState,
+    /// Canonical controls the mapping gives.
+    pub capabilities: Capabilities,
     /// Why the device cannot be read, if it cannot.
     pub error: Option<String>,
 }
@@ -260,6 +262,7 @@ impl Worker {
             return;
         };
         let (mapper, mapping) = mapper_for(&self.database, &info);
+        let capabilities = mapper.capabilities().clone();
         log::info!(
             "device {} added: {} ({:04x}:{:04x}), mapping {mapping:?}",
             id.0,
@@ -285,6 +288,7 @@ impl Worker {
             mapping,
             raw,
             state: GamepadState::new(),
+            capabilities,
             error,
         };
         self.devices.insert(id, (view, open));

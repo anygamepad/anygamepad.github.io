@@ -8,6 +8,8 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod app;
+mod collection;
+mod collection_page;
 mod demo;
 mod devices;
 mod devices_page;
@@ -46,6 +48,7 @@ fn main() -> eframe::Result {
     let paths = Paths::from_env();
     let settings_file = paths.as_ref().map(Paths::settings_file);
     let log_file = paths.as_ref().map(Paths::log_file);
+    let reports = paths.as_ref().map(Paths::reports);
     let (settings, settings_error) = match settings_file.as_deref().map(Settings::load) {
         Some(Ok(settings)) => (settings, None),
         Some(Err(error)) => (
@@ -88,6 +91,7 @@ fn main() -> eframe::Result {
                 settings_file,
                 settings_error,
                 log_file,
+                reports,
             )))
         }),
     );

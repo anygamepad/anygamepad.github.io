@@ -20,6 +20,7 @@ path = "src/main.rs"
 
 [dependencies]
 anygamepad.workspace = true
+anygamepad-report = { workspace = true, features = ["json"] }
 anygamepad-virtual.workspace = true
 # egui through eframe (ADR 0004), with the glow renderer: see
 # RECORD/2026-10-30.a1-desktop-app-shell.*.md.

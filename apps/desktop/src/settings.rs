@@ -62,6 +62,11 @@ pub struct Settings {
     pub close_to_tray: bool,
     /// How much goes into the log.
     pub log_level: LogLevel,
+    /// The person started collection mode once, after reading what it
+    /// does (A3): the explanation is not shown again.
+    pub collection_started: bool,
+    /// Collection mode is on: every controller gets its report file.
+    pub collecting: bool,
 }
 
 impl Settings {
@@ -102,6 +107,8 @@ mod tests {
             start_minimized: true,
             close_to_tray: true,
             log_level: LogLevel::Debug,
+            collection_started: true,
+            collecting: false,
         };
         settings.save(&path).unwrap();
         assert_eq!(Settings::load(&path), Ok(settings));

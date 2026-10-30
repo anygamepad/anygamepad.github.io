@@ -3,7 +3,7 @@
 
 use std::time::Instant;
 
-use anygamepad::model::identity::{Backend, DeviceIdentity, Os, ProviderKind};
+use anygamepad::model::identity::{Backend, DeviceIdentity, ProviderKind};
 use anygamepad::model::raw::{RawAxisInfo, RawLayout, RawSource, RawState};
 use anygamepad::model::{
     Axis, Button, Output, OutputCommand, OutputSet, Power, PowerState, Transport,
@@ -45,7 +45,11 @@ pub struct DemoProvider {
 
 impl Default for DemoProvider {
     fn default() -> Self {
-        let mut identity = DeviceIdentity::new(ProviderKind::Native, Backend::Unknown, Os::Unknown);
+        let mut identity = DeviceIdentity::new(
+            ProviderKind::Native,
+            Backend::Unknown,
+            crate::collection::host_os(),
+        );
         identity.product_name = Some("Demo pad".into());
         identity.transport = Transport::Usb;
         let layout = RawLayout {

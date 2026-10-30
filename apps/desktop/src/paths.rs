@@ -12,6 +12,8 @@ pub struct Paths {
     pub config: PathBuf,
     /// Logs (`anygamepad.log`).
     pub logs: PathBuf,
+    /// Data the user keeps: device reports in `reports/` (A3).
+    pub data: PathBuf,
 }
 
 impl Paths {
@@ -34,6 +36,7 @@ impl Paths {
                 Some(Self {
                     config: roaming.join(APP),
                     logs: local.join(APP).join("logs"),
+                    data: roaming.join(APP),
                 })
             }
             "macos" => {
@@ -41,6 +44,7 @@ impl Paths {
                 Some(Self {
                     config: home.join("Library/Application Support").join(APP),
                     logs: home.join("Library/Logs").join(APP),
+                    data: home.join("Library/Application Support").join(APP),
                 })
             }
             // Linux and the other Unix systems: XDG base directories.
@@ -48,11 +52,14 @@ impl Paths {
                 let home = non_empty("HOME");
                 let config =
                     non_empty("XDG_CONFIG_HOME").or_else(|| Some(home.clone()?.join(".config")))?;
-                let state =
-                    non_empty("XDG_STATE_HOME").or_else(|| Some(home?.join(".local/state")))?;
+                let state = non_empty("XDG_STATE_HOME")
+                    .or_else(|| Some(home.clone()?.join(".local/state")))?;
+                let data =
+                    non_empty("XDG_DATA_HOME").or_else(|| Some(home?.join(".local/share")))?;
                 Some(Self {
                     config: config.join(APP),
                     logs: state.join(APP),
+                    data: data.join(APP),
                 })
             }
         }
@@ -66,6 +73,11 @@ impl Paths {
     /// The log file.
     pub fn log_file(&self) -> PathBuf {
         self.logs.join("anygamepad.log")
+    }
+
+    /// The folder of device report files.
+    pub fn reports(&self) -> PathBuf {
+        self.data.join("reports")
     }
 }
 
@@ -104,6 +116,10 @@ mod tests {
         assert_eq!(paths.config, PathBuf::from("/c/anygamepad"));
         // An empty variable counts as unset.
         assert_eq!(paths.logs, PathBuf::from("/home/a/.local/state/anygamepad"));
+        assert_eq!(
+            paths.reports(),
+            PathBuf::from("/home/a/.local/share/anygamepad/reports")
+        );
         assert_eq!(Paths::for_os("linux", env(&[])), None);
     }
 

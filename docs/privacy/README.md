@@ -110,7 +110,9 @@ looked like identifiers ({field paths})." A link to the
   stays yours."
 
 The desktop app (A3) shows the same view for a report file, with "Open the
-file" in place of the copy fallback.
+file" in place of the copy fallback, and "No GitHub account? Keep the
+report file instead: it stays yours." in place of the download line. Its
+delete asks only: "Delete this report file?"
 
 ### The issue form
 
