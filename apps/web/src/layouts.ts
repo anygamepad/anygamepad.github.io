@@ -5,8 +5,9 @@
 // art/dualsense.svg); drawing.ts renders both.
 //
 // The generic layout follows pads like the Flydigi Vader 5 Pro: Xbox-style
-// positions, two extra buttons by the face buttons (C and Z) and four back
-// buttons. It is the Xbox illustration with all of them. Which extra index
+// positions and two extra buttons by the face buttons (C and Z). It is the
+// Xbox illustration with both. Back buttons are not drawn: pads map them to
+// front buttons (owner, 2026-10-30). Which extra index
 // C and Z report is a guess until device profiles (D4) say it.
 
 import type { Button, Family } from "./wasm/anygamepad_wasm.js";
@@ -70,15 +71,13 @@ export interface ArtLayout {
 
 export type Layout = ShapeLayout | ArtLayout;
 
-// The owner's illustration (art/xbox.svg). Xbox pads have no back buttons
-// (the Elite's paddles are not told apart yet), and C and Z show dimmed:
+// The owner's illustration (art/xbox.svg). C and Z show dimmed on Xbox pads:
 // Chromium reports an Xbox Series pad's share button as the first extra
 // button, so the buttons the pad reports cannot tell.
 const XBOX: ArtLayout = {
   kind: "art",
   name: "Xbox controller",
   svg: xbox,
-  hide: ["left_paddle_1", "left_paddle_2", "right_paddle_1", "right_paddle_2"],
   dim: ["extra_0", "extra_1"],
 };
 
