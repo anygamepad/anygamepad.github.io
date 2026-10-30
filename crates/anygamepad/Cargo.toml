@@ -16,10 +16,13 @@ authors.workspace = true
 workspace = true
 
 [features]
-default = ["web"]
+default = ["web", "native"]
 # Browser provider (ADR 0002): the Gamepad API and WebHID access on wasm32.
 # On other targets only its platform-independent parts build (user agent
 # parsing, standard mapping), which keeps them testable natively.
+# Native providers (ADR 0002): evdev on Linux. The platform-independent
+# parts (evdev decoding) build everywhere.
+native = ["dep:evdev"]
 web = ["dep:js-sys", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys"]
 
 [dependencies]
@@ -29,6 +32,9 @@ anygamepad-model.workspace = true
 [dev-dependencies]
 # Curated profiles are TOML files.
 anygamepad-db = { workspace = true, features = ["toml"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+evdev = { version = "0.13.2", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { workspace = true, optional = true }
