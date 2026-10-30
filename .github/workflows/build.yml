@@ -79,9 +79,9 @@ jobs:
         run: node scripts/version.mjs set "$VERSION"
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      # anygamepad-virtual is desktop-only.
-      - run: cargo clippy --workspace --exclude anygamepad-virtual --all-targets --target wasm32-unknown-unknown --locked -- -D warnings
-      - run: cargo build --workspace --exclude anygamepad-virtual --target wasm32-unknown-unknown --locked
+      # anygamepad-virtual and the desktop app are desktop-only.
+      - run: cargo clippy --workspace --exclude anygamepad-virtual --exclude anygamepad-desktop --all-targets --target wasm32-unknown-unknown --locked -- -D warnings
+      - run: cargo build --workspace --exclude anygamepad-virtual --exclude anygamepad-desktop --target wasm32-unknown-unknown --locked
       - run: cargo clippy -p anygamepad-model --all-features --target wasm32-unknown-unknown --locked -- -D warnings
       - run: cargo clippy -p anygamepad-db --all-features --target wasm32-unknown-unknown --locked -- -D warnings
       - run: cargo clippy -p anygamepad-report --all-features --target wasm32-unknown-unknown --locked -- -D warnings
@@ -119,7 +119,7 @@ jobs:
       - run: cargo +1.85 check -p anygamepad-model --all-features --locked
       - run: cargo +1.85 check -p anygamepad-db --all-features --locked
       - run: cargo +1.85 check -p anygamepad-report --all-features --locked
-      - run: cargo +1.85 check --workspace --exclude anygamepad-virtual --target wasm32-unknown-unknown --locked
+      - run: cargo +1.85 check --workspace --exclude anygamepad-virtual --exclude anygamepad-desktop --target wasm32-unknown-unknown --locked
 
   # The web app and its WebAssembly bindings: the build artifacts.
   web:

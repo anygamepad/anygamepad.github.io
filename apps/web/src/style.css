@@ -6,6 +6,7 @@
   --border: #dcdce6;
   --accent: #4f46e5;
   --error: #b42318;
+  --brand-muted: #6b7489;
   color-scheme: light dark;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   line-height: 1.5;
@@ -27,6 +28,7 @@
     --border: #33334a;
     --accent: #8b85ff;
     --error: #ff8a80;
+    --brand-muted: #aab3c4;
   }
 }
 
@@ -38,6 +40,7 @@
   --border: #33334a;
   --accent: #8b85ff;
   --error: #ff8a80;
+  --brand-muted: #aab3c4;
   color-scheme: dark;
 }
 
@@ -105,6 +108,30 @@ body {
   margin: 0;
   color: var(--accent);
   font-size: 1.75rem;
+}
+
+/* The logo (docs/brand/): the mark, then "Any" and "Gamepad" in two tones. */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  color: var(--fg);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.top h1.brand {
+  color: var(--fg);
+}
+
+.brand img {
+  width: 1.7em;
+  height: 1.7em;
+}
+
+.brand-gamepad {
+  color: var(--brand-muted);
 }
 
 .tagline,

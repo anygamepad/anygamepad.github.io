@@ -17,9 +17,13 @@
 //!
 //! - `web` (default): the browser provider ([`web`]), active on
 //!   `wasm32-unknown-unknown`.
+//! - `native` (default): anygamepad's own OS backends ([`native`]); on
+//!   Linux, the evdev provider.
 #![forbid(unsafe_code)]
 
 pub mod mapping;
+#[cfg(feature = "native")]
+pub mod native;
 pub mod protocol;
 pub mod provider;
 #[cfg(feature = "web")]

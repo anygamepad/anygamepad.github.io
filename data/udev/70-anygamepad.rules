@@ -1,0 +1,9 @@
+# anygamepad: let the user at the seat create virtual controllers
+# (docs/linux-permissions.md). Install to /etc/udev/rules.d/ and run
+#   sudo udevadm control --reload && sudo udevadm trigger
+# then load the modules once: sudo modprobe uinput uhid
+
+# uinput: the virtual Xbox 360 Controller.
+KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"
+# UHID: virtual HID controllers (DualShock 4, DualSense, Switch Pro).
+KERNEL=="uhid", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uhid"

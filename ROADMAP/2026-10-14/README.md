@@ -90,6 +90,11 @@ WebHID can read that report ([research note 09](../../docs/research/09-dualsense
   and consent flow, and W7, public launch of the web tester, are done (grey).
   Milestone M2 is reached. The critical path now runs through the desktop
   app tracks (M2 -> A1/A4 ... -> M4), with M4 on 2026-12-29 and M5 on 2026-12-24.
+- **Status update (2026-10-30, in place):** A4, virtual pad abstraction and
+  emulated profiles (`anygamepad-virtual`: Xbox 360, DualShock 4, DualSense,
+  Switch Pro Controller), is done (grey). A5, A7 and A8 now wait only on
+  their native input backends (C4, C5, C6); the second critical path
+  starts at A5, which C4 blocks. Dates are not recomputed here.
 
 ## Vision
 
@@ -256,7 +261,7 @@ gantt
     M3 Library 0.1.0 :milestone, m3, after c10, 0d
     section Desktop app
     A1 App shell (UI toolkit, tray, settings) :crit, a1, after f3 m2, 15d
-    A4 Virtual pad abstraction and emulated profiles :crit, a4, after c1 m2, 10d
+    A4 Virtual pad abstraction and emulated profiles :crit, done, a4, 2026-10-30, 1d
     A5 Linux virtual output (uinput + UHID) :crit, a5, after a4 c4, 20d
     A7 Windows virtual output via ViGEmBus (X360, DS4) :a7, after a4 c5, 15d
     A8 macOS virtual output (IOHIDUserDevice) :a8, after a4 c6, 25d
@@ -468,8 +473,8 @@ flowchart LR
     p6 --> m5
     classDef crit fill:#fdd,stroke:#c00,stroke-width:2px
     classDef done fill:#eee,stroke:#999,color:#666
-    class a1,a4,a5,a2,a3,a6,a9,a10,m4 crit
-    class f1,f2,f3,c1,c2,c3,c11,d1,d2,d4,p1,p3,w1,w2,w4,w5,w6,w7,w8,m2 done
+    class a1,a5,a2,a3,a6,a9,a10,m4 crit
+    class f1,f2,f3,c1,c2,c3,c11,d1,d2,d4,p1,p3,w1,w2,w4,w5,w6,w7,w8,m2,a4 done
 ```
 
 ## Milestones

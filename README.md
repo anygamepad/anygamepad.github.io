@@ -1,5 +1,7 @@
 # anygamepad
 
+![AnyGamepad](docs/brand/logo.png)
+
 Gamepad input normalization: one canonical gamepad model for every controller,
 mode, transport and operating system.
 

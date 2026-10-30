@@ -626,14 +626,13 @@ try {
   pad = await until("the next press", detail, (d) => d.buttons[1]?.pressed && !d.buttons[0].pressed);
   assert.deepEqual(pad.diagram.on, ["east"]);
 
-  // The Xbox illustration for all three: Xbox labels on the Xbox pad, which
-  // has no back buttons and C and Z dimmed; the generic pads have back
-  // buttons, no labels, and C and Z dimmed unless the pad reports them.
+  // The Xbox illustration for all three: Xbox labels and C and Z dimmed on
+  // the Xbox pad; no labels on the generic pads, and C and Z dimmed unless
+  // the pad reports them. No back buttons on any.
   const xboxControls = [
     "left_shoulder", "right_shoulder", "home", "select", "start", "share", "left_stick", "right_stick",
     "dpad_up", "dpad_left", "dpad_right", "dpad_down", "north", "west", "east", "south",
   ];
-  const paddles = ["left_paddle_1", "left_paddle_2", "right_paddle_2", "right_paddle_1"];
   await setGamepads([XBOX, FLYDIGI, SN30]);
   await until("the Xbox pad", detail, (d) => d?.ready && d.diagram?.label === "Xbox controller, canonical positions");
   pad = await detail();
@@ -644,11 +643,11 @@ try {
   pad = await until("the generic pad", detail, (d) => d.ready && d.diagram?.label === "Controller, canonical positions");
   assert.deepEqual(pad.diagram.on, ["extra_0"]);
   assert.deepEqual(pad.diagram.labels, []);
-  assert.deepEqual(pad.diagram.controls, [...paddles, ...xboxControls, "extra_0", "extra_1"]);
+  assert.deepEqual(pad.diagram.controls, [...xboxControls, "extra_0", "extra_1"]);
   assert.deepEqual(pad.diagram.absent, []);
   await select("8BitDo SN30 Pro");
   pad = await until("the pad without C and Z", detail, (d) => d.ready && d.name === "8BitDo SN30 Pro" && d.diagram);
-  assert.deepEqual(pad.diagram.controls, [...paddles, ...xboxControls]);
+  assert.deepEqual(pad.diagram.controls, [...xboxControls]);
   assert.deepEqual(pad.diagram.absent, ["extra_0", "extra_1"]);
 
   // The DualShock 3 illustration.
