@@ -385,6 +385,10 @@ impl Gamepads {
     #[wasm_bindgen(unchecked_return_type = "GamepadState | undefined")]
     pub fn state(&mut self, device: u32) -> Result<JsValue, JsError> {
         let id = device_id(device);
+        // Unknown devices are an error, as in `poll` and `send`.
+        if self.provider.info(id).is_none() {
+            return Err(error(ProviderError::UnknownDevice));
+        }
         let standard = self
             .provider
             .info(id)

@@ -246,7 +246,8 @@ mod tests {
     use super::*;
 
     fn info(name: &str) -> DeviceInfo {
-        let mut identity = DeviceIdentity::new(ProviderKind::Native, Backend::Evdev, Os::Linux);
+        // The host's OS: reports refuse views from another one.
+        let mut identity = DeviceIdentity::new(ProviderKind::Native, Backend::Evdev, host_os());
         identity.vendor_id = Some(0x054c);
         identity.product_id = Some(0x0ce6);
         identity.product_name = Some(name.into());

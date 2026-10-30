@@ -50,3 +50,7 @@ web-sys = { workspace = true, optional = true, features = [
     "Performance",
     "Window",
 ] }
+
+[[example]]
+name = "linux_pads"
+required-features = ["native"]
