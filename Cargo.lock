@@ -87,6 +87,8 @@ version = "0.0.3"
 dependencies = [
  "anygamepad",
  "anygamepad-model",
+ "evdev",
+ "nix",
 ]
 
 [[package]]

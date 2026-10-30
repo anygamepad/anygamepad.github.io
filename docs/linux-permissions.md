@@ -26,10 +26,25 @@ before opening them. It counts the gamepad nodes it cannot open
 `Access::Exclusive` grabs the nodes (`EVIOCGRAB`): other programs reading
 them get no events while the app holds them. It needs no extra permission.
 
+## Virtual controllers (uinput, UHID)
+
+`anygamepad_virtual::linux` (A5) creates the virtual Xbox 360 Controller
+through `/dev/uinput` and the virtual HID pads (DualShock 4, DualSense,
+Switch Pro) through `/dev/uhid`. Both nodes belong to root by default.
+[`data/udev/70-anygamepad.rules`](../data/udev/70-anygamepad.rules) gives
+the user at the seat access:
+
+```sh
+sudo cp data/udev/70-anygamepad.rules /etc/udev/rules.d/
+sudo udevadm control --reload && sudo udevadm trigger
+sudo modprobe uinput uhid
+```
+
+To load the modules at every boot, list them in
+`/etc/modules-load.d/anygamepad.conf` (one per line). Sandboxed packages
+(Flatpak, Snap) need these device nodes exposed as well (A9).
+
 ## Still to come
 
 - Raw HID (`/dev/hidraw*`) for pads anygamepad drives itself (C7) needs a
   rule, since udev does not give `uaccess` to hidraw nodes by default.
-- Virtual controllers (`/dev/uinput`, `/dev/uhid`, A5) need rules too.
-
-Both will be listed here with the tasks that need them.

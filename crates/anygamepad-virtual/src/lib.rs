@@ -43,9 +43,12 @@ use core::str::FromStr;
 use anygamepad_model::{Capabilities, Family, GamepadState, OutputCommand};
 
 pub mod descriptor;
+#[cfg(target_os = "linux")]
+pub mod linux;
 mod playstation;
 mod switch_pro;
-mod xbox360;
+pub mod uhid;
+pub mod xbox360;
 
 pub use playstation::{ACCEL_COUNTS_PER_G, DualSense, DualShock4, GYRO_COUNTS_PER_DEGREE};
 pub use switch_pro::{STICK_CENTER, STICK_RANGE, SwitchPro};

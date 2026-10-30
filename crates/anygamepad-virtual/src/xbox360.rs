@@ -129,6 +129,65 @@ impl VirtualPad for Xbox360 {
     }
 }
 
+/// An evdev axis of the uinput pad: code, minimum, maximum, fuzz, flat.
+pub type EvdevAxis = (u16, i32, i32, i32, i32);
+
+/// Key codes of the uinput pad, as `xpad` reports a wired Xbox 360
+/// Controller: `BTN_A`, `BTN_B`, `BTN_X`, `BTN_Y` (the X button, west, is
+/// `BTN_X`, code `0x133`), shoulders, menus, guide, stick clicks.
+pub const EVDEV_KEYS: [u16; 11] = [
+    0x130, 0x131, 0x133, 0x134, 0x136, 0x137, 0x13a, 0x13b, 0x13c, 0x13d, 0x13e,
+];
+
+/// Absolute axes of the uinput pad, with `xpad`'s ranges: sticks
+/// (`ABS_X/Y`, `ABS_RX/RY`), triggers (`ABS_Z/RZ`), d-pad (`ABS_HAT0X/Y`).
+pub const EVDEV_AXES: [EvdevAxis; 8] = [
+    (0x00, -32768, 32767, 16, 128),
+    (0x01, -32768, 32767, 16, 128),
+    (0x03, -32768, 32767, 16, 128),
+    (0x04, -32768, 32767, 16, 128),
+    (0x02, 0, 255, 0, 0),
+    (0x05, 0, 255, 0, 0),
+    (0x10, -1, 1, 0, 0),
+    (0x11, -1, 1, 0, 0),
+];
+
+/// The evdev events `xpad` sends for an input packet ([`Xbox360`]'s
+/// report): `(type, code, value)`, `EV_KEY` then `EV_ABS`, without the
+/// closing `SYN_REPORT`. Y axes grow downwards, as `xpad` reports them.
+pub fn evdev_events(report: &[u8]) -> Vec<(u16, u16, i32)> {
+    const EV_KEY: u16 = 0x01;
+    const EV_ABS: u16 = 0x03;
+    if report.len() < INPUT_LEN {
+        return Vec::new();
+    }
+    let low = report[2];
+    let high = report[3];
+    let bit = |byte: u8, mask: u8| i32::from(byte & mask != 0);
+    let stick = |at: usize| i32::from(i16::from_le_bytes([report[at], report[at + 1]]));
+    vec![
+        (EV_KEY, 0x130, bit(high, 0x10)), // A
+        (EV_KEY, 0x131, bit(high, 0x20)), // B
+        (EV_KEY, 0x133, bit(high, 0x40)), // X
+        (EV_KEY, 0x134, bit(high, 0x80)), // Y
+        (EV_KEY, 0x136, bit(high, 0x01)), // LB
+        (EV_KEY, 0x137, bit(high, 0x02)), // RB
+        (EV_KEY, 0x13c, bit(high, 0x04)), // guide
+        (EV_KEY, 0x13b, bit(low, 0x10)),  // start
+        (EV_KEY, 0x13a, bit(low, 0x20)),  // back
+        (EV_KEY, 0x13d, bit(low, 0x40)),  // left stick
+        (EV_KEY, 0x13e, bit(low, 0x80)),  // right stick
+        (EV_ABS, 0x00, stick(6)),
+        (EV_ABS, 0x01, !stick(8)),
+        (EV_ABS, 0x03, stick(10)),
+        (EV_ABS, 0x04, !stick(12)),
+        (EV_ABS, 0x02, i32::from(report[4])),
+        (EV_ABS, 0x05, i32::from(report[5])),
+        (EV_ABS, 0x10, bit(low, 0x08) - bit(low, 0x04)),
+        (EV_ABS, 0x11, bit(low, 0x02) - bit(low, 0x01)),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use anygamepad_model::AxisSet;
@@ -202,5 +261,39 @@ mod tests {
         assert!(pad.output_report(&[]).is_empty());
         assert_eq!(pad.feature_report(0x01), None);
         assert_eq!(pad.report_descriptor(), None);
+    }
+
+    #[test]
+    fn evdev_events_like_xpad() {
+        let mut pad = Xbox360::new();
+        let mut state = GamepadState::new();
+        state.set_pressed(Button::West, true);
+        state.set_pressed(Button::DPadUp, true);
+        state.set_pressed(Button::DPadRight, true);
+        state.set_axis(Axis::LeftStickY, 1.0);
+        state.set_axis(Axis::LeftTrigger, 1.0);
+        let events = evdev_events(pad.input_report(&state));
+        let value = |kind: u16, code: u16| {
+            events
+                .iter()
+                .find(|(k, c, _)| *k == kind && *c == code)
+                .map(|e| e.2)
+        };
+        // West is BTN_X.
+        assert_eq!(value(1, 0x133), Some(1));
+        assert_eq!(value(1, 0x134), Some(0));
+        // Up is negative.
+        assert_eq!(value(3, 0x01), Some(-32768));
+        assert_eq!(value(3, 0x02), Some(255));
+        assert_eq!((value(3, 0x10), value(3, 0x11)), (Some(1), Some(-1)));
+        for (code, min, max, _, _) in EVDEV_AXES {
+            let v = value(3, code).unwrap();
+            assert!((min..=max).contains(&v));
+        }
+        let keys: Vec<u16> = events.iter().filter(|e| e.0 == 1).map(|e| e.1).collect();
+        let mut sorted = keys.clone();
+        sorted.sort_unstable();
+        assert_eq!(sorted, EVDEV_KEYS);
+        assert!(evdev_events(&[0; 4]).is_empty());
     }
 }

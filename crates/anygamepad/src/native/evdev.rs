@@ -276,7 +276,17 @@ impl GamepadNode {
 /// grows downwards); analog triggers on `ABS_Z/RZ`, else `ABS_BRAKE/GAS`,
 /// else the digital `BTN_TL2/TR2`; the d-pad from the first hat, else
 /// `BTN_DPAD_*`. `KEY_RECORD` is the Xbox Series share button (`xpad`).
-pub fn spec_mapping(layout: &RawLayout) -> Mapping {
+///
+/// `xpad` is the exception for the top and left face buttons: it reports
+/// the Xbox `X` button (west) as `BTN_X` and `Y` (north) as `BTN_Y`, which
+/// are the codes of `BTN_NORTH` and `BTN_WEST` (research note 05). `driver`
+/// is the driver bound to the pad.
+pub fn spec_mapping(layout: &RawLayout, driver: Option<&str>) -> Mapping {
+    let (north, west) = if driver == Some("xpad") {
+        (BTN_WEST, BTN_NORTH)
+    } else {
+        (BTN_NORTH, BTN_WEST)
+    };
     let has_button = |code: u16| layout.buttons.contains(&RawSource::Evdev(code));
     let has_axis = |code: u16| {
         layout
@@ -288,8 +298,8 @@ pub fn spec_mapping(layout: &RawLayout) -> Mapping {
     let buttons = [
         (Button::South, BTN_SOUTH),
         (Button::East, BTN_EAST),
-        (Button::North, BTN_NORTH),
-        (Button::West, BTN_WEST),
+        (Button::North, north),
+        (Button::West, west),
         (Button::LeftShoulder, BTN_TL),
         (Button::RightShoulder, BTN_TR),
         (Button::Select, BTN_SELECT),
@@ -661,7 +671,7 @@ mod tests {
     fn spec_mapping_reads_a_dualsense() {
         let (keys, abs) = dualsense();
         let node = GamepadNode::new(&keys, &abs);
-        let mapping = spec_mapping(node.layout());
+        let mapping = spec_mapping(node.layout(), Some("playstation"));
         let mapper = Mapper::new(&mapping, node.layout());
         assert!(mapper.unresolved().is_empty());
 
@@ -711,7 +721,16 @@ mod tests {
             .map(|code| (code, info(-32767, 32767)))
             .into();
         let node = GamepadNode::new(&keys, &abs);
-        let mapping = spec_mapping(node.layout());
+        let mapping = spec_mapping(node.layout(), Some("nintendo"));
+        assert_eq!(
+            mapping.buttons.get(&Button::North),
+            Some(&Input::Button(RawSource::Evdev(BTN_NORTH)))
+        );
+        let xpad = spec_mapping(node.layout(), Some("xpad"));
+        assert_eq!(
+            xpad.buttons.get(&Button::North),
+            Some(&Input::Button(RawSource::Evdev(BTN_WEST)))
+        );
         assert_eq!(
             mapping.buttons.get(&Button::LeftTrigger),
             Some(&Input::Button(RawSource::Evdev(BTN_TL2)))

@@ -44,7 +44,8 @@ fn main() {
                         }
                         None if follows_spec(identity.driver.as_deref()) => {
                             println!("  no profile; Linux gamepad specification");
-                            Mapper::new(&spec_mapping(&info.layout), &info.layout)
+                            let mapping = spec_mapping(&info.layout, identity.driver.as_deref());
+                            Mapper::new(&mapping, &info.layout)
                         }
                         None => {
                             println!("  no profile, generic driver: raw values only");
