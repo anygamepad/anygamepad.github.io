@@ -198,6 +198,14 @@ pub trait VirtualPad: Send {
     /// The reply to the host reading feature report `report_id`, or `None`
     /// when the pad has no such report.
     fn feature_report(&mut self, report_id: u8) -> Option<Vec<u8>>;
+
+    /// The next input report the pad owes the host besides its state
+    /// (replies to commands sent in output reports, as the Switch Pro
+    /// Controller gives), oldest first. Outputs send these as soon as they
+    /// can.
+    fn pending_input(&mut self) -> Option<Vec<u8>> {
+        None
+    }
 }
 
 /// The Bluetooth address a virtual pad gives when the host asks for it:

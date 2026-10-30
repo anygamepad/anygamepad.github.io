@@ -1,5 +1,5 @@
 //! Device protocols: code that reads and writes the HID reports of known
-//! controllers (C7, C15).
+//! controllers (C7, C15): PlayStation pads and the Switch Pro Controller.
 //!
 //! Protocols are sans-IO: they turn report bytes into canonical state, and
 //! never move bytes themselves. The same code serves every transport that
@@ -7,6 +7,7 @@
 //! IOKit natively.
 
 pub mod playstation;
+pub mod switch_pro;
 
 /// CRC-32 (IEEE 802.3, reflected polynomial `0xEDB88320`) of `prefix`
 /// followed by `data`, as Bluetooth controllers checksum their reports.

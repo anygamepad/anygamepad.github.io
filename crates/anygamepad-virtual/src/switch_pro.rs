@@ -6,17 +6,20 @@
 //! every virtual pad uses the same nominal calibration
 //! ([`STICK_CENTER`], [`STICK_RANGE`]).
 //!
-//! Not emulated yet: the set-up exchange (USB commands `0x80`,
-//! subcommands and their `0x21` replies, SPI flash reads) that `hid-nintendo`
-//! and SDL go through before the pad sends `0x30` reports, which the
-//! platform outputs need (A5); HD rumble, whose amplitudes are encoded;
-//! motion sensors, whose axes differ from the PlayStation pads'.
+//! The set-up exchange is answered (A5): USB commands (`0x80`) with `0x81`
+//! reports, subcommands (`0x01`) with `0x21` reports, through
+//! [`VirtualPad::pending_input`]. SPI flash reads return the nominal stick
+//! calibration and erased user calibration; other subcommands are
+//! acknowledged without data. Not emulated yet: HD rumble, whose
+//! amplitudes are encoded, and motion sensors (reported still).
 //!
 //! The report descriptor has the real pad's report IDs and sizes, every
 //! report as vendor data.
 //!
 //! Sources: `hid-nintendo` (note 05) and the community's reverse-engineered
 //! protocol notes it follows. Not checked against a real pad yet.
+
+use std::collections::VecDeque;
 
 use anygamepad_model::{
     Axis, AxisSet, Button, Capabilities, GamepadState, Output, OutputCommand, OutputSet, PowerState,
@@ -46,6 +49,44 @@ const OUTPUTS: [(u8, u32); 4] = [(0x01, 48), (0x10, 48), (0x80, 63), (0x82, 63)]
 
 /// Subcommand that sets the player lights.
 const SET_PLAYER_LIGHTS: u8 = 0x30;
+/// Subcommand that asks for the device information.
+const DEVICE_INFO: u8 = 0x02;
+/// Subcommand that reads the SPI flash.
+const SPI_READ: u8 = 0x10;
+
+/// The SPI flash regions the virtual pad holds; every other byte reads as
+/// erased (`0xff`).
+fn flash(address: u32) -> u8 {
+    // Factory sticks at 0x603d: left above, centre, below; right centre,
+    // below, above. Every value is centre or range on both axes.
+    let pack = |v: u16| {
+        [
+            v as u8,
+            ((v >> 8) as u8 & 0x0f) | ((v as u8 & 0x0f) << 4),
+            (v >> 4) as u8,
+        ]
+    };
+    let (r, c) = (pack(STICK_RANGE), pack(STICK_CENTER));
+    let sticks = [r, c, r, c, r, r].concat();
+    // Factory IMU at 0x6020: accelerometer origin and sensitivity, then
+    // gyroscope origin and sensitivity, per axis.
+    let imu: Vec<u8> = [
+        0i16, 0, 0, 16384, 16384, 16384, 0, 0, 0, 13371, 13371, 13371,
+    ]
+    .iter()
+    .flat_map(|v| v.to_le_bytes())
+    .collect();
+    // Colours at 0x6050: body, buttons (dark grey and white).
+    let colours = [0x32, 0x32, 0x32, 0xff, 0xff, 0xff];
+    let regions: [(u32, &[u8]); 3] = [(0x6020, &imu), (0x603d, &sticks), (0x6050, &colours)];
+    regions
+        .iter()
+        .find_map(|(start, bytes)| {
+            let offset = address.checked_sub(*start)?;
+            bytes.get(offset as usize).copied()
+        })
+        .unwrap_or(0xff)
+}
 
 /// Bits of the three button bytes: right side, shared, left side. Face
 /// buttons by position: Nintendo `B` is south, `A` east.
@@ -91,6 +132,7 @@ const PLAYER_LIGHTS: [(u8, u8); 11] = [
 pub struct SwitchPro {
     descriptor: Vec<u8>,
     report: [u8; 1 + INPUT_LEN],
+    replies: VecDeque<Vec<u8>>,
 }
 
 impl SwitchPro {
@@ -110,6 +152,44 @@ impl SwitchPro {
         Self {
             descriptor: b.finish(),
             report,
+            replies: VecDeque::new(),
+        }
+    }
+
+    /// A `0x21` reply: the current state, the ACK byte, the subcommand and
+    /// its data.
+    fn reply(&mut self, ack: u8, subcommand: u8, data: &[u8]) {
+        self.report[1] = self.report[1].wrapping_add(1);
+        let mut reply = vec![0; 1 + INPUT_LEN];
+        reply[0] = 0x21;
+        reply[1..12].copy_from_slice(&self.report[1..12]);
+        reply[13] = ack;
+        reply[14] = subcommand;
+        let len = data.len().min(INPUT_LEN - 14);
+        reply[15..15 + len].copy_from_slice(&data[..len]);
+        self.replies.push_back(reply);
+    }
+
+    /// Answers a subcommand.
+    fn subcommand(&mut self, id: u8, args: &[u8]) {
+        match id {
+            DEVICE_INFO => {
+                // Firmware 3.72, Pro Controller, the made-up address, colours
+                // in SPI.
+                let mut info = vec![0x03, 0x48, 0x03, 0x02];
+                info.extend(crate::virtual_mac(0));
+                info.extend([0x01, 0x01]);
+                self.reply(0x82, id, &info);
+            }
+            SPI_READ if args.len() >= 5 => {
+                let address = u32::from_le_bytes([args[0], args[1], args[2], args[3]]);
+                let len = args[4].min(0x1d);
+                let mut data = args[..5].to_vec();
+                data[4] = len;
+                data.extend((0..u32::from(len)).map(|i| flash(address + i)));
+                self.reply(0x90, id, &data);
+            }
+            _ => self.reply(0x80, id, &[]),
         }
     }
 }
@@ -200,10 +280,30 @@ impl VirtualPad for SwitchPro {
         &self.report
     }
 
-    /// Reads the player lights from subcommand `0x30` in a `0x01` report
+    /// Answers USB commands and subcommands (see the module
+    /// documentation), and reads the player lights from subcommand `0x30`
     /// (lights on in the low nibble of its argument). Rumble is not decoded
     /// yet.
     fn output_report(&mut self, report: &[u8]) -> Vec<OutputCommand> {
+        match report {
+            // USB commands: status, handshake, baud rate. 0x04 (no
+            // Bluetooth timeout) has no answer.
+            [0x80, command @ (0x01..=0x03), ..] => {
+                let mut reply = vec![0; 1 + INPUT_LEN];
+                reply[0] = 0x81;
+                reply[1] = *command;
+                if *command == 0x01 {
+                    // Pro Controller, the made-up address.
+                    reply[3] = 0x03;
+                    let mut mac = crate::virtual_mac(0);
+                    mac.reverse();
+                    reply[4..10].copy_from_slice(&mac);
+                }
+                self.replies.push_back(reply);
+            }
+            [0x01, _, _, _, _, _, _, _, _, _, id, args @ ..] => self.subcommand(*id, args),
+            _ => {}
+        }
         // ID, counter, 8 bytes of rumble, subcommand, argument.
         match report {
             [
@@ -240,6 +340,10 @@ impl VirtualPad for SwitchPro {
 
     fn feature_report(&mut self, _report_id: u8) -> Option<Vec<u8>> {
         None
+    }
+
+    fn pending_input(&mut self) -> Option<Vec<u8>> {
+        self.replies.pop_front()
     }
 }
 

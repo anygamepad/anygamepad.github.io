@@ -251,3 +251,67 @@ fn capabilities() {
     assert_eq!(ds.touchpads[0].height, 1080);
     assert!(ds4.battery && ds.battery);
 }
+
+/// C7's output reports, read back by the emulated pads.
+#[test]
+fn emulated_pads_read_c7_output_reports() {
+    use anygamepad::protocol::playstation::OutputReport;
+
+    for (target, model) in TARGETS {
+        let mut pad = target.create(0);
+        let mut report = OutputReport::new(model);
+        let rumble = OutputCommand::Rumble(Rumble {
+            low_frequency: 1.0,
+            high_frequency: 0.0,
+        });
+        let lightbar = OutputCommand::Lightbar(Rgb { r: 4, g: 5, b: 6 });
+        report.set(rumble);
+        report.set(lightbar);
+        let player = report.set(OutputCommand::PlayerNumber(4));
+        let mut expected = vec![rumble, lightbar];
+        if player {
+            expected.push(OutputCommand::PlayerNumber(4));
+        }
+        let bytes = report.encode(Transport::Usb, 0);
+        assert_eq!(pad.output_report(&bytes), expected, "{target}");
+    }
+}
+
+/// The emulated pads' calibration, parsed by C7: the motion a pad shows
+/// comes back in SI units.
+#[test]
+fn c7_reads_the_emulated_calibration() {
+    use anygamepad::protocol::playstation::{Calibration, MotionTracker};
+
+    for (target, model) in TARGETS {
+        let mut pad = target.create(0);
+        let id = Calibration::report_id(model, Transport::Usb);
+        let reply = pad.feature_report(id).unwrap();
+        let calibration = Calibration::parse(model, Transport::Usb, &reply[1..]);
+
+        let gyro = Vec3::new(1.0, -2.0, 0.5);
+        let accel = Vec3::new(0.0, STANDARD_GRAVITY, -STANDARD_GRAVITY);
+        let mut state = GamepadState::new();
+        state.motion = Some(MotionSample {
+            timestamp_us: 0,
+            gyro: Some(gyro),
+            accel: Some(accel),
+        });
+        let report = pad.input_report(&state).to_vec();
+        let imu = decode(model, report[0], &report[1..]).unwrap().imu.unwrap();
+        let sample = MotionTracker::new(model, calibration).sample(&imu);
+        let close = |a: Vec3, b: Vec3, tolerance: f32| {
+            (a.x - b.x).abs() < tolerance
+                && (a.y - b.y).abs() < tolerance
+                && (a.z - b.z).abs() < tolerance
+        };
+        assert!(
+            close(sample.gyro.unwrap(), gyro, 0.002),
+            "{target}: {sample:?}"
+        );
+        assert!(
+            close(sample.accel.unwrap(), accel, 0.002),
+            "{target}: {sample:?}"
+        );
+    }
+}

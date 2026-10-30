@@ -3,8 +3,9 @@
 //!
 //! [`decode`] turns one input report into the canonical state: buttons,
 //! sticks, triggers, touchpad and battery, plus the motion sensors as raw
-//! counts ([`RawImu`]). Converting motion to SI units needs the pad's
-//! calibration, which is C7's.
+//! counts ([`RawImu`]). [`Calibration`] and [`MotionTracker`] turn those
+//! into SI units, and [`OutputReport`] writes rumble, light bar and LEDs
+//! (C7).
 //!
 //! # Report forms
 //!
@@ -38,6 +39,12 @@ use anygamepad_model::{
 };
 
 use super::crc32;
+
+mod calibration;
+mod output;
+
+pub use calibration::{Calibration, MotionTracker};
+pub use output::OutputReport;
 
 /// A PlayStation controller model.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

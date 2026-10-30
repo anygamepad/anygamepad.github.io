@@ -143,6 +143,9 @@ impl LinuxVirtualPad {
                         Err(e) => return Err(e),
                     }
                 }
+                while let Some(report) = self.pad.pending_input() {
+                    file.write_all(&uhid::input(&report))?;
+                }
             }
         }
         Ok(commands)
