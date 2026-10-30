@@ -15,7 +15,7 @@
 //!
 //! Desktop distributions let the logged-in user read and write gamepad
 //! nodes (udev tags `ID_INPUT_JOYSTICK` devices with `uaccess`). Nodes that
-//! cannot be opened are counted in [`LinuxProvider::inaccessible`] so an
+//! cannot be opened are counted in [`Provider::inaccessible`] so an
 //! app can explain it; see `docs/linux-permissions.md`.
 //!
 //! # Privacy
@@ -123,12 +123,6 @@ impl LinuxProvider {
             pending: Vec::new(),
             inaccessible: 0,
         }
-    }
-
-    /// Gamepad nodes found by the last scan that could not be opened
-    /// (missing permissions, usually).
-    pub fn inaccessible(&self) -> usize {
-        self.inaccessible
     }
 
     /// Lists the input nodes sysfs shows and groups them by controller.
@@ -363,6 +357,11 @@ fn drain(device: &mut Device, mut each: impl FnMut(u16, u16, i32)) -> Result<(),
 impl Provider for LinuxProvider {
     fn kind(&self) -> ProviderKind {
         ProviderKind::Native
+    }
+
+    /// Gamepad nodes found by the last scan that could not be opened.
+    fn inaccessible(&self) -> usize {
+        self.inaccessible
     }
 
     fn update(&mut self, events: &mut Vec<ProviderEvent>) -> Result<(), ProviderError> {

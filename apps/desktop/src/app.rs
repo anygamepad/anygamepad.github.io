@@ -1,6 +1,6 @@
-//! The main window: a header with the logo, one page per tab, and the
-//! settings page. Device pages arrive with A2 (device list and live view),
-//! A3 (collection mode) and the virtual pad work (A4-A8).
+//! The main window: a header with the logo, one page per tab: devices
+//! (A2), settings, about; collection mode (A3) and virtual pads (A5-A8)
+//! are placeholders.
 //!
 //! The window repaints only on input or when something wakes it (egui's
 //! reactive mode), so an idle app costs next to no CPU.
@@ -9,6 +9,8 @@ use std::path::PathBuf;
 
 use eframe::egui;
 
+use crate::devices::{Devices, native_provider};
+use crate::devices_page::DevicesPage;
 use crate::settings::{LogLevel, Settings, Theme};
 use crate::tray::{Tray, TrayEvent};
 
@@ -54,6 +56,8 @@ pub struct DesktopApp {
     /// The first frame hides the window when it starts minimized.
     first_frame: bool,
     quitting: bool,
+    devices: Devices,
+    devices_page: DevicesPage,
 }
 
 impl DesktopApp {
@@ -85,6 +89,8 @@ impl DesktopApp {
             tray,
             logo,
             first_frame: true,
+            devices: Devices::start(native_provider(), cc.egui_ctx.clone()),
+            devices_page: DevicesPage::default(),
             quitting: false,
         }
     }
@@ -262,11 +268,7 @@ impl eframe::App for DesktopApp {
             )
             .show(ctx, |ui| self.header(ui));
         egui::CentralPanel::default().show(ctx, |ui| match self.tab {
-            Tab::Devices => Self::placeholder(
-                ui,
-                "Devices",
-                "Connected controllers, their identity and live input will show here (roadmap task A2).",
-            ),
+            Tab::Devices => self.devices_page.show(ui, &self.devices),
             Tab::VirtualPad => Self::placeholder(
                 ui,
                 "Virtual pad",

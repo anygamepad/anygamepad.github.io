@@ -8,6 +8,9 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod app;
+mod demo;
+mod devices;
+mod devices_page;
 mod logging;
 mod paths;
 mod settings;
