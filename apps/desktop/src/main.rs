@@ -17,6 +17,7 @@ mod logging;
 mod paths;
 mod settings;
 mod tray;
+mod widget;
 
 use std::sync::Arc;
 

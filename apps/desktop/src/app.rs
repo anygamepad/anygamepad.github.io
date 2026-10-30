@@ -14,6 +14,7 @@ use crate::devices::{Devices, native_provider};
 use crate::devices_page::DevicesPage;
 use crate::settings::{LogLevel, Settings, Theme};
 use crate::tray::{Tray, TrayEvent};
+use crate::widget::{Widget, WidgetOptions, WidgetSkin};
 
 /// The pages of the main window.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,6 +61,7 @@ pub struct DesktopApp {
     devices: Devices,
     devices_page: DevicesPage,
     collection_page: CollectionPage,
+    widget: Widget,
 }
 
 impl DesktopApp {
@@ -95,6 +97,7 @@ impl DesktopApp {
             devices: Devices::start(native_provider(), cc.egui_ctx.clone()),
             devices_page: DevicesPage::default(),
             collection_page: CollectionPage::new(reports),
+            widget: Widget::default(),
             quitting: false,
         }
     }
@@ -204,6 +207,67 @@ impl DesktopApp {
                 });
                 ui.end_row();
 
+                ui.label("Widget");
+                ui.vertical(|ui| {
+                    ui.checkbox(
+                        &mut self.settings.widget,
+                        "Show a small window with a controller above other windows",
+                    );
+                    ui.add_enabled_ui(self.settings.widget, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("Controller");
+                            let snapshot = self.devices.snapshot();
+                            let name = |id| {
+                                snapshot
+                                    .devices
+                                    .iter()
+                                    .find(|d| Some(d.id) == id)
+                                    .and_then(|d| d.info.identity.product_name.clone())
+                                    .unwrap_or_else(|| "The first one".into())
+                            };
+                            egui::ComboBox::from_id_salt("widget-device")
+                                .selected_text(name(self.widget.device))
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut self.widget.device,
+                                        None,
+                                        "The first one",
+                                    );
+                                    for device in &snapshot.devices {
+                                        ui.selectable_value(
+                                            &mut self.widget.device,
+                                            Some(device.id),
+                                            name(Some(device.id)),
+                                        );
+                                    }
+                                });
+                        });
+                        ui.horizontal(|ui| {
+                            let skin = &mut self.settings.widget_skin;
+                            ui.selectable_value(skin, WidgetSkin::Pad, "Controller");
+                            ui.selectable_value(skin, WidgetSkin::Compact, "Compact");
+                        });
+                        ui.add(
+                            egui::Slider::new(&mut self.settings.widget_opacity, 0..=100)
+                                .text("Background opacity (%)"),
+                        );
+                        ui.checkbox(
+                            &mut self.settings.widget_click_through,
+                            "Let clicks through (turn off to move the widget by dragging it)",
+                        );
+                    });
+                    ui.label(
+                        egui::RichText::new(
+                            "On Wayland, keep it above other windows from your desktop's window \
+                             menu. Games in exclusive full screen cover it: use borderless \
+                             windowed mode.",
+                        )
+                        .small()
+                        .weak(),
+                    );
+                });
+                ui.end_row();
+
                 ui.label("Log");
                 ui.horizontal(|ui| {
                     let level = &mut self.settings.log_level;
@@ -263,11 +327,29 @@ fn apply_theme(ctx: &egui::Context, theme: Theme) {
 }
 
 impl eframe::App for DesktopApp {
+    /// Transparent, so that the widget's window can be; the main window's
+    /// panels paint their own background.
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        [0.0; 4]
+    }
+
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_window(ctx);
         if self.settings.collecting {
             let snapshot = self.devices.snapshot();
             self.collection_page.collect(&self.settings, &snapshot);
+        }
+        if self.settings.widget {
+            let options = WidgetOptions {
+                skin: self.settings.widget_skin,
+                opacity: self.settings.widget_opacity,
+                click_through: self.settings.widget_click_through,
+            };
+            let snapshot = self.devices.snapshot();
+            if !self.widget.show(ctx, &options, &snapshot) {
+                self.settings.widget = false;
+                self.save_settings();
+            }
         }
         egui::TopBottomPanel::top("header")
             .frame(

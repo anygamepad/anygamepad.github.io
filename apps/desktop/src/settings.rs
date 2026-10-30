@@ -9,6 +9,8 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use crate::widget::WidgetSkin;
+
 /// Colour theme.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -50,7 +52,7 @@ impl LogLevel {
 }
 
 /// Everything the user can set.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     /// Colour theme.
@@ -67,6 +69,31 @@ pub struct Settings {
     pub collection_started: bool,
     /// Collection mode is on: every controller gets its report file.
     pub collecting: bool,
+    /// The always-on-top widget is shown (A11).
+    pub widget: bool,
+    /// How the widget draws the controller.
+    pub widget_skin: WidgetSkin,
+    /// The widget's background opacity, 0-100.
+    pub widget_opacity: u8,
+    /// Clicks go through the widget to the window below.
+    pub widget_click_through: bool,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            theme: Theme::default(),
+            start_minimized: false,
+            close_to_tray: false,
+            log_level: LogLevel::default(),
+            collection_started: false,
+            collecting: false,
+            widget: false,
+            widget_skin: WidgetSkin::default(),
+            widget_opacity: 80,
+            widget_click_through: false,
+        }
+    }
 }
 
 impl Settings {
@@ -109,6 +136,10 @@ mod tests {
             log_level: LogLevel::Debug,
             collection_started: true,
             collecting: false,
+            widget: true,
+            widget_skin: WidgetSkin::Compact,
+            widget_opacity: 50,
+            widget_click_through: true,
         };
         settings.save(&path).unwrap();
         assert_eq!(Settings::load(&path), Ok(settings));

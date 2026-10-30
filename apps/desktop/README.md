@@ -38,3 +38,20 @@ The window needs `libxkbcommon-x11` (X11) or `libwayland-client` and
 
 `assets/icon-64.rgba` is the logo's mark (`apps/web/public/favicon.svg`)
 rendered at 64×64, raw RGBA.
+
+## Widget
+
+Settings, Widget: a small window that shows one controller above other
+windows (roadmap task A11), drawn as a controller or compactly, with an
+adjustable background and optional click-through (turn it off to drag the
+widget). Limits:
+
+- **Wayland**: regular windows cannot keep themselves on top; use the
+  window menu's "Always on top" where the desktop has it (KDE, most
+  wlroots desktops), or run the app under XWayland
+  (`WAYLAND_DISPLAY= anygamepad`). A layer-shell widget is a later step.
+- **X11**: the window manager decides; most honour the request.
+- **Transparency** needs an OpenGL configuration with alpha and, on X11, a
+  compositor; without them the widget is opaque.
+- **Exclusive full-screen games** cover every window on every OS: play in
+  borderless windowed mode to see the widget.
