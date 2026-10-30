@@ -83,6 +83,10 @@ dependencies = [
 [[package]]
 name = "anygamepad-virtual"
 version = "0.0.3"
+dependencies = [
+ "anygamepad",
+ "anygamepad-model",
+]
 
 [[package]]
 name = "anygamepad-wasm"

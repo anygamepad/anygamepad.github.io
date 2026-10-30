@@ -14,3 +14,10 @@ authors.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+anygamepad-model.workspace = true
+
+[dev-dependencies]
+# The PlayStation tests decode the emulated reports with C15's decoder.
+anygamepad.workspace = true
