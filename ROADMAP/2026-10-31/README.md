@@ -7,10 +7,11 @@ Status: **active**. Supersedes [ROADMAP/2026-10-14/](../2026-10-14/README.md).
 - **New workstream: hardware testing**
   ([06-hardware-testing.md](06-hardware-testing.md),
   [ADR 0008](../../docs/adr/0008-test-mode-and-test-reports.md)). Owner
-  request (2026-10-31): every app gets a **test mode** in which the app
-  detects the controller, its model, mode and transport, the person
-  confirms or corrects it from a list (a model or a kind of controller),
-  and gets an **anonymous test report** file (a download on the web).
+  request (2026-10-31): every app gets a **test mode** that opens on a
+  list of controllers (picking one shows the ways to connect it), shows a
+  pad connected without picking as detected (Confirm, or Choose another
+  when it does not match), and writes an **anonymous test report** file
+  (a download on the web).
   The owner collects controllers (several DualSense, Xbox Series,
   DualShock 4, DualShock 3, 8BitDo, GuliKit, GameSir and other brands) and
   tests on Windows, Linux and macOS. The runner, the test plans, the

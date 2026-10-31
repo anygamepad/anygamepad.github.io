@@ -9,12 +9,13 @@ The owner collects controllers (several DualSense, Xbox Series, DualShock 4,
 DualShock 3, 8BitDo, GuliKit, GameSir and other brands and models) and can
 test them on Windows, Linux and macOS. Until now each task was checked by
 hand with its own instructions (an example program, a recording button, a
-checklist in a chat), and the results lived in chat messages. In test mode
-the person connects a controller; the app detects which pad it is, its
-model, mode and transport, and the person confirms or corrects it from a
-list. The app then guides them through the checks, verifies on its own what
-it can, asks about what only a person can see or feel (vibration, lights),
-and writes an **anonymous test report** file (a download on the web).
+checklist in a chat), and the results lived in chat messages. The test
+mode opens on a list of controllers: picking one shows the ways to connect
+it, and a pad connected without picking is shown as detected, to confirm
+or to change. The app then guides the person through the checks, verifies
+on its own what it can, asks about what only a person can see or feel
+(vibration, lights), and writes an **anonymous test report** file (a
+download on the web).
 
 Every app runs the same test runner, the same test plans and writes the
 same report format, all in the library, so a new controller, a new check or
@@ -58,46 +59,71 @@ compatibility matrix (H8), and are the verified data the curated profiles
 
 ## A test session
 
-1. Open the test mode: a tab in the web tester, a page in the desktop app.
-2. Connect the pad, or press a button on it if it is already connected.
-   The app detects it ([Automatic detection](#automatic-detection)) and
-   proposes what it is: "Sony DualSense · PS5 · Bluetooth · DS5-02?".
-3. Confirm with one press, or correct it from the list: the unit from the
-   inventory (search; the least tested first), or "Not in the inventory":
-   a catalog model or a generic type; then the mode and the transport. The
-   list is also how to start a session before connecting, with the
-   catalog's instructions to put the pad in a mode and connect it. What was
-   detected and what the person confirmed both go into the report; a
-   difference is a finding (a clone, a firmware change, a catalog to
-   correct, or a detection to improve).
-4. Pick the plan: **Quick** (about a minute: detection and every control) or
+The test mode (a tab in the web tester, a page in the desktop app) opens
+on the **list** of controllers: the units of the inventory (search; the
+least tested first), then, for pads not in the inventory, the catalog's
+models and the generic types. A session starts in one of two ways (owner,
+2026-10-31).
+
+**Picking from the list.**
+
+1. Pick a unit, a model or a generic type.
+2. The app shows the **ways to connect it**: one card per mode and
+   transport the catalog gives for that model ("PS5 · USB cable", "PS5 ·
+   Bluetooth"; for a multi-mode pad "XInput · 2.4 GHz dongle", "Switch ·
+   Bluetooth", ...), each with how to put the pad in that mode and connect
+   it (switch position or button combination, pairing steps), and marked
+   as tested or untested in this environment (H8's coverage). Pick one.
+3. Connect the pad as the card says. The app waits for it and checks it
+   against what the catalog expects for that mode and transport. If it
+   matches, the session starts; if not, the app says what it sees instead,
+   and the person picks again or goes on anyway (a finding: a clone, a
+   firmware change or a catalog to correct).
+
+**Connecting without picking.**
+
+1. Connect a pad, or press a button on one already connected (with
+   several, the one whose button is pressed).
+2. The app shows what it detected
+   ([Automatic detection](#automatic-detection)): "Sony DualSense · PS5 ·
+   Bluetooth · DS5-02", with two choices: **Confirm**, or **Choose
+   another** when it does not match, which opens the list with the other
+   candidates first. Both choices also work from the pad (south and east),
+   so the hands stay on it. With several candidates the app shows them,
+   most likely first; with none, the generic type of the pad's family.
+3. The session starts with what was confirmed.
+
+Either way, what the app detected and what the person confirmed or picked
+both go into the report; a difference is a finding (a clone, a firmware
+change, a catalog to correct, or a detection to improve). Then:
+
+1. Pick the plan: **Quick** (about a minute: detection and every control) or
    **Full** (about five: also sticks and triggers, rate, motion, touchpad,
    battery, outputs, hotplug). Suites can be left out.
-5. One step at a time, with the drawing highlighting the control ("Press
+2. One step at a time, with the drawing highlighting the control ("Press
    Cross"). Automatic checks pass or fail by themselves. "Not on this pad"
    and "Skip" work from the pad (the wizard's chord) and from the screen;
-   yes/no questions are answered on the pad too, so the hands stay on it.
-   Back and pause.
-6. Summary: passed, failed, skipped and findings, with a free note. Review
+   yes/no questions are answered on the pad too. Back and pause.
+3. Summary: passed, failed, skipped and findings, with a free note. Review
    and save: the app shows every text the report holds
    ([Anonymous reports](#anonymous-reports)), then writes a file on the
    desktop, or keeps it in IndexedDB and downloads it on the web.
-7. Next: the app suggests the next configuration of the same unit that is
-   untested in this environment (H8's coverage), so going through every mode
-   and transport of a pad needs no bookkeeping. Plugging in another pad
-   starts at step 2 again.
+4. Next: the app opens the same unit's ways to connect with the next
+   untested one selected, so going through every mode and transport of a
+   pad needs no bookkeeping. Connecting another pad instead starts a
+   session by connecting.
 
 A session is saved as it runs, so a closed tab or a crash loses at most
 the current step.
 
 ## Automatic detection
 
-The list stays, as the way to correct the app and to start before
-connecting, but the app proposes everything it can tell by itself (H10):
+What the app tells by itself when a pad connects without being picked
+from the list, and what it checks a picked pad against (H10):
 
 - **Which device.** With one pad connected, that one. With several, the
   app asks to press a button on the pad to test and takes the first one
-  that answers. In test mode, a pad that connects is offered for a session
+  that answers. In test mode, a pad that connects is shown as detected
   straight away, so a collector can test one pad after another.
 - **Which model and mode.** A catalog lookup in the library matches the
   identity the provider gives (VID/PID, product name, HID descriptor hash,
@@ -255,8 +281,10 @@ full kernel release and an identifying input report in the evidence.
   family (for the drawing) and face labels; controls by canonical name
   (back paddles and extra buttons included); sticks; triggers (analog or
   digital); motion; touchpad; battery; outputs; modes, each with its name
-  as printed, how to switch to it, its transports and the identity
-  expected on each (or unknown, until a test report shows it). The generic
+  as printed, how to switch to it, its transports with how to connect over
+  each (cable, pairing steps, dongle) and the identity expected on each (or
+  unknown, until a test report shows it). The test modes show these as the
+  ways to connect a picked pad. The generic
   types of [Concepts](#concepts). A catalog model is what a person can buy;
   a device profile (D1) is how to map an identity: models point to the
   profiles that match their modes.
@@ -303,10 +331,10 @@ validate.
 A "Test" tab in the web tester: the session of
 [A test session](#a-test-session) on the Gamepad API and on WebHID (decoded
 PlayStation pads, and raw HID pads as H3 can read them), with the
-drawings of W8 highlighting each step. It starts from automatic detection
-(H10): a pad that connects, or the one whose button is pressed, is
-proposed with its model, mode and transport; the list corrects it. Before
-saving, the review shows every text of the report. Sessions and reports are kept in
+drawings of W8 highlighting each step. It opens on the list; picking a
+controller shows its ways to connect, and a pad that connects without
+picking is shown as detected (H10), with Confirm and Choose another.
+Before saving, the review shows every text of the report. Sessions and reports are kept in
 IndexedDB (store `test-reports`, ADR 0007's rules) and downloaded as
 files; nothing is shared by itself. Works in Chromium, Firefox and Safari
 (WebHID in Chromium only), on Windows, Linux and macOS.
@@ -318,8 +346,8 @@ Chromium, Firefox and WebKit, and downloads a report that validates.
 ### H5 — Test mode in the desktop app
 
 A "Test" page in the desktop app (A1's shell, A2's device worker): the
-same session, starting from automatic detection (H10) and ending with the
-review, on Linux with the evdev and hidraw providers (C4), and on
+same session (the list, the ways to connect, detection with Confirm and
+Choose another, the review), on Linux with the evdev and hidraw providers (C4), and on
 Windows and macOS once their backends exist (C5, C6). Reports are written
 to `test-reports/` in the app's data directory (next to A3's `reports/`).
 Adds the **virtual output** suite (A5): for each target, the app creates
@@ -409,11 +437,14 @@ library so every app proposes the same:
   a report).
 - "The pad whose button is pressed": the first device that leaves its
   rest state, with the wizard's detection rules (W4).
+- For a pad picked from the list: whether the device that connects is the
+  chosen model in the chosen mode and transport, and what it looks like
+  instead when it is not.
 
 C8 later replaces the matching with its heuristics behind the same call.
 
 **Done when:** tests identify every catalog entry from its expected
 identities, return several candidates for a shared identity (`045e:028e`,
 `057e:2009`) with the inventory's models first, fall back to a generic
-type for an unknown identity, and pick the pad that is pressed among
-several.
+type for an unknown identity, pick the pad that is pressed among
+several, and tell a picked mode from a different one on a multi-mode pad.

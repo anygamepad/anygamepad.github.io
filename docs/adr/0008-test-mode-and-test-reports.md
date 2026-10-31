@@ -70,8 +70,13 @@ should be anonymous.
    reports in IndexedDB (store `test-reports`) and downloads them. Nothing
    leaves by itself (ADR 0007). The reports the owner chooses are
    committed to `data/test-reports/`, under CC0 like device reports.
-6. **Automatic detection, the list to correct it** (H10). The library
-   proposes the device (the only one connected, or the one whose button is
+6. **The list first, automatic detection when connecting without picking**
+   (H10). The test mode opens on the list of controllers (inventory units,
+   catalog models, generic types); picking one shows its ways to connect
+   (one per mode and transport, with the catalog's instructions), and the
+   app checks the pad that connects against that choice. A pad connected
+   without picking is shown as detected, with Confirm and Choose another
+   (owner, 2026-10-31). For that, the library proposes the device (the only one connected, or the one whose button is
    pressed), its model and mode (a catalog lookup on the provider's
    identity, candidates most likely first, a generic type when nothing
    matches), its transport (from the provider, asked when the API does not
