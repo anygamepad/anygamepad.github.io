@@ -15,7 +15,8 @@
 //! the ways to connect them, and the [`lab`] inventory lists the physical
 //! controllers of a test lab (ADR 0008). Both are embedded at build time
 //! ([`Catalog::embedded`], [`Inventory::embedded`]); [`detect`] tells which
-//! model, mode and unit a connected device is.
+//! model, mode and unit a connected device is. The test [`plan`]s the test
+//! modes run are data too ([`TestPlan::embedded`]).
 //!
 //! # Features
 //!
@@ -31,6 +32,7 @@ pub mod detect;
 mod embedded;
 mod input;
 pub mod lab;
+pub mod plan;
 mod profile;
 pub mod sdl;
 pub mod wire;
@@ -39,6 +41,7 @@ pub use catalog::Catalog;
 pub use database::Database;
 pub use input::{AxisRange, Input, ParseInputError};
 pub use lab::Inventory;
+pub use plan::TestPlan;
 #[cfg(feature = "toml")]
 pub use profile::ProfileError;
 pub use profile::{

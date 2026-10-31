@@ -11,6 +11,8 @@ mod catalog;
 mod input;
 #[path = "src/lab.rs"]
 mod lab;
+#[path = "src/plan.rs"]
+mod plan;
 #[path = "src/profile.rs"]
 mod profile;
 #[path = "src/sdl.rs"]
@@ -152,9 +154,45 @@ fn build_inventory(dir: &Path, catalog: &catalog::Catalog, out_file: &Path) {
     fs::write(out_file, &bytes).unwrap_or_else(|e| panic!("writing {}: {e}", out_file.display()));
 }
 
+/// The test plans of `data/test-plans/`: every plan parsed, validated, its
+/// ID equal to its file name, in ID order.
+fn build_plans(dir: &Path, out_file: &Path) {
+    println!("cargo:rerun-if-changed={}", dir.display());
+    let mut plans = Vec::new();
+    let mut paths: Vec<PathBuf> = fs::read_dir(dir)
+        .unwrap_or_else(|e| panic!("reading {}: {e}", dir.display()))
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "toml"))
+        .collect();
+    paths.sort();
+    for path in paths {
+        let text =
+            fs::read_to_string(&path).unwrap_or_else(|e| panic!("reading {}: {e}", path.display()));
+        let plan: plan::TestPlan =
+            toml::from_str(&text).unwrap_or_else(|e| panic!("parsing {}: {e}", path.display()));
+        plan.validate()
+            .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        let stem = path.file_stem().unwrap().to_string_lossy();
+        assert_eq!(
+            plan.id,
+            stem,
+            "{}: the ID is not the file's name",
+            path.display()
+        );
+        plans.push(plan);
+    }
+    let bytes = plan::encode_plans(&plans).unwrap_or_else(|e| panic!("encoding the plans: {e}"));
+    fs::write(out_file, &bytes).unwrap_or_else(|e| panic!("writing {}: {e}", out_file.display()));
+}
+
 fn main() {
     let root = manifest_dir();
     let out = out_dir();
+
+    build_plans(
+        &root.join("../../data/test-plans"),
+        &out.join("plans.postcard"),
+    );
 
     let catalog = build_catalog(
         &root.join("../../data/controllers"),

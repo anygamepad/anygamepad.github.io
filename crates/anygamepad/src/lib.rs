@@ -20,6 +20,8 @@
 //!   `wasm32-unknown-unknown`.
 //! - `native` (default): anygamepad's own OS backends ([`native`]); on
 //!   Linux, the evdev and hidraw providers.
+//! - `testing`: the test runner of the apps' test modes (`testing`), which
+//!   writes test reports.
 //!
 //! # Unsafe code
 //!
@@ -33,6 +35,8 @@ pub mod mapping;
 pub mod native;
 pub mod protocol;
 pub mod provider;
+#[cfg(feature = "testing")]
+pub mod testing;
 #[cfg(feature = "web")]
 pub mod web;
 pub mod wizard;

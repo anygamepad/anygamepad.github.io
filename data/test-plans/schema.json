@@ -1,0 +1,190 @@
+{
+  "$id": "https://anygamepad.github.io/schema/test-plan.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TestPlan",
+  "description": "A test plan.",
+  "type": "object",
+  "properties": {
+    "description": {
+      "description": "What it covers and how long it takes.",
+      "type": "string"
+    },
+    "id": {
+      "description": "Lowercase words joined by hyphens; the file's name (`quick`).",
+      "type": "string"
+    },
+    "name": {
+      "description": "Its name in the apps (`Quick`).",
+      "type": "string"
+    },
+    "schema_version": {
+      "description": "Format version: [`PLAN_SCHEMA_VERSION`].",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "steps": {
+      "description": "The steps, in the order they run.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PlanStep"
+      }
+    },
+    "version": {
+      "description": "Raised whenever the steps change, so reports say which ran.",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "name",
+    "description",
+    "steps"
+  ],
+  "$defs": {
+    "CheckKind": {
+      "description": "What a step checks.",
+      "oneOf": [
+        {
+          "description": "The device is the model, mode and transport confirmed: what\ndetection proposed, and the identities the catalog expects.",
+          "type": "string",
+          "const": "detection"
+        },
+        {
+          "description": "Every button of the model, one step each: pressing it gives exactly\nthat canonical button.",
+          "type": "string",
+          "const": "buttons"
+        },
+        {
+          "description": "A stick left alone rests at its centre, within the tolerance.",
+          "type": "string",
+          "const": "stick_rest"
+        },
+        {
+          "description": "A stick turned around its edge reaches it in every direction.",
+          "type": "string",
+          "const": "stick_circle"
+        },
+        {
+          "description": "An analog trigger pulled slowly goes from rest to its end, through\nvalues in between.",
+          "type": "string",
+          "const": "trigger_pull"
+        },
+        {
+          "description": "Input updates per second while the sticks move.",
+          "type": "string",
+          "const": "rate"
+        },
+        {
+          "description": "A pad lying still: gyroscope near zero, acceleration near gravity.",
+          "type": "string",
+          "const": "motion_rest"
+        },
+        {
+          "description": "A pad turned to the left on a table: the gyroscope's up axis turns\npositive.",
+          "type": "string",
+          "const": "motion_turn"
+        },
+        {
+          "description": "The touchpad sees its four corners and two fingers.",
+          "type": "string",
+          "const": "touchpad"
+        },
+        {
+          "description": "The battery reports its state.",
+          "type": "string",
+          "const": "battery"
+        },
+        {
+          "description": "Each motor vibrates (the person answers).",
+          "type": "string",
+          "const": "rumble"
+        },
+        {
+          "description": "The light bar turns red, green and blue (the person answers).",
+          "type": "string",
+          "const": "lightbar"
+        },
+        {
+          "description": "The player lights count from one to four (the person answers).",
+          "type": "string",
+          "const": "player_leds"
+        },
+        {
+          "description": "The pad unplugged or turned off goes away, and comes back with the\nsame identity.",
+          "type": "string",
+          "const": "hotplug"
+        }
+      ]
+    },
+    "PlanStep": {
+      "description": "One step of a plan.",
+      "type": "object",
+      "properties": {
+        "check": {
+          "description": "What the step checks.",
+          "$ref": "#/$defs/CheckKind"
+        },
+        "id": {
+          "description": "Unique in the plan: lowercase words joined by dots (`sticks.left`).\nA [`CheckKind::Buttons`] step's ID prefixes the steps it expands\ninto (`controls.south`).",
+          "type": "string"
+        },
+        "seconds": {
+          "description": "How long to measure, in seconds, for [`CheckKind::StickRest`],\n[`CheckKind::Rate`] and [`CheckKind::MotionRest`].",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float",
+          "default": null
+        },
+        "side": {
+          "description": "The stick or trigger, for [`CheckKind::StickRest`],\n[`CheckKind::StickCircle`] and [`CheckKind::TriggerPull`].",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Side"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tolerance": {
+          "description": "The threshold of the check, in `(0, 1]`: the largest offset at rest\n([`CheckKind::StickRest`]), the smallest reach in every direction\n([`CheckKind::StickCircle`]), the smallest full pull\n([`CheckKind::TriggerPull`]).",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float",
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "check"
+      ]
+    },
+    "Side": {
+      "description": "Left or right.",
+      "oneOf": [
+        {
+          "description": "The left stick or trigger.",
+          "type": "string",
+          "const": "left"
+        },
+        {
+          "description": "The right stick or trigger.",
+          "type": "string",
+          "const": "right"
+        }
+      ]
+    }
+  }
+}

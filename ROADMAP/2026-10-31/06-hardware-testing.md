@@ -208,7 +208,7 @@ gantt
     section Hardware testing
     H1 Test report format :done, h1, 2026-10-31, 1d
     H2 Controller catalog and lab inventory format :done, h2, 2026-10-31, 1d
-    H3 Test runner and test plans (sans-IO) :crit, h3, after h1 h2 c3 w4, 15d
+    H3 Test runner and test plans (sans-IO) :done, h3, 2026-10-31, 1d
     H4 Test mode in the web app :crit, h4, after h3 h10, 10d
     H5 Test mode in the desktop app :crit, h5, after h3 h10, 10d
     H6 First test campaign (closes the implemented tasks) :crit, h6, after h4 h5 f4, 10d
@@ -224,13 +224,13 @@ gantt
 |----|------|-----:|------------|--------|-------|-----|------:|
 | H1 | Test report format | 5 | P1 | P4, H3, H8 | 2026-10-31 | 2026-10-31 | done |
 | H2 | Controller catalog and lab inventory format | 7 | D1 | F4, H3, H10 | 2026-10-31 | 2026-10-31 | done |
-| H3 | **Test runner and test plans (sans-IO)** | 15 | H1, H2, C3, W4 | H4, H5, H7 | 2026-10-31 | 2026-11-15 | 0 |
-| H4 | **Test mode in the web app** | 10 | H3, H10 | H6 | 2026-11-15 | 2026-11-25 | 0 |
-| H5 | **Test mode in the desktop app** | 10 | H3, H10 | H6 | 2026-11-15 | 2026-11-25 | 0 |
-| H6 | **First test campaign (closes the implemented tasks)** | 10 | H4, H5, F4 | C4, C15, D3, W3, A1, H9, M6 | 2026-11-25 | 2026-12-05 | 0 |
-| H7 | Replay tests from test reports | 7 | H3 | - | 2026-11-15 | 2026-11-22 | 66 |
-| H8 | Coverage matrix and compatibility page | 7 | H1, F4 | - | 2026-11-03 | 2026-11-10 | 78 |
-| H9 | Collection campaign (every pad, mode, transport and OS) | 20 | H6 | C8 | 2026-12-05 | 2026-12-25 | 3 |
+| H3 | Test runner and test plans (sans-IO) | 15 | H1, H2, C3, W4 | H4, H5, H7 | 2026-10-31 | 2026-10-31 | done |
+| H4 | **Test mode in the web app** | 10 | H3, H10 | H6 | 2026-10-31 | 2026-11-10 | 0 |
+| H5 | **Test mode in the desktop app** | 10 | H3, H10 | H6 | 2026-10-31 | 2026-11-10 | 0 |
+| H6 | **First test campaign (closes the implemented tasks)** | 10 | H4, H5, F4 | C4, C15, D3, W3, A1, H9, M6 | 2026-11-10 | 2026-11-20 | 0 |
+| H7 | Replay tests from test reports | 7 | H3 | - | 2026-10-31 | 2026-11-07 | 66 |
+| H8 | Coverage matrix and compatibility page | 7 | H1, F4 | - | 2026-11-03 | 2026-11-10 | 63 |
+| H9 | Collection campaign (every pad, mode, transport and OS) | 20 | H6 | C8 | 2026-11-20 | 2026-12-10 | 3 |
 | H10 | Automatic detection of the pad, model, mode and transport | 5 | H2 | H4, H5 | 2026-10-31 | 2026-10-31 | done |
 
 ### H1 — Test report format
@@ -338,6 +338,14 @@ report (H1).
 standard pad, a decoded DualSense, a pad that lacks controls and a pad
 that answers with the wrong control, and the reports they produce
 validate.
+
+Status (2026-10-31): done
+(`RECORD/2026-10-31.h3-test-runner-and-plans.completed.md`):
+`anygamepad_db::plan` with `data/test-plans/quick.toml` and `full.toml`,
+and `anygamepad::testing` (feature `testing`). A simulated person runs
+both plans on the four pads of the "Done when" in
+`crates/anygamepad/tests/testing.rs`. The WASM bindings move to H4, their
+first caller.
 
 ### H4 — Test mode in the web app
 

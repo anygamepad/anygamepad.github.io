@@ -26,6 +26,7 @@ mode, transport and operating system.
 | `data/controllers/` | Controller catalog: models, modes and how to connect them |
 | `data/lab/` | Lab inventory format (units and machines of the test lab) |
 | `data/reports/` | Device report format, schema and example |
+| `data/test-plans/` | Test plans the apps' test modes run (Quick, Full) |
 | `data/test-reports/` | Test report format, schema and example; the test reports the lab keeps |
 | `docs/adr/` | Architecture decision records |
 | `docs/privacy/` | Consent texts, retention and the handling of shared reports |

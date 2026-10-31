@@ -60,6 +60,10 @@ required-features = ["toml"]
 name = "catalog"
 required-features = ["toml", "schemars"]
 
+[[test]]
+name = "plans"
+required-features = ["toml", "schemars"]
+
 [[example]]
 name = "sdl_import"
 required-features = ["toml"]
