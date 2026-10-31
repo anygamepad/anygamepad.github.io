@@ -9,6 +9,11 @@
 //! elements it reads, HID structure and sample input reports, and the
 //! mapping the person confirmed with the guided wizard.
 //!
+//! [`test_report`] holds the test reports of the apps' test modes (ADR
+//! 0008): a device report of the device under test, the configuration the
+//! person confirmed, and the result and recorded input of every step,
+//! anonymous by construction.
+//!
 //! Reports never contain serial numbers, Bluetooth MAC addresses or other
 //! personal data. Identities exclude them by construction, clients
 //! [`scrub`](Report::scrub) what still looks like them, and every reader
@@ -44,12 +49,14 @@
 //! # Features
 //!
 //! - `json`: [`Report::from_json`] and [`Report::to_json`], with the size
-//!   limit of [`MAX_REPORT_BYTES`].
-//! - `schemars`: [`json_schema`].
+//!   limit of [`MAX_REPORT_BYTES`], and the same for
+//!   [`TestReport`](test_report::TestReport).
+//! - `schemars`: [`json_schema`] and [`test_report::json_schema`].
 #![forbid(unsafe_code)]
 
 pub mod privacy;
 mod report;
+pub mod test_report;
 mod validate;
 
 #[cfg(feature = "json")]

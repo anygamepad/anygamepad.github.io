@@ -1,0 +1,1924 @@
+{
+  "$id": "https://anygamepad.github.io/schema/test-report.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TestReport",
+  "description": "What a test mode session found about one controller.",
+  "type": "object",
+  "properties": {
+    "configuration": {
+      "description": "What the person confirmed, and what detection proposed.",
+      "$ref": "#/$defs/Configuration"
+    },
+    "device": {
+      "description": "The device report of the device under test: the day, the app, the\nhost, and how the API the session used sees the device (its first\nview, which the evidence follows).",
+      "$ref": "#/$defs/Report"
+    },
+    "format": {
+      "description": "Always [`TEST_REPORT_FORMAT`].",
+      "type": "string"
+    },
+    "notes": {
+      "description": "The person's note on the session, when they keep one.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "plan": {
+      "description": "The test plan that ran.",
+      "$ref": "#/$defs/PlanRef"
+    },
+    "results": {
+      "description": "One result per step, in the order they ran.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/StepResult"
+      }
+    },
+    "schema_version": {
+      "description": "Format version: [`TEST_REPORT_SCHEMA_VERSION`].",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "schema_version",
+    "device",
+    "configuration",
+    "plan",
+    "results"
+  ],
+  "$defs": {
+    "Answer": {
+      "description": "A person's answer to a question only they can answer.",
+      "oneOf": [
+        {
+          "description": "Yes.",
+          "type": "string",
+          "const": "yes"
+        },
+        {
+          "description": "No.",
+          "type": "string",
+          "const": "no"
+        },
+        {
+          "description": "Not sure.",
+          "type": "string",
+          "const": "not_sure"
+        }
+      ]
+    },
+    "App": {
+      "description": "Which app made a report.",
+      "oneOf": [
+        {
+          "description": "The web tester (<https://anygamepad.github.io>).",
+          "type": "string",
+          "const": "web"
+        },
+        {
+          "description": "The desktop app's collection mode.",
+          "type": "string",
+          "const": "desktop"
+        }
+      ]
+    },
+    "Axis": {
+      "type": "string",
+      "enum": [
+        "left_stick_x",
+        "left_stick_y",
+        "right_stick_x",
+        "right_stick_y",
+        "left_trigger",
+        "right_trigger"
+      ]
+    },
+    "AxisMapping": {
+      "description": "How a canonical axis is driven: an input over the whole axis, or a table with either `input` or the halves (`negative`, `positive`), and an optional `deadzone`.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Input"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "deadzone": {
+              "type": "number",
+              "exclusiveMaximum": 1,
+              "minimum": 0
+            },
+            "input": {
+              "$ref": "#/$defs/Input"
+            },
+            "negative": {
+              "$ref": "#/$defs/Input"
+            },
+            "positive": {
+              "$ref": "#/$defs/Input"
+            }
+          },
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "negative"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "positive"
+                    ]
+                  }
+                ]
+              },
+              "required": [
+                "input"
+              ]
+            },
+            {
+              "allOf": [
+                {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "negative"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "positive"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "not": {
+                    "required": [
+                      "input"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "AxisSet": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Axis"
+      },
+      "uniqueItems": true
+    },
+    "Backend": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "evdev",
+        "hidraw",
+        "windows_hid",
+        "xinput",
+        "windows_gaming_input",
+        "game_input",
+        "direct_input",
+        "iokit_hid",
+        "game_controller",
+        "gamepad_api",
+        "webhid"
+      ]
+    },
+    "Browser": {
+      "description": "The browser a web view of a device comes from.",
+      "type": "object",
+      "properties": {
+        "engine": {
+          "description": "Engine.",
+          "$ref": "#/$defs/BrowserEngine"
+        },
+        "major_version": {
+          "description": "Major version only, which is all that remapping changes need and\nidentifies users less than a full version.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "engine"
+      ]
+    },
+    "BrowserEngine": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "blink",
+        "gecko",
+        "webkit"
+      ]
+    },
+    "Button": {
+      "type": "string",
+      "anyOf": [
+        {
+          "enum": [
+            "south",
+            "east",
+            "west",
+            "north",
+            "dpad_up",
+            "dpad_down",
+            "dpad_left",
+            "dpad_right",
+            "left_shoulder",
+            "right_shoulder",
+            "left_trigger",
+            "right_trigger",
+            "left_stick",
+            "right_stick",
+            "select",
+            "start",
+            "home",
+            "share",
+            "capture",
+            "mute",
+            "left_paddle_1",
+            "left_paddle_2",
+            "right_paddle_1",
+            "right_paddle_2",
+            "touchpad_click"
+          ]
+        },
+        {
+          "pattern": "^extra_([0-9]|[12][0-9]|3[01])$"
+        }
+      ]
+    },
+    "ButtonSet": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Button"
+      },
+      "uniqueItems": true
+    },
+    "Capabilities": {
+      "description": "Every control and output of a device.\n\nA control that is not in the capability set never changes in the device's\n[`GamepadState`](crate::GamepadState).",
+      "type": "object",
+      "properties": {
+        "axes": {
+          "description": "Analog axes the device has.",
+          "$ref": "#/$defs/AxisSet"
+        },
+        "battery": {
+          "description": "Whether the device reports its battery level.",
+          "type": "boolean"
+        },
+        "buttons": {
+          "description": "Buttons the device has.",
+          "$ref": "#/$defs/ButtonSet"
+        },
+        "outputs": {
+          "description": "Outputs the device supports.",
+          "$ref": "#/$defs/OutputSet"
+        },
+        "sensors": {
+          "description": "Motion sensors the device has.",
+          "$ref": "#/$defs/SensorSet"
+        },
+        "touchpads": {
+          "description": "Touchpads, in the order [`TouchPoint::touchpad`](crate::TouchPoint::touchpad)\nrefers to them.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TouchpadInfo"
+          }
+        }
+      },
+      "required": [
+        "buttons",
+        "axes",
+        "sensors",
+        "touchpads",
+        "outputs",
+        "battery"
+      ]
+    },
+    "Code": {
+      "description": "A unit's or a machine's code: ASCII letters, digits and hyphens, starting with a letter or a digit.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,15}$"
+    },
+    "Configuration": {
+      "description": "What the session tested, as the person confirmed it, and as automatic\ndetection proposed it.",
+      "type": "object",
+      "properties": {
+        "confirmed": {
+          "description": "What the person confirmed or picked: the ground truth.",
+          "$ref": "#/$defs/Selection"
+        },
+        "detected": {
+          "description": "What automatic detection proposed, when it ran (always when the\nsession started by connecting; when it started from the list, what\nthe connected device looked like).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selection"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "start": {
+          "description": "How the session started.",
+          "$ref": "#/$defs/SessionStart"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "confirmed"
+      ]
+    },
+    "ControllerMode": {
+      "type": "string",
+      "enum": [
+        "xinput",
+        "dinput",
+        "switch",
+        "ps3",
+        "ps4",
+        "ps5",
+        "xbox",
+        "android",
+        "apple",
+        "keyboard_mouse",
+        "other"
+      ]
+    },
+    "Date": {
+      "description": "A calendar day (UTC), `YYYY-MM-DD`.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "DescriptorHash": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{16}$"
+    },
+    "DeviceIdentity": {
+      "description": "Identity of a device as one provider sees it.\n\nHolds no serial number, Bluetooth address or OS device path (see the\n[module documentation](self)).",
+      "type": "object",
+      "properties": {
+        "backend": {
+          "description": "API the provider read the device through.",
+          "$ref": "#/$defs/Backend"
+        },
+        "browser": {
+          "description": "Browser, for web views.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Browser"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "descriptor_hash": {
+          "description": "Hash of the HID report descriptor, when readable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DescriptorHash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "driver": {
+          "description": "OS driver that owns the device (`xpad`, `hid-playstation`,\n`hid-generic`, `xusb22`, `HidUsb`, ...).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "os": {
+          "description": "Host OS.",
+          "$ref": "#/$defs/Os"
+        },
+        "product_id": {
+          "description": "Product ID, when the API exposes it.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "product_name": {
+          "description": "Product string, as reported by this API.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider": {
+          "description": "Provider that produced this view.",
+          "$ref": "#/$defs/ProviderKind"
+        },
+        "transport": {
+          "description": "How the device is connected.",
+          "$ref": "#/$defs/Transport"
+        },
+        "vendor_id": {
+          "description": "USB/Bluetooth vendor ID, when the API exposes it.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "vendor_name": {
+          "description": "Manufacturer string, as reported by this API.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Version (`bcdDevice`, HID or evdev version), when exposed.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "web": {
+          "description": "Gamepad API data, for Gamepad API views.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WebGamepad"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "provider",
+        "backend",
+        "os",
+        "transport"
+      ]
+    },
+    "Evidence": {
+      "description": "The input recorded during a step, for the device report's first view.\n\nWhen the API reads HID (WebHID, hidraw), the input reports alone are\nrecorded: the raw states follow from them by decoding, and replaying\nthem tests the decoder too. Otherwise the raw states are, as the API\ngave them. A step records from its prompt to its end, at most\n[`MAX_FRAMES`] frames or [`MAX_INPUT_REPORTS`] reports.",
+      "type": "object",
+      "properties": {
+        "frames": {
+          "description": "Raw states, sized for the view's layout, in time order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Frame"
+          }
+        },
+        "reports": {
+          "description": "Input reports, in time order, when the API reads HID.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TimedReport"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Family": {
+      "type": "string",
+      "enum": [
+        "dualshock3",
+        "dualshock4",
+        "dualsense",
+        "dualsense_edge",
+        "switch_pro",
+        "xbox"
+      ]
+    },
+    "Fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{16}$"
+    },
+    "Frame": {
+      "description": "A raw state at a moment of a step.",
+      "type": "object",
+      "properties": {
+        "state": {
+          "description": "The raw state.",
+          "$ref": "#/$defs/RawState"
+        },
+        "t": {
+          "description": "Milliseconds since the step started, rounded to microseconds.",
+          "$ref": "#/$defs/Millis"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "state"
+      ]
+    },
+    "Hat": {
+      "description": "A hat switch position: a set of directions (diagonals have two).\n\nBits follow SDL: 1 up, 2 right, 4 down, 8 left.",
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    },
+    "HexBytes": {
+      "type": "string",
+      "pattern": "^([0-9a-fA-F]{2})*$"
+    },
+    "HidCollection": {
+      "description": "A HID collection: report items grouped under a usage (HID 1.11, 6.2.2.6).",
+      "type": "object",
+      "properties": {
+        "children": {
+          "description": "Nested collections, in descriptor order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HidCollection"
+          }
+        },
+        "feature_reports": {
+          "description": "Feature reports described in this collection.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HidReportInfo"
+          }
+        },
+        "input_reports": {
+          "description": "Input reports described in this collection.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HidReportInfo"
+          }
+        },
+        "kind": {
+          "description": "Collection type: 0 physical, 1 application, 2 logical, 3 report,\n4 named array, 5 usage switch, 6 usage modifier.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "output_reports": {
+          "description": "Output reports described in this collection.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HidReportInfo"
+          }
+        },
+        "usage": {
+          "description": "Usage within the page (Generic Desktop `0x05` Game Pad, `0x04`\nJoystick, ...).",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "usage_page": {
+          "description": "Usage page (`0x01` Generic Desktop, `0xff00` and up vendor-defined).",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "usage_page",
+        "usage",
+        "kind",
+        "children",
+        "input_reports",
+        "output_reports",
+        "feature_reports"
+      ]
+    },
+    "HidData": {
+      "description": "What a view read over HID.",
+      "type": "object",
+      "properties": {
+        "collections": {
+          "description": "Top-level collections: the structure of the device's reports.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HidCollection"
+          }
+        },
+        "descriptor": {
+          "description": "The raw report descriptor, when the backend can read it (native\nbackends; WebHID gives `collections` only). Its hash is the\nidentity's `descriptor_hash`.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HexBytes"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "input_samples": {
+          "description": "The first input report of each report ID and length, in the order\nthey arrived (see [`HidData::sample`]).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InputSample"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "HidItemFlag": {
+      "type": "string",
+      "enum": [
+        "constant",
+        "variable",
+        "relative",
+        "wrap",
+        "non_linear",
+        "no_preferred",
+        "null_state",
+        "volatile",
+        "buffered_bytes"
+      ]
+    },
+    "HidItemFlags": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/HidItemFlag"
+      },
+      "uniqueItems": true
+    },
+    "HidReportInfo": {
+      "description": "The items of one report within a collection.",
+      "type": "object",
+      "properties": {
+        "items": {
+          "description": "Main items, in descriptor order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HidReportItem"
+          }
+        },
+        "report_id": {
+          "description": "Report ID; 0 when the device does not use report IDs.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "report_id",
+        "items"
+      ]
+    },
+    "HidReportItem": {
+      "description": "A main item of a report: `report_count` values of `report_size` bits.",
+      "type": "object",
+      "properties": {
+        "flags": {
+          "description": "Main item flags.",
+          "$ref": "#/$defs/HidItemFlags"
+        },
+        "logical_maximum": {
+          "description": "Largest value the device reports.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "logical_minimum": {
+          "description": "Smallest value the device reports.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "physical_maximum": {
+          "description": "Physical value of `logical_maximum`, in `unit`.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "physical_minimum": {
+          "description": "Physical value of `logical_minimum`, in `unit`.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "report_count": {
+          "description": "Number of values.",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "report_size": {
+          "description": "Bits per value.",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "unit_exponent": {
+          "description": "Base 10 exponent of the physical unit.",
+          "type": "integer",
+          "format": "int8",
+          "maximum": 127,
+          "minimum": -128
+        },
+        "unit_system": {
+          "description": "System of the physical unit.",
+          "$ref": "#/$defs/HidUnitSystem"
+        },
+        "usage_range": {
+          "description": "Extended usage range, when the item declares one.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HidUsageRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "usages": {
+          "description": "Extended usages (usage page in the high 16 bits, usage in the low 16\nbits), in order.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          }
+        }
+      },
+      "required": [
+        "usages",
+        "report_size",
+        "report_count",
+        "logical_minimum",
+        "logical_maximum",
+        "physical_minimum",
+        "physical_maximum",
+        "unit_system",
+        "unit_exponent",
+        "flags"
+      ]
+    },
+    "HidUnitSystem": {
+      "type": "string",
+      "enum": [
+        "none",
+        "si_linear",
+        "si_rotation",
+        "english_linear",
+        "english_rotation",
+        "vendor_defined",
+        "reserved"
+      ]
+    },
+    "HidUsageRange": {
+      "description": "A range of extended usages, both ends included.",
+      "type": "object",
+      "properties": {
+        "maximum": {
+          "description": "Last usage.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "minimum": {
+          "description": "First usage.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "minimum",
+        "maximum"
+      ]
+    },
+    "Host": {
+      "description": "The computer a device was connected to.",
+      "type": "object",
+      "properties": {
+        "browser": {
+          "description": "Browser engine and major version, for web reports.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Browser"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "os": {
+          "description": "Operating system.",
+          "$ref": "#/$defs/Os"
+        },
+        "os_version": {
+          "description": "OS release, from the desktop app (`11 23H2`, `14.6.1`, a Linux\nkernel release such as `6.8.0-45-generic`). Browsers do not tell it\nreliably, so web reports leave it out.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "os"
+      ]
+    },
+    "Input": {
+      "description": "A raw element: `b<ref>` (button), `a<ref>` (axis), `+a<ref>`/`-a<ref>` (half axis), optionally ending in `~` (reversed), or `h<ref>.<mask>` (hat directions: 1 up, 2 right, 4 down, 8 left). <ref> is a decimal index or a raw source in braces: `{evdev:0x0130}`, `{hid:0x0001:0x0030}`, `{button:south}`, `{axis:left_stick_x}`.",
+      "type": "string",
+      "pattern": "^(b(0|[1-9][0-9]*|\\{evdev:0x[0-9a-fA-F]{1,4}\\}|\\{hid:0x[0-9a-fA-F]{1,4}:0x[0-9a-fA-F]{1,4}\\}|\\{button:[a-z0-9_]+\\}|\\{axis:[a-z_]+\\})|[+-]?a(0|[1-9][0-9]*|\\{evdev:0x[0-9a-fA-F]{1,4}\\}|\\{hid:0x[0-9a-fA-F]{1,4}:0x[0-9a-fA-F]{1,4}\\}|\\{button:[a-z0-9_]+\\}|\\{axis:[a-z_]+\\})~?|h(0|[1-9][0-9]*|\\{evdev:0x[0-9a-fA-F]{1,4}\\}|\\{hid:0x[0-9a-fA-F]{1,4}:0x[0-9a-fA-F]{1,4}\\}|\\{button:[a-z0-9_]+\\}|\\{axis:[a-z_]+\\})\\.([1-9]|1[0-5]))$"
+    },
+    "InputSample": {
+      "description": "One input report, as the device sent it.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "description": "Report data, without the report ID.",
+          "$ref": "#/$defs/HexBytes"
+        },
+        "report_id": {
+          "description": "Report ID; 0 when the device does not use report IDs.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "report_id",
+        "data"
+      ]
+    },
+    "Mapping": {
+      "description": "One entry of a profile's mapping: canonical targets and the raw inputs\nthat drive them, for the devices that meet `when`.\n\nA target reads its input's position `t` in `[0, 1]` (see [`Input`]):\n\n- a **button** is pressed while `t` is at least 0.5; a `b` input presses\n  it from 30/255 on, the threshold of analog buttons (Chromium's, and\n  XInput's for triggers);\n- a **stick axis** is `2t - 1` (from -1 to 1), a **trigger axis** is `t`;\n- a `negative` half is `-t`, a `positive` half is `t`; both halves add\n  up.\n\nInactive inputs (the other half of a half axis) leave their target at\nrest. Stick Y axes are positive **up** (ADR 0001): most backends report\nthem positive down, so their inputs end in `~`.\n\nWhere no entry sets a target, raw elements that are already canonical\n(`b{button:south}`, `a{axis:left_trigger}`) drive their own control, and\na trigger button follows its trigger axis from 30/255 on. The mapping\nengine (`anygamepad::mapping`) applies a mapping.",
+      "type": "object",
+      "properties": {
+        "axes": {
+          "description": "Canonical axes and their inputs.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/AxisMapping"
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/Axis"
+          }
+        },
+        "buttons": {
+          "description": "Canonical buttons and their inputs.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Input"
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/Button"
+          }
+        },
+        "when": {
+          "description": "Devices this entry applies to; empty for all the profile matches.",
+          "$ref": "#/$defs/MatchRule"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MatchRule": {
+      "description": "Conditions on a [`DeviceIdentity`]; every field that is set must hold.\n\nUsed both to select profiles (`[[match]]`) and to restrict mapping\nentries (`when`).",
+      "type": "object",
+      "properties": {
+        "backend": {
+          "description": "API the device is read through.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Backend"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "browser": {
+          "description": "Browser engine, for web backends.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BrowserEngine"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "descriptor_hash": {
+          "description": "Hash of the HID report descriptor.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DescriptorHash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "driver": {
+          "description": "OS driver that owns the device (`xpad`, `hid-playstation`, ...).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gamepad_mapping": {
+          "description": "`Gamepad.mapping` (`\"standard\"`, `\"\"`), for the Gamepad API.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Product name, exactly as the backend reports it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "os": {
+          "description": "Host OS.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Os"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "product_id": {
+          "description": "Product ID; needs `vendor_id`.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "sdl_guid": {
+          "description": "SDL joystick GUID. Compared without its name CRC, and without the\nversion when the GUID's version is 0, as SDL does; the device's GUID\nis computed with this GUID's driver signature.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SdlGuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transport": {
+          "description": "How the device is connected.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Transport"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vendor_id": {
+          "description": "USB/Bluetooth vendor ID.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "version": {
+          "description": "Version (`bcdDevice`, HID or evdev version).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "Millis": {
+      "description": "Milliseconds, with at most three decimals.",
+      "type": "number",
+      "minimum": 0
+    },
+    "MotionSample": {
+      "description": "One motion reading.\n\nDevices report several readings per frame at high rates; providers keep\nthem in order so that gyro input can be integrated without losing motion\nbetween polls.",
+      "type": "object",
+      "properties": {
+        "accel": {
+          "description": "Acceleration in m/s², if the device has an accelerometer.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Vec3"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gyro": {
+          "description": "Angular velocity in rad/s, if the device has a gyroscope.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Vec3"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timestamp_us": {
+          "description": "Time of the reading in microseconds, from the device clock when it has\none. Only differences between samples of the same device are\nmeaningful.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "timestamp_us"
+      ]
+    },
+    "Os": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "linux",
+        "windows",
+        "macos",
+        "android",
+        "ios"
+      ]
+    },
+    "Output": {
+      "type": "string",
+      "enum": [
+        "rumble",
+        "trigger_rumble",
+        "hd_rumble",
+        "lightbar",
+        "player_leds",
+        "adaptive_triggers"
+      ]
+    },
+    "OutputSet": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Output"
+      },
+      "uniqueItems": true
+    },
+    "PlanRef": {
+      "description": "The test plan that ran.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Its ID (`quick`, `full`).",
+          "type": "string"
+        },
+        "version": {
+          "description": "Its version.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version"
+      ]
+    },
+    "Power": {
+      "description": "Power status of a device.",
+      "type": "object",
+      "properties": {
+        "percent": {
+          "description": "Battery level in percent (0-100), if the device reports it.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "state": {
+          "description": "Power source and charging state.",
+          "$ref": "#/$defs/PowerState"
+        }
+      },
+      "required": [
+        "state"
+      ]
+    },
+    "PowerState": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "on_battery",
+        "no_battery",
+        "charging",
+        "charged"
+      ]
+    },
+    "ProviderKind": {
+      "type": "string",
+      "enum": [
+        "native",
+        "web",
+        "sdl3",
+        "gilrs"
+      ]
+    },
+    "RawAxisInfo": {
+      "description": "A raw axis and its range.",
+      "type": "object",
+      "properties": {
+        "max": {
+          "description": "Maximum value the device reports.",
+          "type": "number",
+          "format": "float"
+        },
+        "min": {
+          "description": "Minimum value the device reports.",
+          "type": "number",
+          "format": "float"
+        },
+        "source": {
+          "description": "Where the axis comes from.",
+          "$ref": "#/$defs/RawSource"
+        }
+      },
+      "required": [
+        "source",
+        "min",
+        "max"
+      ]
+    },
+    "RawLayout": {
+      "description": "The elements a provider reads from a device.",
+      "type": "object",
+      "properties": {
+        "axes": {
+          "description": "Axes, in the order of [`RawState::axes`].",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RawAxisInfo"
+          }
+        },
+        "battery": {
+          "description": "Whether [`RawState::power`] is reported.",
+          "type": "boolean"
+        },
+        "buttons": {
+          "description": "Buttons, in the order of [`RawState::buttons`].",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RawSource"
+          }
+        },
+        "hats": {
+          "description": "Hat switches, in the order of [`RawState::hats`].",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RawSource"
+          }
+        },
+        "sensors": {
+          "description": "Motion sensors, delivered in SI units in [`RawState::motion`].",
+          "$ref": "#/$defs/SensorSet"
+        },
+        "touchpads": {
+          "description": "Touchpads, delivered normalized in [`RawState::touches`].",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TouchpadInfo"
+          }
+        }
+      },
+      "required": [
+        "buttons",
+        "axes",
+        "hats",
+        "sensors",
+        "touchpads",
+        "battery"
+      ]
+    },
+    "RawSource": {
+      "description": "Where a raw element comes from.",
+      "oneOf": [
+        {
+          "description": "Position in the backend's own list, when nothing else identifies the\nelement (Gamepad API, DirectInput, SDL joystick indices).",
+          "type": "object",
+          "properties": {
+            "index": {
+              "type": "integer",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "index"
+          ]
+        },
+        {
+          "description": "Linux input event code (`BTN_*`/`KEY_*` for buttons, `ABS_*` for axes\nand hats).",
+          "type": "object",
+          "properties": {
+            "evdev": {
+              "type": "integer",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "evdev"
+          ]
+        },
+        {
+          "description": "HID usage page and usage.",
+          "type": "object",
+          "properties": {
+            "hid": {
+              "type": "object",
+              "properties": {
+                "page": {
+                  "description": "Usage page (`0x01` Generic Desktop, `0x09` Button, ...).",
+                  "type": "integer",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0
+                },
+                "usage": {
+                  "description": "Usage within the page.",
+                  "type": "integer",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "page",
+                "usage"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "hid"
+          ]
+        },
+        {
+          "description": "Already a canonical button: the backend normalizes it (XInput, SDL\ngamepad API, gilrs).",
+          "type": "object",
+          "properties": {
+            "button": {
+              "$ref": "#/$defs/Button"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "button"
+          ]
+        },
+        {
+          "description": "Already a canonical axis.",
+          "type": "object",
+          "properties": {
+            "axis": {
+              "$ref": "#/$defs/Axis"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "axis"
+          ]
+        }
+      ]
+    },
+    "RawState": {
+      "description": "Raw values of every element in a [`RawLayout`], filled by a provider on\neach poll.\n\nAllocate it once per device with [`RawState::for_layout`]; polls overwrite\nit in place, so the frame loop does not allocate.",
+      "type": "object",
+      "properties": {
+        "axes": {
+          "description": "Axis values within the range of their [`RawAxisInfo`].",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "float"
+          }
+        },
+        "buttons": {
+          "description": "Button values in `[0.0, 1.0]` (0 or 1 for digital buttons).",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "float"
+          }
+        },
+        "hats": {
+          "description": "Hat positions.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Hat"
+          }
+        },
+        "motion": {
+          "description": "Motion readings received since the previous poll, oldest first.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MotionSample"
+          }
+        },
+        "power": {
+          "description": "Power status.",
+          "$ref": "#/$defs/Power"
+        },
+        "touches": {
+          "description": "Fingers on the touchpads.",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TouchPoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 4,
+          "minItems": 4
+        }
+      },
+      "required": [
+        "buttons",
+        "axes",
+        "hats",
+        "motion",
+        "touches",
+        "power"
+      ]
+    },
+    "Report": {
+      "description": "A device report: what one app saw of one physical controller.\n\nBuild it with [`Report::new`] and [`View::new`], then\n[`scrub`](Report::scrub) and [`validate`](Report::validate) it before it\nis stored or shared. See `data/reports/README.md` for the format.",
+      "type": "object",
+      "properties": {
+        "created": {
+          "description": "Day the report was made (UTC).",
+          "$ref": "#/$defs/Date"
+        },
+        "format": {
+          "description": "Always [`FORMAT`], so a report file tells what it is.",
+          "const": "anygamepad-device-report"
+        },
+        "host": {
+          "description": "The computer the device was connected to.",
+          "$ref": "#/$defs/Host"
+        },
+        "schema_version": {
+          "description": "Format version: [`SCHEMA_VERSION`].",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "source": {
+          "description": "The app and library that made it.",
+          "$ref": "#/$defs/Source"
+        },
+        "user": {
+          "description": "What the person says about the device.",
+          "$ref": "#/$defs/UserStatement"
+        },
+        "views": {
+          "description": "How each provider, or each browser API, sees the device.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/View"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "schema_version",
+        "created",
+        "source",
+        "host",
+        "views"
+      ]
+    },
+    "SdlGuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{32}$"
+    },
+    "Selection": {
+      "description": "A controller in one mode over one transport.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "description": "What that mode imitates, so the report reads without the catalog.",
+          "$ref": "#/$defs/ControllerMode"
+        },
+        "mode": {
+          "description": "The ID of the model's mode (`ps5`).",
+          "type": "string"
+        },
+        "model": {
+          "description": "The catalog model ID (`sony/dualsense`).",
+          "type": "string"
+        },
+        "transport": {
+          "description": "The transport.",
+          "$ref": "#/$defs/Transport"
+        },
+        "unit": {
+          "description": "The unit of the lab inventory, by its code.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Code"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "mode",
+        "kind",
+        "transport"
+      ]
+    },
+    "Sensor": {
+      "type": "string",
+      "enum": [
+        "gyroscope",
+        "accelerometer"
+      ]
+    },
+    "SensorSet": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Sensor"
+      },
+      "uniqueItems": true
+    },
+    "SessionStart": {
+      "description": "How a test session started.",
+      "oneOf": [
+        {
+          "description": "The person picked the controller from the list, then connected it.",
+          "type": "string",
+          "const": "list"
+        },
+        {
+          "description": "The person connected a controller without picking it.",
+          "type": "string",
+          "const": "connecting"
+        }
+      ]
+    },
+    "Source": {
+      "description": "The app and library that made a report.",
+      "type": "object",
+      "properties": {
+        "app": {
+          "description": "Which app.",
+          "$ref": "#/$defs/App"
+        },
+        "app_version": {
+          "description": "Its version (`0.1.0`).",
+          "$ref": "#/$defs/Version"
+        },
+        "library_version": {
+          "description": "Version of the anygamepad library that read the device.",
+          "$ref": "#/$defs/Version"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "app",
+        "app_version",
+        "library_version"
+      ]
+    },
+    "StepResult": {
+      "description": "What one step found.",
+      "type": "object",
+      "properties": {
+        "answer": {
+          "description": "The person's answer, for checks only a person can make.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Answer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "check": {
+          "description": "The kind of check (`control`, `stick_circle`, `rumble`).",
+          "type": "string"
+        },
+        "duration_ms": {
+          "description": "How long the step took, in milliseconds.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "evidence": {
+          "description": "The input recorded during the step.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Evidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected": {
+          "description": "What was expected, in canonical names (`south`, `left_stick_y+`).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "measurements": {
+          "description": "Measurements by name (`noise`, `range_up`, `reports_per_second`).",
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "note": {
+          "description": "The person's note on the step, when they keep one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observed": {
+          "description": "What was observed, in canonical names or the profile format's raw\ninputs (`b2`, `a1-`, `h0.up`).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "description": "The outcome.",
+          "$ref": "#/$defs/StepStatus"
+        },
+        "step": {
+          "description": "The step's ID in the plan: lowercase words joined by dots\n(`controls.south`, `sticks.left.circle`).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "step",
+        "check",
+        "status",
+        "duration_ms"
+      ]
+    },
+    "StepStatus": {
+      "description": "The outcome of a step.",
+      "oneOf": [
+        {
+          "description": "The check passed.",
+          "type": "string",
+          "const": "pass"
+        },
+        {
+          "description": "The check failed.",
+          "type": "string",
+          "const": "fail"
+        },
+        {
+          "description": "The person skipped it.",
+          "type": "string",
+          "const": "skipped"
+        },
+        {
+          "description": "It does not apply: the pad lacks the control (\"Not on this pad\"), or\nthe API cannot read it.",
+          "type": "string",
+          "const": "not_applicable"
+        },
+        {
+          "description": "The app could not run it (the device went away, an output failed).",
+          "type": "string",
+          "const": "error"
+        }
+      ]
+    },
+    "TimedReport": {
+      "description": "An input report at a moment of a step.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "description": "Report data, without the report ID.",
+          "$ref": "#/$defs/HexBytes"
+        },
+        "report_id": {
+          "description": "Report ID; 0 when the device does not use report IDs.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "t": {
+          "description": "Milliseconds since the step started, rounded to microseconds.",
+          "$ref": "#/$defs/Millis"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "report_id",
+        "data"
+      ]
+    },
+    "TouchPoint": {
+      "description": "A finger on a touchpad.\n\nCoordinates are normalized to `[0.0, 1.0]` with the origin at the top left\ncorner of the touchpad as seen by the player: `x` grows to the right, `y`\ngrows towards the player. Use [`TouchpadInfo`] for the aspect ratio.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Identifier of the finger, stable while the finger stays down.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "touchpad": {
+          "description": "Index of the touchpad in\n[`Capabilities::touchpads`](crate::Capabilities::touchpads).",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "x": {
+          "description": "Horizontal position: 0 left edge, 1 right edge.",
+          "type": "number",
+          "format": "float"
+        },
+        "y": {
+          "description": "Vertical position: 0 far edge, 1 edge closest to the player.",
+          "type": "number",
+          "format": "float"
+        }
+      },
+      "required": [
+        "touchpad",
+        "id",
+        "x",
+        "y"
+      ]
+    },
+    "TouchpadInfo": {
+      "description": "Description of a touchpad.",
+      "type": "object",
+      "properties": {
+        "height": {
+          "description": "Height in device units (its resolution).",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "max_fingers": {
+          "description": "Number of fingers it tracks at once.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "width": {
+          "description": "Width in device units (its resolution).",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "max_fingers",
+        "width",
+        "height"
+      ]
+    },
+    "Transport": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "usb",
+        "bluetooth",
+        "bluetooth_le",
+        "dongle"
+      ]
+    },
+    "UserStatement": {
+      "description": "What the person who made the report says about the device: the facts\nno API tells.",
+      "type": "object",
+      "properties": {
+        "missing_axes": {
+          "description": "Axes they say the device does not have.",
+          "$ref": "#/$defs/AxisSet"
+        },
+        "missing_buttons": {
+          "description": "Buttons they say the device does not have (skipped in the guided\nwizard).",
+          "$ref": "#/$defs/ButtonSet"
+        },
+        "mode": {
+          "description": "The mode they say it is in.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ControllerMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "product": {
+          "description": "What the controller is, in their words (`8BitDo Ultimate 2C`), at\nmost [`MAX_USER_TEXT_CHARS`](crate::MAX_USER_TEXT_CHARS) characters.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Vec3": {
+      "description": "A vector in the [device frame](self).",
+      "type": "object",
+      "properties": {
+        "x": {
+          "description": "Component on the X axis (right).",
+          "type": "number",
+          "format": "float"
+        },
+        "y": {
+          "description": "Component on the Y axis (up, out of the face).",
+          "type": "number",
+          "format": "float"
+        },
+        "z": {
+          "description": "Component on the Z axis (towards the player).",
+          "type": "number",
+          "format": "float"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z"
+      ]
+    },
+    "Version": {
+      "description": "A version number, `MAJOR.MINOR.PATCH` with optional `-pre-release` and `+build` labels.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "View": {
+      "description": "How one provider, or one browser API, sees a device.",
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "description": "Canonical controls the library derives for this view, when it maps\nit (a profile, or a browser's standard mapping).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Capabilities"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confirmed": {
+          "description": "The mapping the person confirmed with the guided wizard, in the\nprofile format, with inputs naming elements of `layout`; `when` is\nempty.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Mapping"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "family": {
+          "description": "Family the library recognized from the identity.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Family"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fingerprint": {
+          "description": "[`DeviceIdentity::fingerprint`] of `identity`, to group reports.",
+          "$ref": "#/$defs/Fingerprint"
+        },
+        "hid": {
+          "description": "HID data, for views that read HID.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HidData"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "identity": {
+          "description": "Identity as this provider sees it.",
+          "$ref": "#/$defs/DeviceIdentity"
+        },
+        "layout": {
+          "description": "The raw elements the provider reads: buttons, axes and hats with\ntheir sources and ranges, sensors, touchpads, battery.",
+          "$ref": "#/$defs/RawLayout"
+        },
+        "outputs": {
+          "description": "Outputs the provider can drive.",
+          "$ref": "#/$defs/OutputSet"
+        },
+        "profile": {
+          "description": "Name of the device profile the library picked.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "fingerprint",
+        "layout",
+        "outputs"
+      ]
+    },
+    "WebGamepad": {
+      "description": "What the Gamepad API says about a device.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "`Gamepad.id`, verbatim (its format differs per browser; see\n[`GamepadApiId`]).",
+          "type": "string"
+        },
+        "mapping": {
+          "description": "`Gamepad.mapping`, verbatim: `\"standard\"`, `\"\"` or `\"xr-standard\"`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "mapping"
+      ]
+    }
+  }
+}

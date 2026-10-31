@@ -26,6 +26,8 @@ impl From<anygamepad_report::privacy::Redaction> for Redaction {
             Finding::ControlCharacters => "control_characters",
             Finding::TooLong => "too_long",
             Finding::IdentifyingReport => "identifying_report",
+            Finding::OsVersionDetail => "os_version_detail",
+            Finding::FreeText => "free_text",
         }
         .to_string();
         Self {

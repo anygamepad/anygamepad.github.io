@@ -35,8 +35,8 @@ gantt
     P1 done :milestone, p1, 2026-10-14, 0d
     P3 done :milestone, p3, 2026-10-14, 0d
     D4 done :milestone, d4, 2026-10-25, 0d
-    H6 done :milestone, crit, h6, 2026-12-10, 0d
-    C15 done :milestone, c15, 2026-12-12, 0d
+    H6 done :milestone, crit, h6, 2026-12-05, 0d
+    C15 done :milestone, c15, 2026-12-07, 0d
     section Web app
     W1 Web app scaffolding and WASM build pipeline :done, w1, 2026-10-13, 1d
     W2 Live tester on the core web backend :done, w2, 2026-10-13, 1d
@@ -55,7 +55,7 @@ gantt
 | W1 | Web app scaffolding and WASM build pipeline | 7 | F1, F3 | W2 | 2026-10-13 | 2026-10-14 | done |
 | W2 | Live tester on the core web backend | 15 | W1, C11 | W8, W3, W4, W5 | 2026-10-13 | 2026-10-14 | done |
 | W8 | Tester layout and device drawings | 7 | W2 | W3 | 2026-10-14 | 2026-10-14 | done |
-| W3 | WebHID mode with PlayStation decoding | 2 (of 15) | W2, C15, W8, H6 | - | 2026-12-12 | 2026-12-14 | 49 |
+| W3 | WebHID mode with PlayStation decoding | 2 (of 15) | W2, C15, W8, H6 | - | 2026-12-07 | 2026-12-09 | 49 |
 | W4 | Guided mapping wizard (shared with desktop) | 15 | W2 | W6, A3, H3 | 2026-10-14 | 2026-10-14 | done |
 | W5 | Normalized view (mapping engine + profiles) | 10 | W2, C3, D2, D4 | W7 | 2026-10-21 | 2026-10-25 | done |
 | W6 | Local report store, sharing and consent flow | 10 | W4, P1, P3 | P6, W7 | 2026-10-14 | 2026-10-25 | done |

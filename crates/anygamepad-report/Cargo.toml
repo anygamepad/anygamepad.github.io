@@ -36,3 +36,7 @@ serde_json.workspace = true
 [[test]]
 name = "schema"
 required-features = ["json", "schemars"]
+
+[[test]]
+name = "test_report"
+required-features = ["json", "schemars"]

@@ -19,8 +19,8 @@ gantt
     C2 done :milestone, c2, 2026-10-13, 0d
     D1 done :milestone, d1, 2026-10-14, 0d
     W6 done :milestone, w6, 2026-10-25, 0d
-    H1 done :milestone, crit, h1, 2026-11-05, 0d
-    A3 done :milestone, a3, 2026-12-20, 0d
+    H1 done :milestone, h1, 2026-10-31, 0d
+    A3 done :milestone, a3, 2026-12-15, 0d
     section Collection pipeline
     P1 Device report schema (shared crate) :done, p1, 2026-10-14, 1d
     P2 Sync API and PostgreSQL storage :p2, after p1 t0, 20d
@@ -35,11 +35,11 @@ gantt
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
 | P1 | Device report schema (shared crate) | 7 | C2, D1 | P2, P3, P4, W6, A3, H1 | 2026-10-14 | 2026-10-14 | done |
-| P2 | Sync API and PostgreSQL storage | 20 | P1 | P5, P6 | 2026-10-31 | 2026-11-20 | 63 |
+| P2 | Sync API and PostgreSQL storage | 20 | P1 | P5, P6 | 2026-10-31 | 2026-11-20 | 58 |
 | P3 | Privacy, consent, data retention policy | 10 | P1 | W6, A3 | 2026-10-14 | 2026-10-14 | done |
-| P4 | Curation tooling (reports to profile PRs) | 20 | P1, D1, H1 | - | 2026-11-05 | 2026-11-25 | 68 |
-| P5 | Hosting, backups, monitoring | 10 | P2 | M5 | 2026-11-20 | 2026-11-30 | 63 |
-| P6 | Report sync in the web and desktop apps | 10 | P2, W6, A3 | M5 | 2026-12-20 | 2026-12-30 | 33 |
+| P4 | Curation tooling (reports to profile PRs) | 20 | P1, D1, H1 | - | 2026-10-31 | 2026-11-20 | 68 |
+| P5 | Hosting, backups, monitoring | 10 | P2 | M5 | 2026-11-20 | 2026-11-30 | 58 |
+| P6 | Report sync in the web and desktop apps | 10 | P2, W6, A3 | M5 | 2026-12-15 | 2026-12-25 | 33 |
 
 ### P1 — Device report schema
 

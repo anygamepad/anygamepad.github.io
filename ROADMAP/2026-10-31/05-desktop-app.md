@@ -33,9 +33,9 @@ gantt
     M2 done :milestone, m2, 2026-10-25, 0d
     C6 done :milestone, c6, 2026-11-25, 0d
     C5 done :milestone, c5, 2026-11-30, 0d
-    H6 done :milestone, crit, h6, 2026-12-10, 0d
-    C4 done :milestone, crit, c4, 2026-12-13, 0d
-    C10 done :milestone, crit, c10, 2027-01-27, 0d
+    H6 done :milestone, crit, h6, 2026-12-05, 0d
+    C4 done :milestone, crit, c4, 2026-12-08, 0d
+    C10 done :milestone, crit, c10, 2027-01-22, 0d
     section Desktop app
     A1 App shell (UI toolkit, tray, settings) :active, a1, after f3 m2 h6, 2d
     A4 Virtual pad abstraction and emulated profiles :done, a4, 2026-10-30, 1d
@@ -54,17 +54,17 @@ gantt
 
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
-| A1 | App shell (UI toolkit, tray, settings) | 2 (of 15) | F3, M2, H6 | A2 | 2026-12-10 | 2026-12-12 | 24 |
+| A1 | App shell (UI toolkit, tray, settings) | 2 (of 15) | F3, M2, H6 | A2 | 2026-12-05 | 2026-12-07 | 24 |
 | A4 | Virtual pad abstraction and emulated profiles | 10 | C1, M2 | A5, A7, A8 | 2026-10-30 | 2026-10-30 | done |
-| A5 | Linux virtual output (uinput + UHID) | 3 (of 20) | A4, C4 | A6 | 2026-12-13 | 2026-12-16 | 12 |
-| A7 | Windows virtual output via ViGEmBus (X360, DS4) | 15 | A4, C5 | A9 | 2026-11-30 | 2026-12-15 | 28 |
-| A8 | macOS virtual output (IOHIDUserDevice) | 25 | A4, C6 | A9 | 2026-11-25 | 2026-12-20 | 23 |
-| A2 | Device list and live view | 2 (of 15) | A1, C4 | A3, A11 | 2026-12-13 | 2026-12-15 | 23 |
-| A3 | Collection mode | 5 (of 15) | A2, W4, P1, P3 | P6, A9 | 2026-12-15 | 2026-12-20 | 23 |
-| A6 | Physical device hiding (grab/HidHide/seize) | 15 | A5, C5, C6 | A9 | 2026-12-16 | 2026-12-31 | 12 |
-| A11 | Always-on-top input widget (overlay) | 3 (of 10) | A2 | A9 | 2026-12-15 | 2026-12-18 | 25 |
-| A9 | Packaging and code signing | 15 | A3, A6, A7, A8, A11 | A10 | 2026-12-31 | 2027-01-15 | 12 |
-| A10 | **Desktop app 0.1.0 release** | 5 | A9, C10 | M4 | 2027-01-27 | 2027-02-01 | 0 |
+| A5 | Linux virtual output (uinput + UHID) | 3 (of 20) | A4, C4 | A6 | 2026-12-08 | 2026-12-11 | 12 |
+| A7 | Windows virtual output via ViGEmBus (X360, DS4) | 15 | A4, C5 | A9 | 2026-11-30 | 2026-12-15 | 23 |
+| A8 | macOS virtual output (IOHIDUserDevice) | 25 | A4, C6 | A9 | 2026-11-25 | 2026-12-20 | 18 |
+| A2 | Device list and live view | 2 (of 15) | A1, C4 | A3, A11 | 2026-12-08 | 2026-12-10 | 23 |
+| A3 | Collection mode | 5 (of 15) | A2, W4, P1, P3 | P6, A9 | 2026-12-10 | 2026-12-15 | 23 |
+| A6 | Physical device hiding (grab/HidHide/seize) | 15 | A5, C5, C6 | A9 | 2026-12-11 | 2026-12-26 | 12 |
+| A11 | Always-on-top input widget (overlay) | 3 (of 10) | A2 | A9 | 2026-12-10 | 2026-12-13 | 25 |
+| A9 | Packaging and code signing | 15 | A3, A6, A7, A8, A11 | A10 | 2026-12-26 | 2027-01-10 | 12 |
+| A10 | **Desktop app 0.1.0 release** | 5 | A9, C10 | M4 | 2027-01-22 | 2027-01-27 | 0 |
 
 ### A1 — App shell
 
