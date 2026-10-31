@@ -11,20 +11,32 @@
 //! JSON Schema ([`json_schema`], committed as `data/profiles/schema.json`).
 //! [`sdl`] converts SDL GameControllerDB entries into profiles.
 //!
+//! The [`catalog`] lists controller models as sold, with their modes and
+//! the ways to connect them, and the [`lab`] inventory lists the physical
+//! controllers of a test lab (ADR 0008). Both are embedded at build time
+//! ([`Catalog::embedded`], [`Inventory::embedded`]).
+//!
 //! # Features
 //!
-//! - `toml`: [`Profile::from_toml`] and [`Profile::to_toml`].
-//! - `schemars`: [`json_schema`].
+//! - `toml`: [`Profile::from_toml`] and [`Profile::to_toml`], and the same
+//!   for catalog models and inventories.
+//! - `schemars`: [`json_schema`], [`catalog::json_schema`] and
+//!   [`lab::json_schema`].
 #![forbid(unsafe_code)]
 
+pub mod catalog;
 pub mod database;
+mod embedded;
 mod input;
+pub mod lab;
 mod profile;
 pub mod sdl;
 pub mod wire;
 
+pub use catalog::Catalog;
 pub use database::Database;
 pub use input::{AxisRange, Input, ParseInputError};
+pub use lab::Inventory;
 #[cfg(feature = "toml")]
 pub use profile::ProfileError;
 pub use profile::{

@@ -1,0 +1,30 @@
+#:schema ../schema.json
+
+schema_version = 1
+id = "generic/playstation"
+vendor = "Generic"
+name = "PlayStation-compatible controller"
+generic = true
+family = "dualshock4"
+notes = "Pads that imitate a DualShock 4 or a DualSense."
+
+[controls]
+buttons = [
+    "south", "east", "west", "north",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "left_shoulder", "right_shoulder", "left_trigger", "right_trigger",
+    "left_stick", "right_stick", "select", "start", "home", "touchpad_click",
+]
+axes = ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y", "left_trigger", "right_trigger"]
+outputs = ["rumble", "lightbar"]
+
+[[modes]]
+id = "ps4"
+name = "PS4"
+kind = "ps4"
+
+[[modes.connections]]
+transport = "usb"
+
+[[modes.connections]]
+transport = "bluetooth"

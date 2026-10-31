@@ -291,63 +291,19 @@
       ]
     },
     "ControllerMode": {
-      "description": "A mode a controller can be switched to, as printed on mode switches or\ntold in manuals.",
-      "oneOf": [
-        {
-          "description": "XInput (\"X\"): an Xbox 360 controller to Windows.",
-          "type": "string",
-          "const": "xinput"
-        },
-        {
-          "description": "DirectInput (\"D\"): a generic HID game controller.",
-          "type": "string",
-          "const": "dinput"
-        },
-        {
-          "description": "Nintendo Switch (\"S\"): a Switch Pro Controller.",
-          "type": "string",
-          "const": "switch"
-        },
-        {
-          "description": "PlayStation 3: a DualShock 3.",
-          "type": "string",
-          "const": "ps3"
-        },
-        {
-          "description": "PlayStation 4: a DualShock 4.",
-          "type": "string",
-          "const": "ps4"
-        },
-        {
-          "description": "PlayStation 5: a DualSense.",
-          "type": "string",
-          "const": "ps5"
-        },
-        {
-          "description": "Xbox One or Series controller (GIP), not XInput emulation.",
-          "type": "string",
-          "const": "xbox"
-        },
-        {
-          "description": "Android (\"A\").",
-          "type": "string",
-          "const": "android"
-        },
-        {
-          "description": "iOS, iPadOS or macOS (MFi).",
-          "type": "string",
-          "const": "apple"
-        },
-        {
-          "description": "Keyboard and mouse emulation.",
-          "type": "string",
-          "const": "keyboard_mouse"
-        },
-        {
-          "description": "Another mode.",
-          "type": "string",
-          "const": "other"
-        }
+      "type": "string",
+      "enum": [
+        "xinput",
+        "dinput",
+        "switch",
+        "ps3",
+        "ps4",
+        "ps5",
+        "xbox",
+        "android",
+        "apple",
+        "keyboard_mouse",
+        "other"
       ]
     },
     "Date": {

@@ -23,6 +23,8 @@ mode, transport and operating system.
 | `crates/anygamepad-wasm` | `wasm-bindgen` bindings used by the web app |
 | `apps/` | Web app, desktop app and ingestion server |
 | `data/profiles/` | Curated device profiles |
+| `data/controllers/` | Controller catalog: models, modes and how to connect them |
+| `data/lab/` | Lab inventory format (units and machines of the test lab) |
 | `data/reports/` | Device report format, schema and example |
 | `docs/adr/` | Architecture decision records |
 | `docs/privacy/` | Consent texts, retention and the handling of shared reports |

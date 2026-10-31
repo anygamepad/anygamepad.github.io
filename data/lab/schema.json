@@ -1,0 +1,132 @@
+{
+  "$id": "https://anygamepad.github.io/schema/inventory.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Inventory",
+  "description": "The controllers of a test lab and its machines.\n\nFields left out of a TOML file take their defaults; the binary encoding\nwrites every field.",
+  "type": "object",
+  "properties": {
+    "machine": {
+      "description": "The machines they are tested on, written as `[[machine]]` tables.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Machine"
+      }
+    },
+    "schema_version": {
+      "description": "Format version: [`INVENTORY_SCHEMA_VERSION`].",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "unit": {
+      "description": "The physical controllers, written as `[[unit]]` tables.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Unit"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version"
+  ],
+  "$defs": {
+    "BrowserEngine": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "blink",
+        "gecko",
+        "webkit"
+      ]
+    },
+    "Code": {
+      "description": "A unit's or a machine's code: ASCII letters, digits and hyphens, starting with a letter or a digit.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,15}$"
+    },
+    "Machine": {
+      "description": "A machine controllers are tested on.",
+      "type": "object",
+      "properties": {
+        "browsers": {
+          "description": "The browser engines installed.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/BrowserEngine"
+          }
+        },
+        "code": {
+          "description": "Its code, unique in the inventory. Test reports never name it.",
+          "$ref": "#/$defs/Code"
+        },
+        "notes": {
+          "description": "Anything else worth knowing; never about a person.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "os": {
+          "description": "Its OS.",
+          "$ref": "#/$defs/Os"
+        },
+        "os_version": {
+          "description": "The OS release (`14.6`, `11 24H2`, `Fedora 41`).",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "os"
+      ]
+    },
+    "Os": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "linux",
+        "windows",
+        "macos",
+        "android",
+        "ios"
+      ]
+    },
+    "Unit": {
+      "description": "One physical controller.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "Its code, unique in the inventory.",
+          "$ref": "#/$defs/Code"
+        },
+        "model": {
+          "description": "The ID of its catalog model (`sony/dualsense`).",
+          "type": "string"
+        },
+        "notes": {
+          "description": "Edition, colour, firmware as a vendor app shows it; never about a\nperson.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "model"
+      ]
+    }
+  }
+}

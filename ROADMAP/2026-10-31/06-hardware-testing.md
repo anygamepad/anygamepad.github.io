@@ -205,10 +205,10 @@ gantt
     D1 done :milestone, d1, 2026-10-14, 0d
     P1 done :milestone, p1, 2026-10-14, 0d
     W4 done :milestone, w4, 2026-10-14, 0d
-    F4 done :milestone, f4, 2026-11-10, 0d
+    F4 done :milestone, f4, 2026-11-03, 0d
     section Hardware testing
-    H1 Test report format :h1, after p1 t0, 5d
-    H2 Controller catalog and lab inventory format :crit, h2, after d1 t0, 7d
+    H1 Test report format :crit, h1, after p1 t0, 5d
+    H2 Controller catalog and lab inventory format :done, h2, 2026-10-31, 1d
     H3 Test runner and test plans (sans-IO) :crit, h3, after h1 h2 c3 w4, 15d
     H4 Test mode in the web app :crit, h4, after h3 h10, 10d
     H5 Test mode in the desktop app :crit, h5, after h3 h10, 10d
@@ -223,16 +223,16 @@ gantt
 
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
-| H1 | Test report format | 5 | P1 | P4, H3, H8 | 2026-10-31 | 2026-11-05 | 2 |
-| H2 | **Controller catalog and lab inventory format** | 7 | D1 | F4, H3, H10 | 2026-10-31 | 2026-11-07 | 0 |
-| H3 | **Test runner and test plans (sans-IO)** | 15 | H1, H2, C3, W4 | H4, H5, H7 | 2026-11-07 | 2026-11-22 | 0 |
-| H4 | **Test mode in the web app** | 10 | H3, H10 | H6 | 2026-11-22 | 2026-12-02 | 0 |
-| H5 | **Test mode in the desktop app** | 10 | H3, H10 | H6 | 2026-11-22 | 2026-12-02 | 0 |
-| H6 | **First test campaign (closes the implemented tasks)** | 10 | H4, H5, F4 | C4, C15, D3, W3, A1, H9, M6 | 2026-12-02 | 2026-12-12 | 0 |
-| H7 | Replay tests from test reports | 7 | H3 | - | 2026-11-22 | 2026-11-29 | 66 |
-| H8 | Coverage matrix and compatibility page | 7 | H1, F4 | - | 2026-11-10 | 2026-11-17 | 78 |
-| H9 | Collection campaign (every pad, mode, transport and OS) | 20 | H6 | C8 | 2026-12-12 | 2027-01-01 | 3 |
-| H10 | Automatic detection of the pad, model, mode and transport | 5 | H2 | H4, H5 | 2026-11-07 | 2026-11-12 | 10 |
+| H1 | **Test report format** | 5 | P1 | P4, H3, H8 | 2026-10-31 | 2026-11-05 | 0 |
+| H2 | Controller catalog and lab inventory format | 7 | D1 | F4, H3, H10 | 2026-10-31 | 2026-10-31 | done |
+| H3 | **Test runner and test plans (sans-IO)** | 15 | H1, H2, C3, W4 | H4, H5, H7 | 2026-11-05 | 2026-11-20 | 0 |
+| H4 | **Test mode in the web app** | 10 | H3, H10 | H6 | 2026-11-20 | 2026-11-30 | 0 |
+| H5 | **Test mode in the desktop app** | 10 | H3, H10 | H6 | 2026-11-20 | 2026-11-30 | 0 |
+| H6 | **First test campaign (closes the implemented tasks)** | 10 | H4, H5, F4 | C4, C15, D3, W3, A1, H9, M6 | 2026-11-30 | 2026-12-10 | 0 |
+| H7 | Replay tests from test reports | 7 | H3 | - | 2026-11-20 | 2026-11-27 | 66 |
+| H8 | Coverage matrix and compatibility page | 7 | H1, F4 | - | 2026-11-05 | 2026-11-12 | 81 |
+| H9 | Collection campaign (every pad, mode, transport and OS) | 20 | H6 | C8 | 2026-12-10 | 2026-12-30 | 3 |
+| H10 | Automatic detection of the pad, model, mode and transport | 5 | H2 | H4, H5 | 2026-10-31 | 2026-11-05 | 15 |
 
 ### H1 — Test report format
 
@@ -301,6 +301,13 @@ full kernel release and an identifying input report in the evidence.
 **Done when:** the formats are documented, the schemas generated, CI
 validates `data/controllers/` and `data/lab/`, and the first entries are
 in.
+
+Status (2026-10-31): done
+(`RECORD/2026-10-31.h2-controller-catalog-and-lab-inventory.completed.md`):
+`anygamepad_db::catalog` and `anygamepad_db::lab`, embedded at build time,
+13 models (four generic types and the families the library knows),
+`data/lab/inventory.example.toml`; `ControllerMode` moved to the model
+crate so catalog modes and device reports share it.
 
 ### H3 — Test runner and test plans
 

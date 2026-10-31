@@ -23,6 +23,10 @@ Status: **active**. Supersedes [ROADMAP/2026-10-14/](../2026-10-14/README.md).
   ADR 0008), at the owner's request the same day. No milestone moves.
 - **Owner decision (2026-10-31):** go ahead with the test lab first; H1
   and H2 are next.
+- **Status update (2026-10-31, in place):** H2, the controller catalog and
+  the lab inventory format, is done (grey). Dates recomputed: M4 on
+  2027-02-01, M3 on 2027-01-27, M5 on 2026-12-30, M6 on 2026-12-10; H1 is
+  now on the critical path (t0 -> H1 -> H3 -> ...).
 - **F4** becomes the lab inventory in H2's format: blocked by H2, 3 days
   instead of 5.
 - **Tasks with merged code that were never tried on a real pad are in
@@ -85,7 +89,7 @@ Cross-cutting groundwork lives in [00-foundations.md](00-foundations.md).
 1. **Test lab** (owner request, 2026-10-31). Nine tasks have their code
    merged but were never tried on a real pad; the test modes (H4, H5) and
    the first test campaign (H6) close them, and every later task is checked
-   the same way. H2 -> H3 -> H4/H5 -> H6 is the start of the critical path.
+   the same way. H1 -> H3 -> H4/H5 -> H6 is the start of the critical path.
 2. **Library 0.1.0** (M3): the Windows and macOS backends (C5, C6), SDL3
    and gilrs (C13, C14), arbitration (C12), and the profiles and mode
    detection built on test reports (D3, C8).
@@ -164,7 +168,7 @@ controls passed (ADR 0008).
   their estimates), but the dependency graph (what blocks what) stays
   valid. Use the graph, not the dates, to decide what to pick up next.
 - The critical path ends at milestone M4 (desktop 0.1.0). Projected end:
-  **2027-02-03** (2027-01-09 in the 2026-10-14 version, before the test
+  **2027-02-01** (2027-01-09 in the 2026-10-14 version, before the test
   lab and the recomputed dates).
 - Slack is measured against M4 for every task, as in earlier versions.
 
@@ -222,8 +226,8 @@ gantt
     W6 Local report store, sharing and consent flow :done, w6, 2026-10-14, 11d
     W7 Public launch of the web tester :done, w7, 2026-10-25, 1d
     section Hardware testing
-    H1 Test report format :h1, after p1 t0, 5d
-    H2 Controller catalog and lab inventory format :crit, h2, after d1 t0, 7d
+    H1 Test report format :crit, h1, after p1 t0, 5d
+    H2 Controller catalog and lab inventory format :done, h2, 2026-10-31, 1d
     H10 Automatic detection of the pad, model, mode and transport :h10, after h2, 5d
     H3 Test runner and test plans (sans-IO) :crit, h3, after h1 h2 c3 w4, 15d
     H4 Test mode in the web app :crit, h4, after h3 h10, 10d
@@ -259,10 +263,10 @@ gantt
 
 Zero-slack chains from the baseline to the desktop release (M4):
 
-1. t0 -> H2 -> H3 -> H4 -> H6 -> C4 -> D3 -> C8 -> C10 -> A10 -> M4
-2. t0 -> H2 -> H3 -> H5 -> H6 -> C4 -> D3 -> C8 -> C10 -> A10 -> M4
+1. t0 -> H1 -> H3 -> H4 -> H6 -> C4 -> D3 -> C8 -> C10 -> A10 -> M4
+2. t0 -> H1 -> H3 -> H5 -> H6 -> C4 -> D3 -> C8 -> C10 -> A10 -> M4
 
-H1 has 2 days of slack and H9 has 3. The desktop app's own chain
+H9 has 3 days of slack and H10 has 15. The desktop app's own chain
 (A5 -> A6 -> A9) has 12 days: the desktop release waits for the library
 (C10). Everything else has slack (see the `Slack` column in each detailed
 file).
@@ -492,9 +496,9 @@ flowchart LR
     classDef crit fill:#fdd,stroke:#c00,stroke-width:2px
     classDef active fill:#def,stroke:#36c,stroke-width:2px
     classDef done fill:#eee,stroke:#999,color:#666
-    class c4,c8,c10,d3,a10,h2,h3,h4,h5,h6,m4 crit
+    class c4,c8,c10,d3,a10,h1,h3,h4,h5,h6,m4 crit
     class c15,c7,w3,a1,a5,a2,a3,a11 active
-    class f1,f2,f3,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,a4,m1,m2 done
+    class f1,f2,f3,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,a4,h2,m1,m2 done
 ```
 
 ## Milestones
@@ -503,10 +507,10 @@ flowchart LR
 |-----------|------------|-------------|
 | M1 Core runs in the browser | C3, C11, D4 | 2026-10-25 (done) |
 | M2 Web tester live and collecting (reports saved locally and shared as issues) | W7 | 2026-10-25 (done) |
-| M6 Test lab running (test modes in the web and desktop apps, first campaign done) | H6 | 2026-12-12 |
-| M5 Reports synchronized with the sync server | P5, P6 | 2027-01-01 |
-| M3 Library 0.1.0 | C10 | 2027-01-29 |
-| M4 Desktop app 0.1.0 | A10 | 2027-02-03 |
+| M6 Test lab running (test modes in the web and desktop apps, first campaign done) | H6 | 2026-12-10 |
+| M5 Reports synchronized with the sync server | P5, P6 | 2026-12-30 |
+| M3 Library 0.1.0 | C10 | 2027-01-27 |
+| M4 Desktop app 0.1.0 | A10 | 2027-02-01 |
 
 ## Top risks
 

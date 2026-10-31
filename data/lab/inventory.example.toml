@@ -1,0 +1,41 @@
+#:schema ./schema.json
+
+# An example of a lab inventory (roadmap tasks H2 and F4). The real one is
+# `inventory.toml` in this folder; the apps embed it when it exists.
+#
+# Codes are what the person calls each pad and machine: 1 to 16 ASCII
+# letters, digits and hyphens, so they cannot hold a name. Test reports name
+# units by their code and never name machines.
+
+schema_version = 1
+
+[[unit]]
+code = "DS5-01"
+model = "sony/dualsense"
+notes = "White, bought in 2021."
+
+[[unit]]
+code = "DS5-02"
+model = "sony/dualsense"
+notes = "Cosmic Red."
+
+[[unit]]
+code = "XSX-01"
+model = "microsoft/xbox-series"
+
+[[unit]]
+code = "PAD-01"
+model = "generic/hid"
+notes = "A pad not in the catalog yet."
+
+[[machine]]
+code = "LINUX-1"
+os = "linux"
+os_version = "Fedora 41"
+browsers = ["blink", "gecko"]
+
+[[machine]]
+code = "MAC-1"
+os = "macos"
+os_version = "15.1"
+browsers = ["blink", "webkit"]

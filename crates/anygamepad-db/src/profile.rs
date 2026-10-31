@@ -681,23 +681,29 @@ impl Profile {
     /// Writes the profile as TOML, with vendor IDs, product IDs and
     /// versions in hexadecimal (`0x054c`) as in hand-written profiles.
     pub fn to_toml(&self) -> Result<String, toml::ser::Error> {
-        let text = toml::to_string(self)?;
-        let mut out = String::with_capacity(text.len());
-        for line in text.lines() {
-            let hex = ["vendor_id", "product_id", "version"]
-                .iter()
-                .find_map(|key| {
-                    let value = line.strip_prefix(key)?.strip_prefix(" = ")?;
-                    value.parse::<u16>().ok().map(|value| (key, value))
-                });
-            match hex {
-                Some((key, value)) => out.push_str(&format!("{key} = {value:#06x}")),
-                None => out.push_str(line),
-            }
-            out.push('\n');
-        }
-        Ok(out)
+        toml::to_string(self).map(|text| hex_ids(&text))
     }
+}
+
+/// `text`, a TOML document, with its vendor IDs, product IDs and versions
+/// in hexadecimal (`0x054c`) as in hand-written files.
+#[cfg(feature = "toml")]
+pub(crate) fn hex_ids(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for line in text.lines() {
+        let hex = ["vendor_id", "product_id", "version"]
+            .iter()
+            .find_map(|key| {
+                let value = line.strip_prefix(key)?.strip_prefix(" = ")?;
+                value.parse::<u16>().ok().map(|value| (key, value))
+            });
+        match hex {
+            Some((key, value)) => out.push_str(&format!("{key} = {value:#06x}")),
+            None => out.push_str(line),
+        }
+        out.push('\n');
+    }
+    out
 }
 
 /// The profile that matches `identity` best (see [`MatchScore`]); the first

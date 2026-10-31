@@ -1,0 +1,506 @@
+{
+  "$id": "https://anygamepad.github.io/schema/controller.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Model",
+  "description": "A controller model as sold, with its controls and modes.\n\nFields left out of a TOML file take their defaults; the binary encoding\nof the embedded catalog writes every field, so no field skips\nserialization.",
+  "type": "object",
+  "properties": {
+    "controls": {
+      "description": "The controls and outputs it has, in every mode unless a mode says\notherwise ([`Mode::controls`]).",
+      "$ref": "#/$defs/Controls"
+    },
+    "family": {
+      "description": "The family it is drawn as, if any.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Family"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "generic": {
+      "description": "Whether this stands for every pad of a kind the catalog does not list\n(`generic/xinput`), rather than a product. Generic models are\ndetected by their family, not by identities.",
+      "type": "boolean",
+      "default": false
+    },
+    "id": {
+      "description": "`<vendor>/<model>`, lowercase words of letters and digits joined by\nhyphens: the file's path under `data/controllers/` without `.toml`\n(`sony/dualsense`). Generic models are `generic/<type>`.",
+      "type": "string"
+    },
+    "labels": {
+      "description": "What is printed on its face buttons, when its family does not tell.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Labels"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "modes": {
+      "description": "The modes it can be switched to; a pad without a mode switch has one.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Mode"
+      }
+    },
+    "name": {
+      "description": "The product name, as printed on the box.",
+      "type": "string"
+    },
+    "notes": {
+      "description": "Anything else worth knowing (editions, firmware), never about a\nperson or a particular unit.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "schema_version": {
+      "description": "Format version: [`CATALOG_SCHEMA_VERSION`].",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "vendor": {
+      "description": "The maker, as printed on the box (`Sony`, `8BitDo`).",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "vendor",
+    "name",
+    "controls",
+    "modes"
+  ],
+  "$defs": {
+    "Axis": {
+      "type": "string",
+      "enum": [
+        "left_stick_x",
+        "left_stick_y",
+        "right_stick_x",
+        "right_stick_y",
+        "left_trigger",
+        "right_trigger"
+      ]
+    },
+    "AxisSet": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Axis"
+      },
+      "uniqueItems": true
+    },
+    "Backend": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "evdev",
+        "hidraw",
+        "windows_hid",
+        "xinput",
+        "windows_gaming_input",
+        "game_input",
+        "direct_input",
+        "iokit_hid",
+        "game_controller",
+        "gamepad_api",
+        "webhid"
+      ]
+    },
+    "Button": {
+      "type": "string",
+      "anyOf": [
+        {
+          "enum": [
+            "south",
+            "east",
+            "west",
+            "north",
+            "dpad_up",
+            "dpad_down",
+            "dpad_left",
+            "dpad_right",
+            "left_shoulder",
+            "right_shoulder",
+            "left_trigger",
+            "right_trigger",
+            "left_stick",
+            "right_stick",
+            "select",
+            "start",
+            "home",
+            "share",
+            "capture",
+            "mute",
+            "left_paddle_1",
+            "left_paddle_2",
+            "right_paddle_1",
+            "right_paddle_2",
+            "touchpad_click"
+          ]
+        },
+        {
+          "pattern": "^extra_([0-9]|[12][0-9]|3[01])$"
+        }
+      ]
+    },
+    "ButtonSet": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Button"
+      },
+      "uniqueItems": true
+    },
+    "Connection": {
+      "description": "One way to connect a pad in one mode.",
+      "type": "object",
+      "properties": {
+        "how_to": {
+          "description": "How to connect over it (cable, pairing steps, dongle).",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "identities": {
+          "description": "The identities a device connected this way shows, any of them;\nempty while no one has seen it (a test report fills it in).",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ExpectedIdentity"
+          }
+        },
+        "transport": {
+          "description": "The transport.",
+          "$ref": "#/$defs/Transport"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "transport"
+      ]
+    },
+    "ControllerMode": {
+      "type": "string",
+      "enum": [
+        "xinput",
+        "dinput",
+        "switch",
+        "ps3",
+        "ps4",
+        "ps5",
+        "xbox",
+        "android",
+        "apple",
+        "keyboard_mouse",
+        "other"
+      ]
+    },
+    "Controls": {
+      "description": "The controls and outputs of a model, in canonical names.",
+      "type": "object",
+      "properties": {
+        "axes": {
+          "description": "Analog axes: sticks, and triggers that are analog.",
+          "$ref": "#/$defs/AxisSet",
+          "default": []
+        },
+        "battery": {
+          "description": "Whether it has a battery whose level it reports.",
+          "type": "boolean",
+          "default": false
+        },
+        "buttons": {
+          "description": "Buttons, by position (back paddles and extra buttons included).",
+          "$ref": "#/$defs/ButtonSet"
+        },
+        "outputs": {
+          "description": "Outputs the hardware has.",
+          "$ref": "#/$defs/OutputSet",
+          "default": []
+        },
+        "sensors": {
+          "description": "Motion sensors.",
+          "$ref": "#/$defs/SensorSet",
+          "default": []
+        },
+        "touchpads": {
+          "description": "Touchpads.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TouchpadInfo"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "buttons"
+      ]
+    },
+    "DescriptorHash": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{16}$"
+    },
+    "ExpectedIdentity": {
+      "description": "What a device connected in one mode over one transport shows: every\ncondition set must hold, the others are free.\n\nThe transport is the [`Connection`]'s, not a condition here, since some\nAPIs cannot tell it (the Gamepad API).",
+      "type": "object",
+      "properties": {
+        "backend": {
+          "description": "API the other conditions are for.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Backend"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "descriptor_hash": {
+          "description": "Hash of the HID report descriptor.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DescriptorHash"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "driver": {
+          "description": "OS driver that owns the device (`xpad`, `hid-playstation`, ...).",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "name": {
+          "description": "Product name, exactly as the backend reports it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "os": {
+          "description": "Host OS the other conditions are for.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Os"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "product_id": {
+          "description": "Product ID; needs `vendor_id`.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "default": null,
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "vendor_id": {
+          "description": "USB/Bluetooth vendor ID.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "default": null,
+          "maximum": 65535,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "Family": {
+      "type": "string",
+      "enum": [
+        "dualshock3",
+        "dualshock4",
+        "dualsense",
+        "dualsense_edge",
+        "switch_pro",
+        "xbox"
+      ]
+    },
+    "Labels": {
+      "description": "What is printed on the four face buttons.",
+      "oneOf": [
+        {
+          "description": "`A` south, `B` east, `X` west, `Y` north.",
+          "type": "string",
+          "const": "xbox"
+        },
+        {
+          "description": "Cross south, circle east, square west, triangle north.",
+          "type": "string",
+          "const": "playstation"
+        },
+        {
+          "description": "`B` south, `A` east, `Y` west, `X` north.",
+          "type": "string",
+          "const": "nintendo"
+        }
+      ]
+    },
+    "Mode": {
+      "description": "A mode a model can be switched to.",
+      "type": "object",
+      "properties": {
+        "connections": {
+          "description": "The ways to connect the pad in this mode, one per transport.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Connection"
+          }
+        },
+        "controls": {
+          "description": "The controls in this mode, when they differ from the model's (a mode\nthat hides the motion sensors or makes the triggers digital).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Controls"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "how_to": {
+          "description": "How to put the pad in this mode (switch position, buttons held while\nturning it on).",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "id": {
+          "description": "Unique within the model, lowercase words of letters and digits joined\nby hyphens (`ps5`, `x`, `switch`).",
+          "type": "string"
+        },
+        "kind": {
+          "description": "What the mode imitates.",
+          "$ref": "#/$defs/ControllerMode"
+        },
+        "name": {
+          "description": "Its name as printed on the switch or told in the manual (`X`,\n`Switch`, `PS5`).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "connections"
+      ]
+    },
+    "Os": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "linux",
+        "windows",
+        "macos",
+        "android",
+        "ios"
+      ]
+    },
+    "Output": {
+      "type": "string",
+      "enum": [
+        "rumble",
+        "trigger_rumble",
+        "hd_rumble",
+        "lightbar",
+        "player_leds",
+        "adaptive_triggers"
+      ]
+    },
+    "OutputSet": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Output"
+      },
+      "uniqueItems": true
+    },
+    "Sensor": {
+      "type": "string",
+      "enum": [
+        "gyroscope",
+        "accelerometer"
+      ]
+    },
+    "SensorSet": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Sensor"
+      },
+      "uniqueItems": true
+    },
+    "TouchpadInfo": {
+      "description": "Description of a touchpad.",
+      "type": "object",
+      "properties": {
+        "height": {
+          "description": "Height in device units (its resolution).",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "max_fingers": {
+          "description": "Number of fingers it tracks at once.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "width": {
+          "description": "Width in device units (its resolution).",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "max_fingers",
+        "width",
+        "height"
+      ]
+    },
+    "Transport": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "usb",
+        "bluetooth",
+        "bluetooth_le",
+        "dongle"
+      ]
+    }
+  }
+}

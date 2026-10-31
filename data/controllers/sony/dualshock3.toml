@@ -1,0 +1,35 @@
+#:schema ../schema.json
+
+schema_version = 1
+id = "sony/dualshock3"
+vendor = "Sony"
+name = "DUALSHOCK 3 Wireless Controller"
+family = "dualshock3"
+notes = "PlayStation 3 controller (CECHZC2). Its face buttons, d-pad, shoulders and triggers are pressure-sensitive; only the triggers' pressure is canonical. Fakes are common."
+
+[controls]
+buttons = [
+    "south", "east", "west", "north",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "left_shoulder", "right_shoulder", "left_trigger", "right_trigger",
+    "left_stick", "right_stick", "select", "start", "home",
+]
+axes = ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y", "left_trigger", "right_trigger"]
+sensors = ["accelerometer"]
+outputs = ["rumble", "player_leds"]
+battery = true
+
+[[modes]]
+id = "ps3"
+name = "PS3"
+kind = "ps3"
+
+[[modes.connections]]
+transport = "usb"
+how_to = "Connect it with a mini-USB data cable, then press PS."
+identities = [{ vendor_id = 0x054c, product_id = 0x0268 }]
+
+[[modes.connections]]
+transport = "bluetooth"
+how_to = "It pairs over the cable: the host writes its Bluetooth address into the pad while it is plugged in (BlueZ on Linux asks to authorize it; Windows and macOS need extra drivers). Then unplug it and press PS."
+identities = [{ vendor_id = 0x054c, product_id = 0x0268 }]

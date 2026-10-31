@@ -1,0 +1,29 @@
+#:schema ../schema.json
+
+schema_version = 1
+id = "microsoft/xbox-360-wireless"
+vendor = "Microsoft"
+name = "Xbox 360 Wireless Controller"
+family = "xbox"
+notes = "Through the Xbox 360 Wireless Receiver; its USB cable only charges it. Back is `select`, Start `start`, Guide `home`."
+
+[controls]
+buttons = [
+    "south", "east", "west", "north",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "left_shoulder", "right_shoulder", "left_trigger", "right_trigger",
+    "left_stick", "right_stick", "select", "start", "home",
+]
+axes = ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y", "left_trigger", "right_trigger"]
+outputs = ["rumble", "player_leds"]
+battery = true
+
+[[modes]]
+id = "xinput"
+name = "XInput"
+kind = "xinput"
+
+[[modes.connections]]
+transport = "dongle"
+how_to = "Plug in the Xbox 360 Wireless Receiver, press its button, then the connect button on the controller's top."
+identities = [{ vendor_id = 0x045e, product_id = 0x0719 }]

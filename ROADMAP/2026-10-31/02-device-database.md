@@ -14,9 +14,9 @@ gantt
     section Upstream blockers
     C2 done :milestone, c2, 2026-10-13, 0d
     C3 done :milestone, c3, 2026-10-14, 0d
-    F4 done :milestone, f4, 2026-11-10, 0d
-    H6 done :milestone, crit, h6, 2026-12-12, 0d
-    C4 done :milestone, crit, c4, 2026-12-15, 0d
+    F4 done :milestone, f4, 2026-11-03, 0d
+    H6 done :milestone, crit, h6, 2026-12-10, 0d
+    C4 done :milestone, crit, c4, 2026-12-13, 0d
     section Device database
     D1 Device profile format and JSON Schema :done, d1, 2026-10-14, 1d
     D2 SDL GameControllerDB importer :done, d2, 2026-10-14, 1d
@@ -30,7 +30,7 @@ gantt
 |----|------|-----:|------------|--------|-------|-----|------:|
 | D1 | Device profile format and JSON Schema | 10 | C2 | C3, D2, D3, D4, P1, P4, H2 | 2026-10-14 | 2026-10-14 | done |
 | D2 | SDL GameControllerDB importer | 7 | D1 | W5 | 2026-10-14 | 2026-10-14 | done |
-| D3 | **Initial curated profiles (top devices)** | 20 | D1, C4, F4, H6 | C8 | 2026-12-15 | 2027-01-04 | 0 |
+| D3 | **Initial curated profiles (top devices)** | 20 | D1, C4, F4, H6 | C8 | 2026-12-13 | 2027-01-02 | 0 |
 | D4 | Profile embedding and runtime overrides | 7 | D1, C3 | C10, W5, M1 | 2026-10-25 | 2026-10-25 | done |
 
 ### D1 — Device profile format and JSON Schema

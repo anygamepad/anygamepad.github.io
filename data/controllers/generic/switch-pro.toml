@@ -1,0 +1,30 @@
+#:schema ../schema.json
+
+schema_version = 1
+id = "generic/switch-pro"
+vendor = "Generic"
+name = "Switch Pro-compatible controller"
+generic = true
+family = "switch_pro"
+notes = "Pads that imitate a Nintendo Switch Pro Controller (`057e:2009`)."
+
+[controls]
+buttons = [
+    "south", "east", "west", "north",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "left_shoulder", "right_shoulder", "left_trigger", "right_trigger",
+    "left_stick", "right_stick", "select", "start", "home", "capture",
+]
+axes = ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y"]
+outputs = ["rumble"]
+
+[[modes]]
+id = "switch"
+name = "Switch"
+kind = "switch"
+
+[[modes.connections]]
+transport = "usb"
+
+[[modes.connections]]
+transport = "bluetooth"

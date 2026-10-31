@@ -1,0 +1,32 @@
+#:schema ../schema.json
+
+schema_version = 1
+id = "generic/hid"
+vendor = "Generic"
+name = "HID game controller"
+generic = true
+notes = "Any other game controller: a generic HID device (DirectInput on Windows). Its controls are a guess; the test mode lets the person say which ones it lacks."
+
+[controls]
+buttons = [
+    "south", "east", "west", "north",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "left_shoulder", "right_shoulder", "left_trigger", "right_trigger",
+    "left_stick", "right_stick", "select", "start", "home",
+]
+axes = ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y"]
+outputs = []
+
+[[modes]]
+id = "dinput"
+name = "DirectInput"
+kind = "dinput"
+
+[[modes.connections]]
+transport = "usb"
+
+[[modes.connections]]
+transport = "bluetooth"
+
+[[modes.connections]]
+transport = "dongle"

@@ -55,11 +55,12 @@ mod validate;
 #[cfg(feature = "json")]
 mod json;
 
+pub use anygamepad_model::ControllerMode;
 #[cfg(feature = "json")]
 pub use json::ReportError;
 pub use report::{
-    App, ControllerMode, Date, HexBytes, HidData, Host, InputSample, ParseError, Report, Source,
-    UserStatement, Version, View,
+    App, Date, HexBytes, HidData, Host, InputSample, ParseError, Report, Source, UserStatement,
+    Version, View,
 };
 pub use validate::InvalidReport;
 

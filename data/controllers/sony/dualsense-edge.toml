@@ -1,0 +1,36 @@
+#:schema ../schema.json
+
+schema_version = 1
+id = "sony/dualsense-edge"
+vendor = "Sony"
+name = "DualSense Edge Wireless Controller"
+family = "dualsense_edge"
+notes = "PlayStation 5 pro controller (CFI-ZCP1). The two back buttons are paddles; its two Fn buttons have no canonical name yet."
+
+[controls]
+buttons = [
+    "south", "east", "west", "north",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "left_shoulder", "right_shoulder", "left_trigger", "right_trigger",
+    "left_stick", "right_stick", "select", "start", "home", "mute", "touchpad_click", "left_paddle_1", "right_paddle_1",
+]
+axes = ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y", "left_trigger", "right_trigger"]
+sensors = ["gyroscope", "accelerometer"]
+touchpads = [{ max_fingers = 2, width = 1920, height = 1080 }]
+outputs = ["rumble", "hd_rumble", "lightbar", "player_leds", "adaptive_triggers"]
+battery = true
+
+[[modes]]
+id = "ps5"
+name = "PS5"
+kind = "ps5"
+
+[[modes.connections]]
+transport = "usb"
+how_to = "Connect it with a USB-C data cable."
+identities = [{ vendor_id = 0x054c, product_id = 0x0df2 }]
+
+[[modes.connections]]
+transport = "bluetooth"
+how_to = "Hold Create and PS until the light bar flashes quickly, then pair it in the system's Bluetooth settings. To disconnect it, hold PS for about ten seconds."
+identities = [{ vendor_id = 0x054c, product_id = 0x0df2 }]

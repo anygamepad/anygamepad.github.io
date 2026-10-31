@@ -62,7 +62,7 @@ mod touch;
 pub use axis::{Axis, AxisSet, Stick};
 pub use button::{Button, ButtonSet, ExtraButton, MAX_EXTRA_BUTTONS};
 pub use capabilities::Capabilities;
-pub use device::{Power, PowerState, Transport};
+pub use device::{ControllerMode, Power, PowerState, Transport};
 pub use family::Family;
 pub use label::{ButtonLabel, FaceLayout};
 pub use motion::{MotionSample, STANDARD_GRAVITY, Sensor, SensorSet, Vec3};

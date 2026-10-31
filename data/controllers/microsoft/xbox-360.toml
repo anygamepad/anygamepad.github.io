@@ -1,0 +1,28 @@
+#:schema ../schema.json
+
+schema_version = 1
+id = "microsoft/xbox-360"
+vendor = "Microsoft"
+name = "Xbox 360 Controller"
+family = "xbox"
+notes = "The wired controller. Back is `select`, Start `start`, Guide `home`."
+
+[controls]
+buttons = [
+    "south", "east", "west", "north",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "left_shoulder", "right_shoulder", "left_trigger", "right_trigger",
+    "left_stick", "right_stick", "select", "start", "home",
+]
+axes = ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y", "left_trigger", "right_trigger"]
+outputs = ["rumble", "player_leds"]
+
+[[modes]]
+id = "xinput"
+name = "XInput"
+kind = "xinput"
+
+[[modes.connections]]
+transport = "usb"
+how_to = "Plug in its cable."
+identities = [{ vendor_id = 0x045e, product_id = 0x028e }]
