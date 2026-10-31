@@ -21,6 +21,8 @@ Status: **active**. Supersedes [ROADMAP/2026-10-14/](../2026-10-14/README.md).
 - **Re-plan (2026-10-31, in place):** automatic detection (new H10, after
   H2, before H4 and H5, 10 days of slack) and anonymous test reports (H1,
   ADR 0008), at the owner's request the same day. No milestone moves.
+- **Owner decision (2026-10-31):** go ahead with the test lab first; H1
+  and H2 are next.
 - **F4** becomes the lab inventory in H2's format: blocked by H2, 3 days
   instead of 5.
 - **Tasks with merged code that were never tried on a real pad are in
