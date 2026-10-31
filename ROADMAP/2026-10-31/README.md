@@ -30,6 +30,8 @@ Status: **active**. Supersedes [ROADMAP/2026-10-14/](../2026-10-14/README.md).
 - **Status update (2026-10-31, in place):** H1, the test report format,
   is done (grey). Dates recomputed: M4 on 2027-01-27, M3 on 2027-01-22, M5 on
   2026-12-25, M6 on 2026-12-05; the critical path now starts at H3.
+- **Status update (2026-10-31, in place):** H10, automatic detection, is
+  done (grey). It had slack, so no date moves.
 - **F4** becomes the lab inventory in H2's format: blocked by H2, 3 days
   instead of 5.
 - **Tasks with merged code that were never tried on a real pad are in
@@ -231,7 +233,7 @@ gantt
     section Hardware testing
     H1 Test report format :done, h1, 2026-10-31, 1d
     H2 Controller catalog and lab inventory format :done, h2, 2026-10-31, 1d
-    H10 Automatic detection of the pad, model, mode and transport :h10, after h2, 5d
+    H10 Automatic detection of the pad, model, mode and transport :done, h10, 2026-10-31, 1d
     H3 Test runner and test plans (sans-IO) :crit, h3, after h1 h2 c3 w4, 15d
     H4 Test mode in the web app :crit, h4, after h3 h10, 10d
     H5 Test mode in the desktop app :crit, h5, after h3 h10, 10d
@@ -269,7 +271,7 @@ Zero-slack chains from the baseline to the desktop release (M4):
 1. t0 -> H3 -> H4 -> H6 -> C4 -> D3 -> C8 -> C10 -> A10 -> M4
 2. t0 -> H3 -> H5 -> H6 -> C4 -> D3 -> C8 -> C10 -> A10 -> M4
 
-H9 has 3 days of slack and H10 has 10. The desktop app's own chain
+H9 has 3 days of slack. The desktop app's own chain
 (A5 -> A6 -> A9) has 12 days: the desktop release waits for the library
 (C10). Everything else has slack (see the `Slack` column in each detailed
 file).
@@ -501,7 +503,7 @@ flowchart LR
     classDef done fill:#eee,stroke:#999,color:#666
     class c4,c8,c10,d3,a10,h3,h4,h5,h6,m4 crit
     class c15,c7,w3,a1,a5,a2,a3,a11 active
-    class f1,f2,f3,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,a4,h1,h2,m1,m2 done
+    class f1,f2,f3,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,a4,h1,h2,h10,m1,m2 done
 ```
 
 ## Milestones

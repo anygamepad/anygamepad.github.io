@@ -11,7 +11,8 @@
 //! mapping engine ([`mapping`]) applies the device's profile
 //! ([`db`]) to turn them into the canonical model ([`model`]). The guided
 //! mapping wizard ([`wizard`]) records a device's mapping by asking the
-//! person to use each control in turn.
+//! person to use each control in turn. The test modes find the pad the
+//! person presses among several ([`detect`]).
 //!
 //! # Features
 //!
@@ -26,6 +27,7 @@
 //! report ioctl (`HIDIOCGFEATURE`), which has no safe wrapper.
 #![deny(unsafe_code)]
 
+pub mod detect;
 pub mod mapping;
 #[cfg(feature = "native")]
 pub mod native;

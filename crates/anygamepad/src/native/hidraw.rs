@@ -15,7 +15,7 @@
 //! # Discovery
 //!
 //! As the evdev provider: `/sys/class/hidraw` listed at most once per
-//! [`RESCAN_INTERVAL`](super::linux::RESCAN_INTERVAL), a device reported
+//! [`RESCAN_INTERVAL`], a device reported
 //! once two scans in a row see it (the first scan reports what is already
 //! plugged in) and it can be opened. Nodes that cannot be opened are
 //! counted in [`Provider::inaccessible`]: udev gives no access to hidraw

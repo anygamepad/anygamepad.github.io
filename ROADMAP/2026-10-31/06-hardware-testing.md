@@ -215,7 +215,7 @@ gantt
     H7 Replay tests from test reports :h7, after h3, 7d
     H8 Coverage matrix and compatibility page :h8, after h1 f4, 7d
     H9 Collection campaign (every pad, mode, transport and OS) :h9, after h6, 20d
-    H10 Automatic detection of the pad, model, mode and transport :h10, after h2, 5d
+    H10 Automatic detection of the pad, model, mode and transport :done, h10, 2026-10-31, 1d
 ```
 
 ## Tasks
@@ -231,7 +231,7 @@ gantt
 | H7 | Replay tests from test reports | 7 | H3 | - | 2026-11-15 | 2026-11-22 | 66 |
 | H8 | Coverage matrix and compatibility page | 7 | H1, F4 | - | 2026-11-03 | 2026-11-10 | 78 |
 | H9 | Collection campaign (every pad, mode, transport and OS) | 20 | H6 | C8 | 2026-12-05 | 2026-12-25 | 3 |
-| H10 | Automatic detection of the pad, model, mode and transport | 5 | H2 | H4, H5 | 2026-10-31 | 2026-11-05 | 10 |
+| H10 | Automatic detection of the pad, model, mode and transport | 5 | H2 | H4, H5 | 2026-10-31 | 2026-10-31 | done |
 
 ### H1 — Test report format
 
@@ -461,3 +461,9 @@ identities, return several candidates for a shared identity (`045e:028e`,
 `057e:2009`) with the inventory's models first, fall back to a generic
 type for an unknown identity, pick the pad that is pressed among
 several, and tell a picked mode from a different one on a multi-mode pad.
+
+Status (2026-10-31): done
+(`RECORD/2026-10-31.h10-automatic-detection.completed.md`):
+`anygamepad_db::detect` (`Catalog::identify`, `Catalog::check_choice`,
+`Inventory::proposed_units`, `transports_fit`) and
+`anygamepad::detect::PressedPad`.

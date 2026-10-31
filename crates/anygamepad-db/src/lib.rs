@@ -14,7 +14,8 @@
 //! The [`catalog`] lists controller models as sold, with their modes and
 //! the ways to connect them, and the [`lab`] inventory lists the physical
 //! controllers of a test lab (ADR 0008). Both are embedded at build time
-//! ([`Catalog::embedded`], [`Inventory::embedded`]).
+//! ([`Catalog::embedded`], [`Inventory::embedded`]); [`detect`] tells which
+//! model, mode and unit a connected device is.
 //!
 //! # Features
 //!
@@ -26,6 +27,7 @@
 
 pub mod catalog;
 pub mod database;
+pub mod detect;
 mod embedded;
 mod input;
 pub mod lab;
