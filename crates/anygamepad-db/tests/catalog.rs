@@ -163,7 +163,8 @@ fn schemas_reject_what_the_types_reject() {
 #[test]
 fn readme_examples_are_valid() {
     fn toml_block(path: PathBuf) -> String {
-        let text = std::fs::read_to_string(path).unwrap();
+        // Git may check the file out with CRLF line ends (Windows).
+        let text = std::fs::read_to_string(path).unwrap().replace("\r\n", "\n");
         let start = text.find("```toml\n").unwrap() + "```toml\n".len();
         text[start..][..text[start..].find("```").unwrap()].to_owned()
     }
