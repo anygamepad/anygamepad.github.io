@@ -7,15 +7,19 @@ Status: **active**. Supersedes [ROADMAP/2026-10-14/](../2026-10-14/README.md).
 - **New workstream: hardware testing**
   ([06-hardware-testing.md](06-hardware-testing.md),
   [ADR 0008](../../docs/adr/0008-test-mode-and-test-reports.md)). Owner
-  request (2026-10-31): every app gets a **test mode** in which the person
-  picks the controller, or the kind of controller, to test, its mode and
-  its transport, and gets a **test report** file (a download on the web).
+  request (2026-10-31): every app gets a **test mode** in which the app
+  detects the controller, its model, mode and transport, the person
+  confirms or corrects it from a list (a model or a kind of controller),
+  and gets an **anonymous test report** file (a download on the web).
   The owner collects controllers (several DualSense, Xbox Series,
   DualShock 4, DualShock 3, 8BitDo, GuliKit, GameSir and other brands) and
   tests on Windows, Linux and macOS. The runner, the test plans, the
   controller catalog and the report format live in the library, so new
-  controllers, checks and apps are added once. Tasks H1-H9 and milestone
+  controllers, checks and apps are added once. Tasks H1-H10 and milestone
   M6 (test lab running).
+- **Re-plan (2026-10-31, in place):** automatic detection (new H10, after
+  H2, before H4 and H5, 10 days of slack) and anonymous test reports (H1,
+  ADR 0008), at the owner's request the same day. No milestone moves.
 - **F4** becomes the lab inventory in H2's format: blocked by H2, 3 days
   instead of 5.
 - **Tasks with merged code that were never tried on a real pad are in
@@ -217,9 +221,10 @@ gantt
     section Hardware testing
     H1 Test report format :h1, after p1 t0, 5d
     H2 Controller catalog and lab inventory format :crit, h2, after d1 t0, 7d
+    H10 Automatic detection of the pad, model, mode and transport :h10, after h2, 5d
     H3 Test runner and test plans (sans-IO) :crit, h3, after h1 h2 c3 w4, 15d
-    H4 Test mode in the web app :crit, h4, after h3, 10d
-    H5 Test mode in the desktop app :crit, h5, after h3, 10d
+    H4 Test mode in the web app :crit, h4, after h3 h10, 10d
+    H5 Test mode in the desktop app :crit, h5, after h3 h10, 10d
     H6 First test campaign (closes the implemented tasks) :crit, h6, after h4 h5 f4, 10d
     H7 Replay tests from test reports :h7, after h3, 7d
     H8 Coverage matrix and compatibility page :h8, after h1 f4, 7d
@@ -323,6 +328,7 @@ flowchart LR
         h7[H7]
         h8[H8]
         h9[H9]
+        h10[H10]
     end
     subgraph desktop_app[Desktop app]
         a1[A1]
@@ -460,7 +466,9 @@ flowchart LR
     c3 --> h3
     w4 --> h3
     h3 --> h4
+    h10 --> h4
     h3 --> h5
+    h10 --> h5
     h4 --> h6
     h5 --> h6
     f4 --> h6
@@ -468,6 +476,7 @@ flowchart LR
     h1 --> h8
     f4 --> h8
     h6 --> h9
+    h2 --> h10
     c3 --> m1
     c11 --> m1
     d4 --> m1

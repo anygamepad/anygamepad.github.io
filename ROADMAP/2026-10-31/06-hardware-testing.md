@@ -10,10 +10,11 @@ DualShock 3, 8BitDo, GuliKit, GameSir and other brands and models) and can
 test them on Windows, Linux and macOS. Until now each task was checked by
 hand with its own instructions (an example program, a recording button, a
 checklist in a chat), and the results lived in chat messages. In test mode
-the person picks the controller, its mode and its transport; the app guides
-them through the checks, verifies on its own what it can, asks about what
-only a person can see or feel (vibration, lights), and writes a **test
-report** file (a download on the web).
+the person connects a controller; the app detects which pad it is, its
+model, mode and transport, and the person confirms or corrects it from a
+list. The app then guides them through the checks, verifies on its own what
+it can, asks about what only a person can see or feel (vibration, lights),
+and writes an **anonymous test report** file (a download on the web).
 
 Every app runs the same test runner, the same test plans and writes the
 same report format, all in the library, so a new controller, a new check or
@@ -39,8 +40,9 @@ compatibility matrix (H8), and are the verified data the curated profiles
   each, the transports it offers and the identity expected in each). Generic
   types cover unlisted pads: `generic/xinput`, `generic/playstation`,
   `generic/switch-pro`, `generic/hid`.
-- **Unit**: one physical controller of the lab, with the label its owner
-  gives it (`DS5-02`), its catalog model and notes (edition, colour,
+- **Unit**: one physical controller of the lab, with the code its owner
+  gives it (`DS5-02`: letters, digits and hyphens, at most 16 characters,
+  so it cannot hold a name), its catalog model and notes (edition, colour,
   firmware as a vendor app shows it). The **inventory**
   (`data/lab/inventory.toml`, F4) lists the units and the test machines.
 - **Configuration**: unit × mode × transport (USB cable, Bluetooth, 2.4 GHz
@@ -57,36 +59,99 @@ compatibility matrix (H8), and are the verified data the curated profiles
 ## A test session
 
 1. Open the test mode: a tab in the web tester, a page in the desktop app.
-2. Pick the unit from the inventory (search; the least tested first), or
-   "Not in the inventory": a catalog model or a generic type.
-3. Pick the mode and the transport. The app shows how to put the pad in
-   that mode and connect it, from the catalog.
-4. Connect it. The app picks the device whose identity matches the one the
-   catalog expects for that mode, or lets the person pick; a mismatch is a
-   finding, recorded in the report (a clone, a firmware change, or a catalog
-   to correct).
-5. Pick the plan: **Quick** (about a minute: detection and every control) or
+2. Connect the pad, or press a button on it if it is already connected.
+   The app detects it ([Automatic detection](#automatic-detection)) and
+   proposes what it is: "Sony DualSense · PS5 · Bluetooth · DS5-02?".
+3. Confirm with one press, or correct it from the list: the unit from the
+   inventory (search; the least tested first), or "Not in the inventory":
+   a catalog model or a generic type; then the mode and the transport. The
+   list is also how to start a session before connecting, with the
+   catalog's instructions to put the pad in a mode and connect it. What was
+   detected and what the person confirmed both go into the report; a
+   difference is a finding (a clone, a firmware change, a catalog to
+   correct, or a detection to improve).
+4. Pick the plan: **Quick** (about a minute: detection and every control) or
    **Full** (about five: also sticks and triggers, rate, motion, touchpad,
    battery, outputs, hotplug). Suites can be left out.
-6. One step at a time, with the drawing highlighting the control ("Press
+5. One step at a time, with the drawing highlighting the control ("Press
    Cross"). Automatic checks pass or fail by themselves. "Not on this pad"
    and "Skip" work from the pad (the wizard's chord) and from the screen;
    yes/no questions are answered on the pad too, so the hands stay on it.
    Back and pause.
-7. Summary: passed, failed, skipped and findings, with a free note. Save:
-   a file on the desktop, IndexedDB plus a download on the web.
-8. Next: the app suggests the next configuration of the same unit that is
+6. Summary: passed, failed, skipped and findings, with a free note. Review
+   and save: the app shows every text the report holds
+   ([Anonymous reports](#anonymous-reports)), then writes a file on the
+   desktop, or keeps it in IndexedDB and downloads it on the web.
+7. Next: the app suggests the next configuration of the same unit that is
    untested in this environment (H8's coverage), so going through every mode
-   and transport of a pad needs no bookkeeping.
+   and transport of a pad needs no bookkeeping. Plugging in another pad
+   starts at step 2 again.
 
 A session is saved as it runs, so a closed tab or a crash loses at most
 the current step.
+
+## Automatic detection
+
+The list stays, as the way to correct the app and to start before
+connecting, but the app proposes everything it can tell by itself (H10):
+
+- **Which device.** With one pad connected, that one. With several, the
+  app asks to press a button on the pad to test and takes the first one
+  that answers. In test mode, a pad that connects is offered for a session
+  straight away, so a collector can test one pad after another.
+- **Which model and mode.** A catalog lookup in the library matches the
+  identity the provider gives (VID/PID, product name, HID descriptor hash,
+  driver, the browser's `id`) with the identities the catalog expects for
+  each model and mode, and returns candidates, most likely first:
+  - one candidate (a DualSense is `054c:0ce6` and has one mode): proposed,
+    one press confirms it;
+  - several (an 8BitDo pad in XInput mode shows as `045e:028e`, like an
+    Xbox 360 controller; many pads in Switch mode show as `057e:2009`):
+    the models of the inventory first, the person picks once;
+  - none (an identity the catalog does not know): the generic type of its
+    family (XInput, PlayStation, Switch Pro, HID) is proposed, and the
+    report keeps what was seen, so the catalog can learn it.
+- **Which transport.** From the provider (evdev's bus type, the report
+  sizes over WebHID). The Gamepad API does not tell, so there the app asks
+  once, and remembers the answer for that pad while it stays connected.
+- **Which unit.** Two pads of the same model cannot be told apart without
+  their serial numbers, which anygamepad never reads. With one unit of that
+  model in the inventory, it is proposed; with several, the one picked last
+  for that model on this machine comes first.
+
+Detection is itself under test: every report says what the app proposed
+and what the person confirmed, so the coverage matrix (H8) shows how often
+detection is right per model and mode, and the mismatches are the data C8
+needs. When C8 improves the lookup (descriptor fingerprints, feature report
+probing), the test mode uses it with no change of its own.
+
+## Anonymous reports
+
+A test report is anonymous by construction: there is one form of it, and
+it never identifies the person, their machine or a physical pad beyond the
+unit code they chose (H1, ADR 0008). What a person might want to keep
+private stays in the app's local store, outside the report.
+
+| Data | In the report |
+|------|---------------|
+| Serial numbers, Bluetooth MAC addresses, device paths, user and host names, IP addresses | Never: identities exclude them by construction, and every reader rejects a report that looks like it holds one (P1's checks) |
+| Input reports that answer identity requests (Nintendo subcommand and USB command replies hold the Bluetooth address) | Never, including in the evidence |
+| When | The day (UTC), never the time |
+| Which unit | Its code (`DS5-02`), never free text |
+| Which machine | OS, version numbers (a Linux kernel release cut to its numbers: custom kernels can put any text after them), browser and API; not the machine's label |
+| The device's name | As reported, unless it is a name the person gave the pad: macOS and Windows let people rename Bluetooth devices, and some APIs can report that name. A name the catalog does not know for that model is shown in the review: keep it (a clone's own name is useful data) or replace it with the catalog's |
+| Notes | Only if the person leaves them in after the review |
+| Input | Only during each step's window: nothing is recorded outside the steps |
+
+Before a report is saved, the app shows every text it holds, as the
+device report's share view does (W6, A3). What anonymity cannot hide: the
+GitHub account that commits or posts a report.
 
 ## Checks (first set)
 
 | Suite | Check | How | What it proves |
 |-------|-------|-----|----------------|
-| Detection | The device appears; its identity (VID/PID, name, family) matches the catalog for the mode; transport; profile or decoder chosen | automatic | Identification (C2, C8, D3) |
+| Detection | The device appears; what automatic detection proposed (model, mode, transport, unit) against what the person confirmed; its identity (VID/PID, name, family) against the catalog's for that mode; profile or decoder chosen | automatic | Identification and detection (C2, C8, D3, H10) |
 | Controls | Each control of the model in turn: the canonical state shows exactly the expected control. A failure records which raw element answered, so a failed run also yields the right mapping | automatic | Mapping, profiles, decoders (C3, C15, C7, D3) |
 | Sticks | Rest (noise, drift, centre), a full circle (range per direction, circularity), clicks | automatic, with tolerances | Calibration, ranges |
 | Triggers | Rest and a full pull (0 to 1); digital-only triggers flagged | automatic | Ranges |
@@ -119,12 +184,13 @@ gantt
     H1 Test report format :h1, after p1 t0, 5d
     H2 Controller catalog and lab inventory format :crit, h2, after d1 t0, 7d
     H3 Test runner and test plans (sans-IO) :crit, h3, after h1 h2 c3 w4, 15d
-    H4 Test mode in the web app :crit, h4, after h3, 10d
-    H5 Test mode in the desktop app :crit, h5, after h3, 10d
+    H4 Test mode in the web app :crit, h4, after h3 h10, 10d
+    H5 Test mode in the desktop app :crit, h5, after h3 h10, 10d
     H6 First test campaign (closes the implemented tasks) :crit, h6, after h4 h5 f4, 10d
     H7 Replay tests from test reports :h7, after h3, 7d
     H8 Coverage matrix and compatibility page :h8, after h1 f4, 7d
     H9 Collection campaign (every pad, mode, transport and OS) :h9, after h6, 20d
+    H10 Automatic detection of the pad, model, mode and transport :h10, after h2, 5d
 ```
 
 ## Tasks
@@ -132,14 +198,15 @@ gantt
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
 | H1 | Test report format | 5 | P1 | P4, H3, H8 | 2026-10-31 | 2026-11-05 | 2 |
-| H2 | **Controller catalog and lab inventory format** | 7 | D1 | F4, H3 | 2026-10-31 | 2026-11-07 | 0 |
+| H2 | **Controller catalog and lab inventory format** | 7 | D1 | F4, H3, H10 | 2026-10-31 | 2026-11-07 | 0 |
 | H3 | **Test runner and test plans (sans-IO)** | 15 | H1, H2, C3, W4 | H4, H5, H7 | 2026-11-07 | 2026-11-22 | 0 |
-| H4 | **Test mode in the web app** | 10 | H3 | H6 | 2026-11-22 | 2026-12-02 | 0 |
-| H5 | **Test mode in the desktop app** | 10 | H3 | H6 | 2026-11-22 | 2026-12-02 | 0 |
+| H4 | **Test mode in the web app** | 10 | H3, H10 | H6 | 2026-11-22 | 2026-12-02 | 0 |
+| H5 | **Test mode in the desktop app** | 10 | H3, H10 | H6 | 2026-11-22 | 2026-12-02 | 0 |
 | H6 | **First test campaign (closes the implemented tasks)** | 10 | H4, H5, F4 | C4, C15, D3, W3, A1, H9, M6 | 2026-12-02 | 2026-12-12 | 0 |
 | H7 | Replay tests from test reports | 7 | H3 | - | 2026-11-22 | 2026-11-29 | 66 |
 | H8 | Coverage matrix and compatibility page | 7 | H1, F4 | - | 2026-11-10 | 2026-11-17 | 78 |
 | H9 | Collection campaign (every pad, mode, transport and OS) | 20 | H6 | C8 | 2026-12-12 | 2027-01-01 | 3 |
+| H10 | Automatic detection of the pad, model, mode and transport | 5 | H2 | H4, H5 | 2026-11-07 | 2026-11-12 | 10 |
 
 ### H1 — Test report format
 
@@ -149,8 +216,9 @@ Rust code in every app (WebAssembly on the web):
 
 - **Environment**: app, app and library versions, OS and release, browser,
   API or provider.
-- **Configuration**: unit label, catalog model, mode, transport, the
-  person's notes.
+- **Configuration**: unit code, catalog model, mode, transport, as the
+  person confirmed them, and what automatic detection proposed (H10); the
+  person's notes if they keep them.
 - **Device under test**: the device report (P1) of what the app saw:
   identity and fingerprint, raw layout, HID data. Test reports reuse its
   scrubbing and validation.
@@ -162,9 +230,15 @@ Rust code in every app (WebAssembly on the web):
   capped per step, so every step's recording comes with what the person was
   asked to do.
 
-No serial numbers, Bluetooth MAC addresses, times of day or other personal
-data (AGENTS.md); unit labels are names for pads, and the format says so.
-Reports are files, not issue bodies: their size budget (a few MB, the
+Anonymous by construction ([Anonymous reports](#anonymous-reports)): no
+serial numbers, Bluetooth MAC addresses, device paths, times of day or
+other personal data (AGENTS.md); unit codes restricted to letters, digits
+and hyphens (16 characters at most); OS versions cut to their numbers; no
+identifying input reports in the evidence (P1's list); notes only when
+kept after the review. The review data (every text of the report, device
+names the catalog does not know for the model) is computed by the library
+so every app shows the same. Reports are files, not issue bodies: their
+size budget (a few MB, the
 evidence caps set from measurements of a DualSense over USB) is H1's to
 fix. File name:
 `<unit or model>-<mode>-<transport>-<os>-<app>-<api>-<YYYY-MM-DD>-<n>.json`.
@@ -172,7 +246,8 @@ A JSON Schema is generated, as for device reports.
 
 **Done when:** the types, the JSON Schema and an example are in the
 repository, a report round-trips through JSON, and validation rejects
-identifiers in every free-text field.
+identifiers in every free-text field, a unit code that is not a code, a
+full kernel release and an identifying input report in the evidence.
 
 ### H2 — Controller catalog and lab inventory format
 
@@ -185,7 +260,7 @@ identifiers in every free-text field.
   types of [Concepts](#concepts). A catalog model is what a person can buy;
   a device profile (D1) is how to map an identity: models point to the
   profiles that match their modes.
-- **Inventory**, `data/lab/inventory.toml`: units (label, model, notes)
+- **Inventory**, `data/lab/inventory.toml`: units (code, model, notes)
   and machines (label, OS and release, browsers).
 - Rust types in `anygamepad-db`, JSON Schemas, validation in CI (every
   model referenced exists, every mode has a transport), and both embedded
@@ -228,7 +303,10 @@ validate.
 A "Test" tab in the web tester: the session of
 [A test session](#a-test-session) on the Gamepad API and on WebHID (decoded
 PlayStation pads, and raw HID pads as H3 can read them), with the
-drawings of W8 highlighting each step. Sessions and reports are kept in
+drawings of W8 highlighting each step. It starts from automatic detection
+(H10): a pad that connects, or the one whose button is pressed, is
+proposed with its model, mode and transport; the list corrects it. Before
+saving, the review shows every text of the report. Sessions and reports are kept in
 IndexedDB (store `test-reports`, ADR 0007's rules) and downloaded as
 files; nothing is shared by itself. Works in Chromium, Firefox and Safari
 (WebHID in Chromium only), on Windows, Linux and macOS.
@@ -240,7 +318,8 @@ Chromium, Firefox and WebKit, and downloads a report that validates.
 ### H5 — Test mode in the desktop app
 
 A "Test" page in the desktop app (A1's shell, A2's device worker): the
-same session on Linux with the evdev and hidraw providers (C4), and on
+same session, starting from automatic detection (H10) and ending with the
+review, on Linux with the evdev and hidraw providers (C4), and on
 Windows and macOS once their backends exist (C5, C6). Reports are written
 to `test-reports/` in the app's data directory (next to A3's `reports/`).
 Adds the **virtual output** suite (A5): for each target, the app creates
@@ -313,3 +392,28 @@ this roadmap: every new controller in the collection gets a session.
 **Done when:** D3's list has a passing Full session per mode and
 transport on Linux and in Chromium on each OS, and the rest of the
 inventory a Quick session in at least one environment.
+
+### H10 — Automatic detection
+
+The [Automatic detection](#automatic-detection) of the test mode, in the
+library so every app proposes the same:
+
+- `Catalog::identify`: from a provider's identity, the catalog models and
+  modes it can be, most likely first, with what matched (VID/PID, name,
+  descriptor hash, driver, browser `id`); the generic type of its family
+  when nothing matches.
+- The transport from what the provider tells (bus type, WebHID report
+  sizes), or "ask" when it cannot (Gamepad API).
+- The unit: the inventory's units of the proposed model, the one last
+  picked on this machine first (kept in the app's local settings, never in
+  a report).
+- "The pad whose button is pressed": the first device that leaves its
+  rest state, with the wizard's detection rules (W4).
+
+C8 later replaces the matching with its heuristics behind the same call.
+
+**Done when:** tests identify every catalog entry from its expected
+identities, return several candidates for a shared identity (`045e:028e`,
+`057e:2009`) with the inventory's models first, fall back to a generic
+type for an unknown identity, and pick the pad that is pressed among
+several.

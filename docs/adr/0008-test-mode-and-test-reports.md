@@ -2,7 +2,7 @@
 
 - Status: proposed (2026-10-31)
 - Date: 2026-10-31
-- Roadmap: H1-H9, F4, D3, C8, P4 (ROADMAP/2026-10-31/)
+- Roadmap: H1-H10, F4, D3, C8, P4 (ROADMAP/2026-10-31/)
 
 ## Context
 
@@ -27,7 +27,9 @@ GitHub issue body (60,000 bytes).
 The owner asked on 2026-10-31 for a test mode in every app: the person
 picks the controller or the kind of controller, and the app writes a
 report file (a download on the web), in a way that is robust, comfortable
-and extensible.
+and extensible. The same day the owner added that the app should also
+detect the controller by itself, besides the list, and that the reports
+should be anonymous.
 
 ## Decision
 
@@ -55,7 +57,8 @@ and extensible.
 4. **A test report is its own document** (`anygamepad-test-report`, H1)
    that embeds the device report (P1) of the device under test, and adds the
    configuration the person set (unit, catalog model, mode, transport: the
-   ground truth), the environment (OS, app, API or provider), the plan, a
+   ground truth) and what automatic detection proposed, the environment
+   (OS, app, API or provider), the plan, a
    result per step (status, expected, observed, measurements) and the
    evidence (the input of each step's window, as raw states and, where the
    API reads HID, input reports). It follows the device report's privacy
@@ -67,7 +70,29 @@ and extensible.
    reports in IndexedDB (store `test-reports`) and downloads them. Nothing
    leaves by itself (ADR 0007). The reports the owner chooses are
    committed to `data/test-reports/`, under CC0 like device reports.
-6. **What test reports are for:** closing tasks (the first test campaign,
+6. **Automatic detection, the list to correct it** (H10). The library
+   proposes the device (the only one connected, or the one whose button is
+   pressed), its model and mode (a catalog lookup on the provider's
+   identity, candidates most likely first, a generic type when nothing
+   matches), its transport (from the provider, asked when the API does not
+   tell) and the unit (the inventory's units of that model). The person
+   confirms with one press or corrects from the list. Units of one model
+   are told apart by the person, not by serial numbers, which are never
+   read. Both the proposal and the confirmation go into the report, so
+   detection is measured like any other check, and C8 later improves the
+   lookup behind the same call.
+7. **Anonymous by construction.** A test report has one form, and it never
+   identifies the person, their machine or a pad beyond the unit code they
+   chose: the device report's rules (no serial numbers, MAC addresses,
+   device paths, personal data; identifying input reports never sampled,
+   in the evidence too), no time of day, unit codes restricted to letters,
+   digits and hyphens, OS versions cut to their numbers, input recorded
+   only during the steps, notes only when kept. Device names the catalog
+   does not know for the model (a person can rename a Bluetooth pad) are
+   shown in a review of every text before saving, computed by the library.
+   What is private but useful (what the codes mean, which machine, the
+   last unit picked) stays in the app's local store.
+8. **What test reports are for:** closing tasks (the first test campaign,
    H6), regression tests that replay committed reports in CI (H7), a
    coverage matrix and a public compatibility page (H8), profiles marked
    verified by the reports that pass them (D3), mode and clone detection
@@ -90,6 +115,14 @@ and extensible.
   page, and edited without touching the runner.
 - **Device reports only, matched to a separate spreadsheet of results.**
   No ground truth tied to the input, nothing to replay.
+- **Choosing the controller only from a list.** Simple, but slow over a
+  collection, and it never tests detection itself.
+- **Telling units apart by serial number or Bluetooth address**, which
+  many pads expose. Automatic, but both are personal data (AGENTS.md); a
+  code the person gives is enough.
+- **Two forms of report, full and anonymized.** A full form would exist on
+  disk and could be shared by mistake; with one anonymous form there is
+  nothing to anonymize afterwards.
 - **A local-only inventory and reports.** More private; but the coverage
   matrix, the compatibility page and the replay tests need them in the
   repository. The import keeps the local way open (see Consequences).
@@ -106,9 +139,12 @@ and extensible.
   and choosing which reports to commit keep it small. If it still grows
   too much, the evidence can move to release assets.
 - Committing the inventory and the owner's test reports makes the list of
-  the owner's controllers public; the owner can keep the inventory local
-  (imported in the apps) instead, and the compatibility page then lists
-  models only.
+  the owner's controllers public, as models and unit codes; the reports
+  themselves say nothing about the person. The owner can keep the
+  inventory local (imported in the apps) instead, and the compatibility
+  page then lists models only.
+- Detection accuracy per model and mode becomes visible in the coverage
+  matrix (H8): the measure C8 has to improve.
 - The catalog becomes where knowledge about modes lives (how to switch,
   what each mode looks like), which the compatibility page shows to users.
 - Any later app or provider joins by feeding the runner; its reports need
