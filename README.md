@@ -6,7 +6,7 @@ Gamepad input normalization: one canonical gamepad model for every controller,
 mode, transport and operating system.
 
 - Web app: <https://anygamepad.github.io> (not live yet)
-- Plan: [ROADMAP/2026-10-14/](ROADMAP/2026-10-14/README.md)
+- Plan: [ROADMAP/2026-10-31/](ROADMAP/2026-10-31/README.md)
 - Privacy: <https://anygamepad.github.io/privacy/> (maintainer side:
   [docs/privacy/](docs/privacy/README.md))
 - Contributor and agent rules: [AGENTS.md](AGENTS.md)
