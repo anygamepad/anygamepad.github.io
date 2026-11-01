@@ -1,0 +1,660 @@
+//! The test mode's bindings (roadmap task H4, ADR 0008): the controller
+//! catalog, the lab inventory and the test plans for the page's lists,
+//! automatic detection (`Gamepads.identify()`, `HidDevices.identify()`,
+//! `checkChoice()`), and `TestSession`, the library's test runner
+//! (`anygamepad::testing`) fed by `Gamepads.feedTest()` or
+//! `HidDevices.feedTest()` once a frame.
+
+use std::collections::BTreeMap;
+
+use anygamepad::db::detect::{ChoiceCheck, Identification};
+use anygamepad::db::lab::Code;
+use anygamepad::db::plan::Side;
+use anygamepad::db::{Catalog, Inventory, TestPlan};
+use anygamepad::model::identity::DeviceIdentity;
+use anygamepad::model::{Button, ControllerMode, FaceLayout, Family, Output, OutputSet, Transport};
+use anygamepad::testing::{Prompt, Session, SessionSetup};
+use anygamepad_report::Report;
+use anygamepad_report::test_report::{
+    Answer, Concern, Configuration, Selection, SessionStart, StepStatus,
+};
+use serde::{Deserialize, Serialize};
+use tsify::Tsify;
+use wasm_bindgen::prelude::*;
+
+use crate::gamepads::to_js;
+
+/// A catalog model, for the page's list.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct CatalogModel {
+    /// `<vendor>/<model>` (`sony/dualsense`).
+    pub id: String,
+    /// The maker, as printed on the box.
+    pub vendor: String,
+    /// The product name, as printed on the box.
+    pub name: String,
+    /// Whether it stands for every pad of a kind the catalog does not list.
+    pub generic: bool,
+    /// The family it is drawn as.
+    pub family: Option<Family>,
+    /// What is printed on its face buttons.
+    pub face_layout: FaceLayout,
+    /// Anything else worth knowing.
+    pub notes: Option<String>,
+    /// Its modes.
+    pub modes: Vec<CatalogMode>,
+}
+
+/// A mode of a catalog model.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct CatalogMode {
+    /// Unique in the model (`ps5`).
+    pub id: String,
+    /// As printed or told in the manual (`PS5`).
+    pub name: String,
+    /// What it imitates.
+    pub kind: ControllerMode,
+    /// How to put the pad in this mode.
+    pub how_to: Option<String>,
+    /// The ways to connect it in this mode.
+    pub connections: Vec<CatalogConnection>,
+}
+
+/// One way to connect a pad in one mode.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct CatalogConnection {
+    /// The transport.
+    pub transport: Transport,
+    /// How to connect over it.
+    pub how_to: Option<String>,
+    /// Whether the catalog knows the identity a pad connected this way
+    /// shows, so the app can check it.
+    pub known: bool,
+}
+
+/// A unit of the lab inventory.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct LabUnit {
+    /// Its code (`DS5-02`).
+    pub code: String,
+    /// The ID of its catalog model.
+    pub model: String,
+    /// Edition, colour, firmware.
+    pub notes: Option<String>,
+}
+
+/// A test plan, for the page's choice.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct PlanInfo {
+    /// Its ID (`quick`).
+    pub id: String,
+    /// Its name (`Quick`).
+    pub name: String,
+    /// What it covers and how long it takes.
+    pub description: String,
+    /// Its version.
+    pub version: u32,
+}
+
+/// The models of the embedded catalog, generic ones last.
+#[wasm_bindgen(js_name = catalogModels, unchecked_return_type = "CatalogModel[]")]
+pub fn catalog_models() -> Result<JsValue, JsError> {
+    let mut models: Vec<CatalogModel> = Catalog::embedded()
+        .models()
+        .iter()
+        .map(|model| CatalogModel {
+            id: model.id.clone(),
+            vendor: model.vendor.clone(),
+            name: model.name.clone(),
+            generic: model.generic,
+            family: model.family,
+            face_layout: model.face_layout(),
+            notes: model.notes.clone(),
+            modes: model
+                .modes
+                .iter()
+                .map(|mode| CatalogMode {
+                    id: mode.id.clone(),
+                    name: mode.name.clone(),
+                    kind: mode.kind,
+                    how_to: mode.how_to.clone(),
+                    connections: mode
+                        .connections
+                        .iter()
+                        .map(|connection| CatalogConnection {
+                            transport: connection.transport,
+                            how_to: connection.how_to.clone(),
+                            known: !connection.identities.is_empty(),
+                        })
+                        .collect(),
+                })
+                .collect(),
+        })
+        .collect();
+    models.sort_by_key(|model| model.generic);
+    to_js(&models)
+}
+
+/// The units of the embedded lab inventory, in inventory order.
+#[wasm_bindgen(js_name = labUnits, unchecked_return_type = "LabUnit[]")]
+pub fn lab_units() -> Result<JsValue, JsError> {
+    let units: Vec<LabUnit> = Inventory::embedded()
+        .units
+        .iter()
+        .map(|unit| LabUnit {
+            code: unit.code.to_string(),
+            model: unit.model.clone(),
+            notes: unit.notes.clone(),
+        })
+        .collect();
+    to_js(&units)
+}
+
+/// The embedded test plans.
+#[wasm_bindgen(js_name = testPlans, unchecked_return_type = "PlanInfo[]")]
+pub fn test_plans() -> Result<JsValue, JsError> {
+    let plans: Vec<PlanInfo> = TestPlan::embedded()
+        .iter()
+        .map(|plan| PlanInfo {
+            id: plan.id.clone(),
+            name: plan.name.clone(),
+            description: plan.description.clone(),
+            version: plan.version,
+        })
+        .collect();
+    to_js(&plans)
+}
+
+/// One thing a connected device can be.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct DetectedCandidate {
+    /// The catalog model ID.
+    pub model: String,
+    /// The model's mode ID.
+    pub mode: String,
+    /// What the mode imitates.
+    pub kind: ControllerMode,
+    /// The transport; `undefined` when the person must say.
+    pub transport: Option<Transport>,
+    /// Conditions of the catalog identity that matched; 0 for a generic
+    /// model.
+    pub specificity: u32,
+    /// The inventory's units of this model, in inventory order.
+    pub units: Vec<String>,
+}
+
+/// What a connected device can be, most likely first.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct Detection {
+    /// The candidates.
+    pub candidates: Vec<DetectedCandidate>,
+    /// Whether no model matched and the candidate is a generic model.
+    pub generic: bool,
+}
+
+impl From<Identification<'_>> for Detection {
+    fn from(identification: Identification<'_>) -> Self {
+        let inventory = Inventory::embedded();
+        Self {
+            candidates: identification
+                .candidates
+                .iter()
+                .map(|candidate| DetectedCandidate {
+                    model: candidate.model.id.clone(),
+                    mode: candidate.mode.id.clone(),
+                    kind: candidate.mode.kind,
+                    transport: candidate.transport,
+                    specificity: candidate.specificity,
+                    units: inventory
+                        .units_of(&candidate.model.id)
+                        .map(|unit| unit.code.to_string())
+                        .collect(),
+                })
+                .collect(),
+            generic: identification.generic,
+        }
+    }
+}
+
+/// Whether a picked model, mode and transport fits a connected device.
+#[derive(Clone, Debug, Serialize, Tsify)]
+#[serde(tag = "result", rename_all = "snake_case")]
+pub enum ChoiceResult {
+    /// The device shows an identity the catalog expects for the choice.
+    Matches,
+    /// The catalog has no identity for the choice yet: nothing to compare.
+    NotKnown,
+    /// The device shows something else.
+    Differs {
+        /// What it looks like instead.
+        seen: Detection,
+    },
+    /// The catalog has no such model or mode.
+    NoSuchChoice,
+}
+
+/// What `identity` can be.
+pub(crate) fn detect(identity: &DeviceIdentity) -> Detection {
+    Catalog::embedded()
+        .identify(identity, Some(Inventory::embedded()))
+        .into()
+}
+
+/// Whether `identity` is the model, mode and transport picked.
+pub(crate) fn check_choice(
+    identity: &DeviceIdentity,
+    model: &str,
+    mode: &str,
+    transport: Transport,
+) -> ChoiceResult {
+    match Catalog::embedded().check_choice(
+        identity,
+        model,
+        mode,
+        transport,
+        Some(Inventory::embedded()),
+    ) {
+        ChoiceCheck::Matches => ChoiceResult::Matches,
+        ChoiceCheck::NotKnown => ChoiceResult::NotKnown,
+        ChoiceCheck::Differs(seen) => ChoiceResult::Differs { seen: seen.into() },
+        ChoiceCheck::NoSuchChoice => ChoiceResult::NoSuchChoice,
+    }
+}
+
+/// A controller in one mode over one transport, as the page gives it.
+#[derive(Clone, Debug, Deserialize, Tsify)]
+pub struct TestSelection {
+    /// The catalog model ID.
+    pub model: String,
+    /// The model's mode ID.
+    pub mode: String,
+    /// The transport.
+    pub transport: Transport,
+    /// The unit's code, if the pad is in the inventory.
+    #[serde(default)]
+    pub unit: Option<String>,
+}
+
+/// How a session starts, as the page gives it.
+#[derive(Clone, Debug, Deserialize, Tsify)]
+pub struct TestSetup {
+    /// The plan's ID (`quick`, `full`).
+    pub plan: String,
+    /// `list` when the person picked the controller first, `connecting`
+    /// when they connected it without picking.
+    pub start: String,
+    /// What the person confirmed or picked.
+    pub confirmed: TestSelection,
+    /// What detection proposed.
+    #[serde(default)]
+    pub detected: Option<TestSelection>,
+}
+
+fn selection(selection: TestSelection) -> Result<Selection, JsError> {
+    let model = Catalog::embedded()
+        .get(&selection.model)
+        .ok_or_else(|| JsError::new(&format!("no catalog model `{}`", selection.model)))?;
+    let mode = model
+        .mode(&selection.mode)
+        .ok_or_else(|| JsError::new(&format!("`{}` has no mode `{}`", model.id, selection.mode)))?;
+    let unit = selection
+        .unit
+        .map(|code| Code::new(&code).map_err(|error| JsError::new(&error.to_string())))
+        .transpose()?;
+    Ok(Selection {
+        unit,
+        model: model.id.clone(),
+        mode: mode.id.clone(),
+        kind: mode.kind,
+        transport: selection.transport,
+    })
+}
+
+/// A test session on `device`, whose first view is the API the page reads
+/// the pad through.
+pub(crate) fn start(
+    setup: JsValue,
+    device: Report,
+    outputs: OutputSet,
+    hid: bool,
+) -> Result<TestSession, JsError> {
+    let setup: TestSetup =
+        serde_wasm_bindgen::from_value(setup).map_err(|error| JsError::new(&error.to_string()))?;
+    let plan = TestPlan::get(&setup.plan)
+        .ok_or_else(|| JsError::new(&format!("no test plan `{}`", setup.plan)))?
+        .clone();
+    let start = match setup.start.as_str() {
+        "list" => SessionStart::List,
+        "connecting" => SessionStart::Connecting,
+        other => return Err(JsError::new(&format!("unknown start `{other}`"))),
+    };
+    let confirmed = selection(setup.confirmed)?;
+    let detected = setup.detected.map(selection).transpose()?;
+    let model = Catalog::embedded()
+        .get(&confirmed.model)
+        .expect("checked by `selection`")
+        .clone();
+    let session = Session::new(SessionSetup {
+        plan,
+        model,
+        configuration: Configuration {
+            start,
+            confirmed,
+            detected,
+        },
+        device,
+        outputs,
+        hid,
+    })
+    .map_err(|error| JsError::new(&error.to_string()))?;
+    Ok(TestSession { session })
+}
+
+/// What the person is asked to do.
+#[derive(Clone, Copy, Debug, Serialize, Tsify)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum PromptView {
+    /// Nothing yet.
+    Wait,
+    /// Let go of the pad.
+    Release,
+    /// Press and release a button.
+    Press {
+        /// Which.
+        button: Button,
+    },
+    /// Leave the sticks alone.
+    LeaveSticks,
+    /// Turn a stick around its edge.
+    Circle {
+        /// `left` or `right`.
+        side: &'static str,
+    },
+    /// Pull a trigger all the way.
+    Pull {
+        /// `left` or `right`.
+        side: &'static str,
+    },
+    /// Move both sticks around.
+    MoveSticks,
+    /// Lay the pad flat, face up.
+    PutDown,
+    /// Turn the pad to the left.
+    TurnLeft,
+    /// Touch the touchpad's corners, then two fingers.
+    Touch {
+        /// Top left, top right, bottom left, bottom right.
+        corners: [bool; 4],
+        /// Whether two fingers were seen.
+        two_fingers: bool,
+    },
+    /// The app is driving an output.
+    Watch {
+        /// Which.
+        output: Output,
+    },
+    /// Did the output work?
+    Ask {
+        /// Which.
+        output: Output,
+    },
+    /// Unplug the pad or turn it off.
+    Unplug,
+    /// Connect it again.
+    Reconnect,
+    /// Every step ran.
+    Done,
+}
+
+fn side(side: Side) -> &'static str {
+    side.as_str()
+}
+
+impl From<Prompt> for PromptView {
+    fn from(prompt: Prompt) -> Self {
+        match prompt {
+            Prompt::Release => Self::Release,
+            Prompt::Press(button) => Self::Press { button },
+            Prompt::LeaveSticks => Self::LeaveSticks,
+            Prompt::Circle(s) => Self::Circle { side: side(s) },
+            Prompt::Pull(s) => Self::Pull { side: side(s) },
+            Prompt::MoveSticks => Self::MoveSticks,
+            Prompt::PutDown => Self::PutDown,
+            Prompt::TurnLeft => Self::TurnLeft,
+            Prompt::Touch {
+                corners,
+                two_fingers,
+            } => Self::Touch {
+                corners,
+                two_fingers,
+            },
+            Prompt::Watch(output) => Self::Watch { output },
+            Prompt::Ask(output) => Self::Ask { output },
+            Prompt::Unplug => Self::Unplug,
+            Prompt::Reconnect => Self::Reconnect,
+            Prompt::Done => Self::Done,
+            _ => Self::Wait,
+        }
+    }
+}
+
+/// Where a session is.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct TestStatus {
+    /// The current step, from 0; `total` when done.
+    pub step: usize,
+    /// Steps in the session.
+    pub total: usize,
+    /// The current step's ID.
+    pub step_id: Option<String>,
+    /// What the person is asked to do.
+    pub prompt: PromptView,
+    /// The prompt in English, face buttons named as printed.
+    pub text: String,
+}
+
+/// A step's result, for the page's summary.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct TestResultView {
+    /// The step's ID.
+    pub step: String,
+    /// The kind of check.
+    pub check: String,
+    /// `pass`, `fail`, `skipped`, `not_applicable` or `error`.
+    pub status: &'static str,
+    /// What was expected.
+    pub expected: Option<String>,
+    /// What was observed.
+    pub observed: Option<String>,
+    /// Measurements by name.
+    pub measurements: BTreeMap<String, f64>,
+}
+
+/// How many steps ended each way.
+#[derive(Clone, Copy, Debug, Serialize, Tsify)]
+pub struct TestSummary {
+    /// Passed.
+    pub pass: usize,
+    /// Failed.
+    pub fail: usize,
+    /// Skipped.
+    pub skipped: usize,
+    /// Did not apply.
+    pub not_applicable: usize,
+    /// Could not run.
+    pub error: usize,
+}
+
+/// A text of the report, for the review before saving.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct ReviewText {
+    /// The field, as a path into the report.
+    pub field: String,
+    /// The text.
+    pub text: String,
+    /// Why it deserves a look: `unknown_device_name` when the catalog does
+    /// not know it for the model (a pad renamed by its owner, or a clone's
+    /// own name).
+    pub concern: Option<&'static str>,
+}
+
+/// The finished report and what the page shows of it.
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct TestOutcome {
+    /// The anonymous test report as indented JSON (`anygamepad-test-report`).
+    pub json: String,
+    /// Its file name.
+    pub file_name: String,
+    /// How many steps ended each way.
+    pub summary: TestSummary,
+    /// Every text the report holds.
+    pub review: Vec<ReviewText>,
+}
+
+const fn status_name(status: StepStatus) -> &'static str {
+    match status {
+        StepStatus::Pass => "pass",
+        StepStatus::Fail => "fail",
+        StepStatus::Skipped => "skipped",
+        StepStatus::NotApplicable => "not_applicable",
+        StepStatus::Error => "error",
+    }
+}
+
+/// A test mode session: the library's test runner on one pad. Start it
+/// with `Gamepads.startTest()` or `HidDevices.startTest()`, feed it once a
+/// frame with `feedTest()`, show `status()`, and pass on what the person
+/// says.
+#[wasm_bindgen]
+pub struct TestSession {
+    pub(crate) session: Session,
+}
+
+#[wasm_bindgen]
+impl TestSession {
+    /// Where the session is and what the person is asked to do.
+    #[wasm_bindgen(unchecked_return_type = "TestStatus")]
+    pub fn status(&self) -> Result<JsValue, JsError> {
+        let status = self.session.status();
+        to_js(&TestStatus {
+            step: status.step,
+            total: status.total,
+            step_id: status.step_id,
+            prompt: status.prompt.into(),
+            text: status.prompt.text(self.session.face_layout()),
+        })
+    }
+
+    /// Whether every step ran.
+    #[wasm_bindgen(js_name = isDone)]
+    pub fn is_done(&self) -> bool {
+        self.session.is_done()
+    }
+
+    /// The person's answer to the current question: `yes`, `no` or
+    /// `not_sure`.
+    pub fn answer(&mut self, answer: &str, now: f64) -> Result<(), JsError> {
+        let answer = match answer {
+            "yes" => Answer::Yes,
+            "no" => Answer::No,
+            "not_sure" => Answer::NotSure,
+            other => return Err(JsError::new(&format!("unknown answer `{other}`"))),
+        };
+        self.session.answer(answer, now);
+        Ok(())
+    }
+
+    /// Skips the current step.
+    pub fn skip(&mut self, now: f64) {
+        self.session.skip(now);
+    }
+
+    /// The pad does not have what the current step asks for.
+    #[wasm_bindgen(js_name = notOnThisPad)]
+    pub fn not_on_this_pad(&mut self, now: f64) {
+        self.session.not_on_this_pad(now);
+    }
+
+    /// Repeats the current output test.
+    pub fn repeat(&mut self, now: f64) {
+        self.session.repeat(now);
+    }
+
+    /// The pad went away (unplugged, turned off).
+    pub fn removed(&mut self, now: f64) {
+        self.session.removed(now);
+    }
+
+    /// The person's note on the session; `undefined` or empty clears it.
+    #[wasm_bindgen(js_name = setNotes)]
+    pub fn set_notes(&mut self, notes: Option<String>) {
+        self.session
+            .set_notes(notes.filter(|notes| !notes.trim().is_empty()));
+    }
+
+    /// The results of the steps that ended, in order.
+    #[wasm_bindgen(unchecked_return_type = "TestResultView[]")]
+    pub fn results(&self) -> Result<JsValue, JsError> {
+        let results: Vec<TestResultView> = self
+            .session
+            .report()
+            .results
+            .iter()
+            .map(|result| TestResultView {
+                step: result.step.clone(),
+                check: result.check.clone(),
+                status: status_name(result.status),
+                expected: result.expected.clone(),
+                observed: result.observed.clone(),
+                measurements: result.measurements.clone(),
+            })
+            .collect();
+        to_js_objects(&results)
+    }
+
+    /// The report so far, anonymous: its JSON, file name (`n` tells it from
+    /// others of the same day), summary and texts to review. The session
+    /// goes on; call it again after `setNotes()`.
+    #[wasm_bindgen(unchecked_return_type = "TestOutcome")]
+    pub fn outcome(&self, n: u32) -> Result<JsValue, JsError> {
+        let mut report = self.session.report().clone();
+        report.scrub();
+        report
+            .validate()
+            .map_err(|error| JsError::new(&error.to_string()))?;
+        let summary = report.summary();
+        let json = report
+            .to_json_pretty()
+            .map_err(|error| JsError::new(&error.to_string()))?;
+        let review = report
+            .review(Catalog::embedded())
+            .into_iter()
+            .map(|item| ReviewText {
+                field: item.field,
+                text: item.text,
+                concern: item.concern.map(|concern| match concern {
+                    Concern::UnknownDeviceName => "unknown_device_name",
+                }),
+            })
+            .collect();
+        to_js(&TestOutcome {
+            json,
+            file_name: report.file_name(n),
+            summary: TestSummary {
+                pass: summary.pass,
+                fail: summary.fail,
+                skipped: summary.skipped,
+                not_applicable: summary.not_applicable,
+                error: summary.error,
+            },
+            review,
+        })
+    }
+}
+
+/// Like `to_js`, with maps as plain objects (the measurements).
+fn to_js_objects<T: Serialize + ?Sized>(value: &T) -> Result<JsValue, JsError> {
+    value
+        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        .map_err(|error| JsError::new(&error.to_string()))
+}

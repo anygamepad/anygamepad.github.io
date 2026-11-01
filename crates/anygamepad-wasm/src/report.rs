@@ -77,7 +77,8 @@ pub(crate) fn base_web_report(
     user_product: Option<String>,
     controller_mode: Option<String>,
 ) -> Result<Report, JsError> {
-    let app_version: Version = "0.0.3".parse().map_err(js_err)?;
+    // The web app's version is the workspace's (scripts/version.mjs).
+    let app_version: Version = env!("CARGO_PKG_VERSION").parse().map_err(js_err)?;
     let library_version: Version = anygamepad::VERSION.parse().map_err(js_err)?;
     let source = Source {
         app: App::Web,

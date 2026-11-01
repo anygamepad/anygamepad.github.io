@@ -19,8 +19,10 @@ workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-anygamepad.workspace = true
-anygamepad-report.workspace = true
+# The test runner of the test mode (ADR 0008).
+anygamepad = { workspace = true, features = ["testing"] }
+# JSON: test reports are written in Rust (`TestSession.outcome()`).
+anygamepad-report = { workspace = true, features = ["json"] }
 # Same crate as `anygamepad::model`, with the TypeScript declarations.
 anygamepad-model = { workspace = true, features = ["tsify"] }
 js-sys.workspace = true
