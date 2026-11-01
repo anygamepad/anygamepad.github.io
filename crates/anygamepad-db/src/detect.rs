@@ -424,6 +424,7 @@ mod tests {
             id: "acme/pad".into(),
             vendor: "Acme".into(),
             name: "Pad".into(),
+            short: None,
             generic: false,
             family: None,
             labels: None,

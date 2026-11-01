@@ -4,6 +4,7 @@ schema_version = 1
 id = "microsoft/xbox-360"
 vendor = "Microsoft"
 name = "Xbox 360 Controller"
+short = "X360"
 family = "xbox"
 notes = "The wired controller. Back is `select`, Start `start`, Guide `home`."
 

@@ -7,7 +7,6 @@ use anygamepad::model::identity::{Browser, DeviceIdentity, Fingerprint, Os};
 use anygamepad::model::raw::{RawLayout, RawState};
 use anygamepad::model::{
     Axis, Button, Capabilities, FaceLayout, Family, GamepadState, OutputCommand, OutputSet,
-    Transport,
 };
 use anygamepad::provider::{Access, DeviceId, Provider, ProviderError, ProviderEvent};
 use anygamepad::web::{self, WebProvider, standard};
@@ -429,44 +428,11 @@ impl Gamepads {
             .map_err(error)
     }
 
-    /// What catalog model, mode and transport a gamepad can be, most likely
-    /// first (test mode, H10).
-    #[wasm_bindgen(unchecked_return_type = "Detection")]
-    pub fn identify(&self, device: u32) -> Result<JsValue, JsError> {
-        let info = self.provider.info(device_id(device)).ok_or_else(unknown)?;
-        to_js(&crate::testing::detect(&info.identity))
-    }
-
-    /// Whether a gamepad is the model, mode and transport picked from the
-    /// test mode's list.
-    #[wasm_bindgen(js_name = checkChoice, unchecked_return_type = "ChoiceResult")]
-    pub fn check_choice(
-        &self,
-        device: u32,
-        model: &str,
-        mode: &str,
-        #[wasm_bindgen(unchecked_param_type = "Transport")] transport: JsValue,
-    ) -> Result<JsValue, JsError> {
-        let info = self.provider.info(device_id(device)).ok_or_else(unknown)?;
-        let transport: Transport =
-            serde_wasm_bindgen::from_value(transport).map_err(|e| JsError::new(&e.to_string()))?;
-        to_js(&crate::testing::check_choice(
-            &info.identity,
-            model,
-            mode,
-            transport,
-        ))
-    }
-
-    /// Starts a test session on an open gamepad (test mode, H4); `now_ms`
-    /// (`Date.now()`) dates the report.
-    #[wasm_bindgen(js_name = startTest)]
-    pub fn start_test(
-        &self,
-        device: u32,
-        #[wasm_bindgen(unchecked_param_type = "TestSetup")] setup: JsValue,
-        now_ms: f64,
-    ) -> Result<crate::testing::TestSession, JsError> {
+    /// An open gamepad as the test mode's module reads it (W9): its device
+    /// report, whose first view is the Gamepad API's, and the outputs this
+    /// page can drive; `now_ms` (`Date.now()`) dates the report.
+    #[wasm_bindgen(js_name = testDevice, unchecked_return_type = "TestDevice")]
+    pub fn test_device(&self, device: u32, now_ms: f64) -> Result<JsValue, JsError> {
         let id = device_id(device);
         let info = self.provider.info(id).ok_or_else(unknown)?;
         let mut report = crate::report::base_web_report(
@@ -477,42 +443,25 @@ impl Gamepads {
             None,
         )?;
         report.views.push(self.report_view(id).ok_or_else(unknown)?);
-        crate::testing::start(setup, report, info.outputs, false, Default::default())
+        crate::test_bridge::to_plain_js(&crate::test_bridge::TestDevice {
+            report,
+            outputs: info.outputs,
+            hid: false,
+            unreadable: Default::default(),
+        })
     }
 
-    /// Feeds `session` with an open gamepad's values as read by the last
-    /// `update()`, at `now` (`performance.now()`), and drives the outputs
-    /// the session asks for. Call it once a frame.
-    #[wasm_bindgen(js_name = feedTest)]
-    pub fn feed_test(
-        &mut self,
-        device: u32,
-        session: &mut crate::testing::TestSession,
-        now: f64,
-    ) -> Result<(), JsError> {
+    /// What an open gamepad read at the last `update()`, for the test
+    /// mode's session: its raw values and canonical state.
+    #[wasm_bindgen(js_name = testInput, unchecked_return_type = "TestInput")]
+    pub fn test_input(&mut self, device: u32) -> Result<JsValue, JsError> {
         let id = device_id(device);
         self.poll_raw(id)?;
-        let state = self.canonical(id);
-        session.session.update(&self.raw[&id], &state, now);
-        for command in session.session.take_commands() {
-            // An output that fails shows in the person's answer.
-            let _ = self.provider.send(id, command);
-        }
-        Ok(())
-    }
-
-    /// Tells `session` that a gamepad connected while it waits for the pad
-    /// under test to come back (the hotplug step), at `now`.
-    #[wasm_bindgen(js_name = testReconnected)]
-    pub fn test_reconnected(
-        &self,
-        device: u32,
-        session: &mut crate::testing::TestSession,
-        now: f64,
-    ) -> Result<(), JsError> {
-        let info = self.provider.info(device_id(device)).ok_or_else(unknown)?;
-        session.session.added(&info.identity, now);
-        Ok(())
+        crate::test_bridge::to_plain_js(&crate::test_bridge::TestInput {
+            raw: self.raw[&id].clone(),
+            state: self.canonical(id),
+            reports: Vec::new(),
+        })
     }
 }
 

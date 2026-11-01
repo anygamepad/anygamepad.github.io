@@ -1,6 +1,6 @@
 # anygamepad roadmap — 2026-10-31
 
-Status: **active**. Supersedes [ROADMAP/2026-10-14/](../2026-10-14/README.md).
+Status: **superseded by [ROADMAP/2026-11-01/](../2026-11-01/README.md)**. Supersedes [ROADMAP/2026-10-14/](../2026-10-14/README.md).
 
 ## Changes from 2026-10-14
 

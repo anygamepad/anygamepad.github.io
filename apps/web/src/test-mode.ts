@@ -7,26 +7,45 @@
 // The tester (tester.ts) owns the devices and the frame loop: it tells the
 // test mode about pads that come and go, and calls `frame()` once a frame.
 // Logic lives here; App.html only renders `view.test`.
+//
+// The runner, catalog and plans are a WebAssembly module of their own (W9),
+// loaded when the tab first opens (`loadTesting()`). The tester's module
+// describes each pad (`testDevice()`), gives what it read once a frame
+// (`testInput()`) and sends the outputs the session asks for (`send()`).
 
-import {
-  catalogModels,
-  labUnits,
-  testPlans,
-  type CatalogModel,
-  type ChoiceResult,
-  type DetectedCandidate,
-  type Detection,
-  type Environment,
-  type Gamepads,
-  type GamepadState,
-  type HidDevices,
-  type PlanInfo,
-  type TestSelection,
-  type TestSession,
-  type TestStatus,
-  type Transport,
+import type {
+  Environment,
+  Gamepads,
+  GamepadState,
+  HidDevices,
+  OutputCommand,
+  Transport,
 } from "./wasm/anygamepad_wasm.js";
+import type {
+  CatalogModel,
+  ChoiceResult,
+  DetectedCandidate,
+  Detection,
+  PlanInfo,
+  TestDevice,
+  TestSelection,
+  TestSession,
+  TestStatus,
+} from "./wasm-testing/anygamepad_wasm_testing.js";
 import { listTestReports, saveTestReport, type StoredTestReport } from "./storage";
+
+/** The test mode's WebAssembly module. */
+export type TestingModule = typeof import("./wasm-testing/anygamepad_wasm_testing.js");
+
+/** Loads and starts the test mode's module (once; later calls share it). */
+let loading: Promise<TestingModule> | undefined;
+export const loadTesting = (): Promise<TestingModule> => {
+  loading ??= import("./wasm-testing/anygamepad_wasm_testing.js").then(async (module) => {
+    await module.default();
+    return module;
+  });
+  return loading;
+};
 
 /** A connected pad, as the tester gives it. */
 export interface TestPad {
@@ -50,7 +69,7 @@ export interface TestHost {
   pads(): TestPad[];
 }
 
-type Stage = "list" | "connect" | "waiting" | "check" | "detected" | "plan" | "running" | "summary";
+type Stage = "loading" | "list" | "connect" | "waiting" | "check" | "detected" | "plan" | "running" | "summary";
 
 export interface UnitRow {
   code: string;
@@ -111,9 +130,15 @@ export interface TestView {
   candidate: number;
   /** Transports the person picks from when the API does not tell. */
   transports: { transport: Transport; name: string }[];
-  /** Units of the model, the one picked last first. */
+  /** Units of the model this browser knows (the inventory's, the saved
+   * reports'), the one picked last first. */
   unitOptions: string[];
+  /** The unit's code; `null` for none. */
   unit: string | null;
+  /** The code a new unit of the model would get (`DS5-03`, F4). */
+  unitProposal: string;
+  /** Why the code typed cannot be one. */
+  unitError: string | null;
   padName: string;
   check: string | null;
   plans: PlanInfo[];
@@ -131,7 +156,7 @@ export interface TestView {
 }
 
 export const emptyTestView = (): TestView => ({
-  stage: "list",
+  stage: "loading",
   search: "",
   units: [],
   models: [],
@@ -142,6 +167,8 @@ export const emptyTestView = (): TestView => ({
   candidate: 0,
   transports: [],
   unitOptions: [],
+  unitProposal: "",
+  unitError: null,
   unit: null,
   padName: "",
   check: null,
@@ -236,20 +263,22 @@ export class TestMode {
   private armed = false;
 
   constructor(
+    private readonly testing: TestingModule,
     private readonly host: TestHost,
     private readonly view: TestView,
   ) {
-    this.models = catalogModels();
+    this.models = testing.catalogModels();
     const names = new Map(this.models.map((model) => [model.id, titleOf(model)]));
-    this.unitList = labUnits().map((unit) => ({
+    this.unitList = testing.labUnits().map((unit) => ({
       code: unit.code,
       model: unit.model,
       title: `${unit.code} · ${names.get(unit.model) ?? unit.model}`,
       notes: unit.notes ?? "",
     }));
-    view.plans = testPlans();
+    view.plans = testing.testPlans();
     view.units = this.unitList;
     this.filter();
+    view.stage = "list";
     listTestReports()
       .then((reports) => {
         this.reports = reports;
@@ -276,8 +305,7 @@ export class TestMode {
     const model = this.model(id);
     if (!model) return;
     this.view.model = { id, title: titleOf(model), notes: model.notes ?? "" };
-    this.view.unitOptions = this.unitsOf(id);
-    this.view.unit = unit ?? this.view.unitOptions[0] ?? null;
+    this.offerUnits(id, unit);
     this.picked = null;
     this.view.error = null;
     this.refreshCards();
@@ -287,7 +315,7 @@ export class TestMode {
   readonly pickCard = (key: string): void => {
     const card = this.view.cards.find((c) => c.key === key);
     const model = this.view.model;
-    if (!card || !model) return;
+    if (!card || !model || this.view.unitError) return;
     this.picked = { mode: card.mode, transport: card.transport };
     // Picked after "Choose another": the pad is already connected.
     if (this.padKey && this.detection) {
@@ -330,12 +358,23 @@ export class TestMode {
   };
 
   readonly setUnit = (code: string): void => {
-    this.view.unit = code === "" ? null : code;
+    const trimmed = code.trim();
+    this.view.unit = trimmed === "" ? null : trimmed;
+    this.view.unitError =
+      trimmed === "" || this.testing.isUnitCode(trimmed)
+        ? null
+        : "A code is 1 to 16 letters, digits and hyphens (DS5-03), never a name.";
+  };
+
+  /** Names the pad as a new unit, with the proposed code. */
+  readonly newUnit = (): void => {
+    this.setUnit(this.view.unitProposal);
   };
 
   readonly confirm = (): void => {
     const candidate = this.detection?.candidates[this.view.candidate];
     if (this.view.stage !== "detected" || !candidate || candidate.transport === undefined) return;
+    if (this.view.unitError) return;
     const confirmed = this.selection(candidate.model, candidate.mode, candidate.transport, this.view.unit);
     this.plan = { start: "connecting", confirmed, detected: this.best(this.detection) };
     this.toPlan();
@@ -361,11 +400,8 @@ export class TestMode {
       detected: plan.detected,
     };
     try {
-      if (pad.source === "gamepad") {
-        this.session = this.host.gamepads()?.startTest(pad.id, setup, Date.now());
-      } else {
-        this.session = this.host.hids()?.startTest(pad.id, setup, Date.now());
-      }
+      const device = this.testDevice(pad);
+      if (device) this.session = this.testing.startTest(device, setup);
     } catch (error) {
       this.view.error = `Cannot test this pad here (${String(error)}).`;
       return;
@@ -553,10 +589,8 @@ export class TestMode {
     const transport = picked.transport;
     let result: ChoiceResult | undefined;
     try {
-      result =
-        pad.source === "gamepad"
-          ? this.host.gamepads()?.checkChoice(pad.id, model.id, picked.mode, transport)
-          : this.host.hids()?.checkChoice(pad.id, model.id, picked.mode, transport);
+      const device = this.testDevice(pad);
+      result = device && this.testing.checkChoice(device, model.id, picked.mode, transport);
     } catch {
       return;
     }
@@ -583,7 +617,8 @@ export class TestMode {
 
   private identify(pad: TestPad): Detection | undefined {
     try {
-      return pad.source === "gamepad" ? this.host.gamepads()?.identify(pad.id) : this.host.hids()?.identify(pad.id);
+      const device = this.testDevice(pad);
+      return device && this.testing.identify(device);
     } catch {
       return undefined;
     }
@@ -600,8 +635,7 @@ export class TestMode {
         transport: connection.transport,
         name: TRANSPORT_NAMES[connection.transport],
       })) ?? [];
-    this.view.unitOptions = this.unitsOf(candidate.model);
-    this.view.unit = this.view.unitOptions[0] ?? null;
+    this.offerUnits(candidate.model);
     this.view.choice = {
       title: this.describe(candidate.model, candidate.mode, candidate.transport),
       transportKnown: candidate.transport !== undefined,
@@ -623,11 +657,17 @@ export class TestMode {
     if (!session) return;
     const pad = this.sessionPad && this.host.pads().find((p) => p.key === this.sessionPad?.key);
     try {
-      if (pad && this.sessionPad?.source === "gamepad") this.host.gamepads()?.feedTest(pad.id, session, now);
-      else if (pad?.open) this.host.hids()?.feedTest(pad.id, session, now);
+      if (pad && this.sessionPad?.source === "gamepad") {
+        const input = this.host.gamepads()?.testInput(pad.id);
+        if (input) session.feed(input, now);
+      } else if (pad?.open) {
+        const input = this.host.hids()?.testInput(pad.id);
+        if (input) session.feed(input, now);
+      }
     } catch {
       // Unplugged since the last sample: its removal comes with the next one.
     }
+    this.sendCommands();
     const status = session.status();
     this.view.status = status;
     this.view.promptKey = promptKey(status);
@@ -639,12 +679,35 @@ export class TestMode {
     if (status.prompt.kind === "done") this.finish();
   }
 
+  /** Sends the outputs the session asks for to the pad under test. */
+  private sendCommands(): void {
+    const session = this.session;
+    const pad = this.sessionPad;
+    if (!session || !pad) return;
+    for (const command of session.takeCommands() as OutputCommand[]) {
+      // An output that fails shows in the person's answer.
+      try {
+        if (pad.source === "gamepad") this.host.gamepads()?.send(pad.id, command);
+        else this.host.hids()?.send(pad.id, command).catch(() => undefined);
+      } catch {
+        // The pad lacks this output, or went away.
+      }
+    }
+  }
+
+  /** A pad as the test mode's module reads it; throws when it cannot be tested here. */
+  private testDevice(pad: TestPad): TestDevice | undefined {
+    return pad.source === "gamepad"
+      ? this.host.gamepads()?.testDevice(pad.id, Date.now())
+      : this.host.hids()?.testDevice(pad.id, Date.now());
+  }
+
   private reconnected(pad: TestPad, now: number): void {
     const session = this.session;
     if (!session) return;
     try {
-      if (pad.source === "gamepad") this.host.gamepads()?.testReconnected(pad.id, session, now);
-      else this.host.hids()?.testReconnected(pad.id, session, now);
+      const device = this.testDevice(pad);
+      if (device) session.added(device, now);
     } catch {
       return;
     }
@@ -652,6 +715,8 @@ export class TestMode {
   }
 
   private finish(): void {
+    // Stops the outputs a stopped step left on.
+    this.sendCommands();
     this.view.results = this.resultRows();
     this.view.stage = "summary";
     this.outcome();
@@ -723,12 +788,33 @@ export class TestMode {
     return this.models.find((model) => model.id === id);
   }
 
-  /** The units of a model, the one picked last on this machine first. */
+  /** The units of a model this browser knows: the inventory's and those
+   * of the saved reports, the one picked last on this machine first. */
   private unitsOf(model: string): string[] {
-    const codes = this.unitList.filter((unit) => unit.model === model).map((unit) => unit.code);
+    const codes = [
+      ...this.unitList.filter((unit) => unit.model === model).map((unit) => unit.code),
+      ...this.reports.filter((report) => report.model === model).flatMap((report) => (report.unit ? [report.unit] : [])),
+    ].filter((code, index, all) => all.indexOf(code) === index);
     const last = readLastUnit(model);
     if (last && codes.includes(last)) return [last, ...codes.filter((code) => code !== last)];
     return codes;
+  }
+
+  /** Offers a model's units: `unit`, else the one picked last, else a new
+   * one with the proposed code (F4: units are named as they are tested). */
+  private offerUnits(model: string, unit?: string): void {
+    const used = [
+      ...this.unitList.map((known) => known.code),
+      ...this.reports.flatMap((report) => (report.unit ? [report.unit] : [])),
+    ];
+    this.view.unitOptions = this.unitsOf(model);
+    try {
+      this.view.unitProposal = this.testing.proposeUnitCode(model, used);
+    } catch {
+      this.view.unitProposal = "";
+    }
+    this.view.unitError = null;
+    this.view.unit = unit ?? this.view.unitOptions[0] ?? (this.view.unitProposal || null);
   }
 
   private selection(model: string, mode: string, transport: Transport, unit: string | null): TestSelection {

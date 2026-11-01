@@ -53,6 +53,10 @@ flow:
    page opens) is detected and shown at once: **Confirm**, or **Choose
    another** when it does not match (south and east on the pad do the
    same).
+   The unit: a code for the pad, to tell pads of one model apart (one this
+   computer knows, or **New unit** with the next free code, such as
+   `DS5-03`); `data/lab/README.md` says how the inventory is built from
+   the reports.
 2. Picking a model shows the ways to connect it (mode and transport, with
    how to get there; "Tested here" once a report of it is saved). Then
    connect it, press a button on it, or pick it among the connected pads;

@@ -2,14 +2,17 @@
 // CI copies this file next to the `wasm-bindgen` output and runs `tsc` on it;
 // it is never executed.
 
-import init, {
+import init, { Gamepads, HidDevices, MappingWizard, version, type TestDevice, type TestInput } from "./anygamepad_wasm.js";
+// The test mode's module (W9), generated next to this one by CI.
+import initTesting, {
   catalogModels,
-  Gamepads,
-  HidDevices,
+  checkChoice,
+  identify,
+  isUnitCode,
   labUnits,
-  MappingWizard,
+  proposeUnitCode,
+  startTest,
   testPlans,
-  version,
   type CatalogModel,
   type ChoiceResult,
   type Detection,
@@ -21,7 +24,7 @@ import init, {
   type TestSession,
   type TestSetup,
   type TestStatus,
-} from "./anygamepad_wasm.js";
+} from "./anygamepad_wasm_testing.js";
 import type {
   Axis,
   Button,
@@ -212,26 +215,36 @@ export async function webHid(button: HTMLButtonElement): Promise<void> {
   devices.free();
 }
 
-/** Runs the test mode as the web app does (H4). */
-function testMode(gamepads: Gamepads, devices: HidDevices, device: number): void {
+/** Runs the test mode as the web app does (H4), across the two modules (W9). */
+async function testMode(gamepads: Gamepads, devices: HidDevices, device: number): Promise<void> {
+  await initTesting();
   const models: CatalogModel[] = catalogModels();
   const units: LabUnit[] = labUnits();
   const plans: PlanInfo[] = testPlans();
   const connection = models[0]?.modes[0]?.connections[0];
-  const detection: Detection = gamepads.identify(device);
+  // The tester's module describes the pad; the test mode's module reads it.
+  const pad: TestDevice = gamepads.testDevice(device, Date.now());
+  const detection: Detection = identify(pad);
   const best = detection.candidates[0];
-  const choice: ChoiceResult = gamepads.checkChoice(device, "sony/dualsense", "ps5", "usb");
+  const choice: ChoiceResult = checkChoice(pad, "sony/dualsense", "ps5", "usb");
   const seen = choice.result === "differs" ? choice.seen.candidates.length : 0;
-  const hidDetection: Detection = devices.identify(device);
+  const hidPad: TestDevice = devices.testDevice(device, Date.now());
+  const hidDetection: Detection = identify(hidPad);
+  const proposed: string = proposeUnitCode(best?.model ?? "generic/hid", units.map((unit) => unit.code));
+  const unit = isUnitCode(proposed) ? proposed : units[0]?.code;
   const setup: TestSetup = {
     plan: plans[0]?.id ?? "quick",
     start: "connecting",
-    confirmed: { model: best?.model ?? "generic/hid", mode: best?.mode ?? "dinput", transport: "usb", unit: units[0]?.code },
+    confirmed: { model: best?.model ?? "generic/hid", mode: best?.mode ?? "dinput", transport: "usb", unit },
     detected: undefined,
   };
-  const session: TestSession = gamepads.startTest(device, setup, Date.now());
-  gamepads.feedTest(device, session, performance.now());
-  devices.feedTest(device, devices.startTest(device, setup, Date.now()), performance.now());
+  const session: TestSession = startTest(pad, setup);
+  const input: TestInput = gamepads.testInput(device);
+  session.feed(input, performance.now());
+  for (const command of session.takeCommands()) gamepads.send(device, command);
+  const hidSession = startTest(hidPad, setup);
+  hidSession.feed(devices.testInput(device), performance.now());
+  for (const command of hidSession.takeCommands()) await devices.send(device, command);
   const status: TestStatus = session.status();
   const prompt: PromptView = status.prompt;
   if (prompt.kind === "press") console.log(prompt.button, status.text);
@@ -241,10 +254,11 @@ function testMode(gamepads: Gamepads, devices: HidDevices, device: number): void
   session.nothingHappens(performance.now());
   session.repeat(performance.now());
   session.setNotes("Left stick drifts.");
-  gamepads.testReconnected(device, session, performance.now());
+  session.added(gamepads.testDevice(device, Date.now()), performance.now());
   const results: TestResultView[] = session.results();
   const outcome: TestOutcome = session.outcome(1);
   console.log(connection?.known, seen, hidDetection.generic, results.length, outcome.file_name, outcome.summary.pass);
   console.log(JSON.stringify(outcome.report), outcome.review[0]?.concern, session.isDone());
   session.free();
+  hidSession.free();
 }

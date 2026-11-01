@@ -67,6 +67,14 @@
       "format": "uint32",
       "minimum": 0
     },
+    "short": {
+      "description": "A short name for the codes of its units, as people write it (`DS5`,\n`X360`): 2 to 8 uppercase letters and digits. Without one, unit codes\nstart with `PAD` ([`crate::lab::propose_code`]).",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
     "vendor": {
       "description": "The maker, as printed on the box (`Sony`, `8BitDo`).",
       "type": "string"

@@ -57,7 +57,11 @@ should be anonymous.
    models point to the profiles of their modes. The inventory
    (`data/lab/inventory.toml`, F4) lists the units, the physical pads,
    under labels their owner gives them, and the test machines. Both are
-   embedded in the apps; an inventory file can also be imported.
+   embedded in the apps; an inventory file can also be imported. The
+   inventory is built from the test reports (owner, 2026-11-01): the test
+   modes name a unit the first time it is tested (a code proposed from the
+   model's short name, or typed), and a tool adds the units the reports
+   name.
 4. **A test report is its own document** (`anygamepad-test-report`, H1)
    that embeds the device report (P1) of the device under test, and adds the
    configuration the person set (unit, catalog model, mode, transport: the

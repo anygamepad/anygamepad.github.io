@@ -6,7 +6,7 @@ Gamepad input normalization: one canonical gamepad model for every controller,
 mode, transport and operating system.
 
 - Web app: <https://anygamepad.github.io> (not live yet)
-- Plan: [ROADMAP/2026-10-31/](ROADMAP/2026-10-31/README.md)
+- Plan: [ROADMAP/2026-11-01/](ROADMAP/2026-11-01/README.md)
 - Privacy: <https://anygamepad.github.io/privacy/> (maintainer side:
   [docs/privacy/](docs/privacy/README.md))
 - Contributor and agent rules: [AGENTS.md](AGENTS.md)
@@ -61,8 +61,9 @@ commands; see [apps/web/README.md](apps/web/README.md).
   Release, Run workflow on `main`, then pick `patch`, `minor` or `major`. It
   runs `build.yml` with the new version; once that passes it commits
   `Release vX.Y.Z`, tags `vX.Y.Z` and publishes a GitHub release with
-  `anygamepad-web-vX.Y.Z.zip`, `anygamepad-wasm-vX.Y.Z.zip` and
-  `SHA256SUMS`. A failed release pushes nothing.
+  `anygamepad-web-vX.Y.Z.zip`, `anygamepad-wasm-vX.Y.Z.zip` (the tester's
+  WebAssembly bindings), `anygamepad-wasm-testing-vX.Y.Z.zip` (the test
+  mode's) and `SHA256SUMS`. A failed release pushes nothing.
 
 The version lives in `Cargo.toml`, `Cargo.lock` and `apps/web/package*.json`;
 `node scripts/version.mjs` reads, checks and sets it in all of them.

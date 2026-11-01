@@ -45,6 +45,7 @@ schema_version = 1
 id = "acme/pad-2"
 vendor = "Acme"                # as printed on the box
 name = "Pad 2 Wireless"        # as printed on the box
+short = "AP2"                  # optional: unit codes start with it (AP2-01)
 # generic = true               # only for generic/ models
 # family = "xbox"              # the drawing it gets
 labels = "nintendo"            # face labels, when the family does not tell

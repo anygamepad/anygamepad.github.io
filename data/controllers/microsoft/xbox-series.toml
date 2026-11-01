@@ -4,6 +4,7 @@ schema_version = 1
 id = "microsoft/xbox-series"
 vendor = "Microsoft"
 name = "Xbox Wireless Controller (Xbox Series X|S)"
+short = "XSX"
 family = "xbox"
 notes = "View is `select`, Menu `start`, Xbox `home`, the Share button `share`."
 

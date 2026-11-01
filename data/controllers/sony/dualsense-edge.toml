@@ -4,6 +4,7 @@ schema_version = 1
 id = "sony/dualsense-edge"
 vendor = "Sony"
 name = "DualSense Edge Wireless Controller"
+short = "DS5E"
 family = "dualsense_edge"
 notes = "PlayStation 5 pro controller (CFI-ZCP1). The two back buttons are paddles; its two Fn buttons have no canonical name yet."
 

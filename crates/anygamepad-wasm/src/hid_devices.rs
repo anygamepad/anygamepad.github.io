@@ -572,43 +572,12 @@ impl HidDevices {
 
 #[wasm_bindgen]
 impl HidDevices {
-    /// What catalog model, mode and transport a device can be, most likely
-    /// first (test mode, H10).
-    #[wasm_bindgen(unchecked_return_type = "Detection")]
-    pub fn identify(&self, device: u32) -> Result<JsValue, JsError> {
-        let identity = self.test_identity(device_id(device))?;
-        to_js(&crate::testing::detect(&identity))
-    }
-
-    /// Whether a device is the model, mode and transport picked from the
-    /// test mode's list.
-    #[wasm_bindgen(js_name = checkChoice, unchecked_return_type = "ChoiceResult")]
-    pub fn check_choice(
-        &self,
-        device: u32,
-        model: &str,
-        mode: &str,
-        #[wasm_bindgen(unchecked_param_type = "Transport")] transport: JsValue,
-    ) -> Result<JsValue, JsError> {
-        let identity = self.test_identity(device_id(device))?;
-        let transport: Transport =
-            serde_wasm_bindgen::from_value(transport).map_err(|e| JsError::new(&e.to_string()))?;
-        to_js(&crate::testing::check_choice(
-            &identity, model, mode, transport,
-        ))
-    }
-
-    /// Starts a test session on an open pad the library decodes
-    /// (PlayStation) (test mode, H4); `now_ms` (`Date.now()`) dates the
-    /// report. The session's evidence holds the pad's input reports.
-    /// Throws for other devices.
-    #[wasm_bindgen(js_name = startTest)]
-    pub fn start_test(
-        &mut self,
-        device: u32,
-        #[wasm_bindgen(unchecked_param_type = "TestSetup")] setup: JsValue,
-        now_ms: f64,
-    ) -> Result<crate::testing::TestSession, JsError> {
+    /// An open pad the library decodes (PlayStation) as the test mode's
+    /// module reads it (W9): its device report, the outputs its driver
+    /// drives, and its input reports as the session's evidence; `now_ms`
+    /// (`Date.now()`) dates the report. Throws for other devices.
+    #[wasm_bindgen(js_name = testDevice, unchecked_return_type = "TestDevice")]
+    pub fn test_device(&mut self, device: u32, now_ms: f64) -> Result<JsValue, JsError> {
         let id = device_id(device);
         let info = self.hid.info(id).ok_or_else(unknown)?;
         let model = Family::from_identity(&info.identity)
@@ -648,69 +617,47 @@ impl HidDevices {
             ..anygamepad_report::HidData::default()
         });
         report.views.push(view);
-        crate::testing::start(setup, report, outputs, true, unreadable)
+        crate::test_bridge::to_plain_js(&crate::test_bridge::TestDevice {
+            report,
+            outputs,
+            hid: true,
+            unreadable,
+        })
     }
 
-    /// Like `poll()`, and feeds `session` with the input reports and the
-    /// decoded input, at `now` (`performance.now()`), and sends the output
-    /// commands the session asks for. Call it once a frame instead of
-    /// `poll()` while the device is under test.
-    #[wasm_bindgen(js_name = feedTest, unchecked_return_type = "HidPoll")]
-    pub fn feed_test(
-        &mut self,
-        device: u32,
-        session: &mut crate::testing::TestSession,
-        now: f64,
-    ) -> Result<JsValue, JsError> {
+    /// Like `poll()`, for the test mode's session: the input reports
+    /// received since the last call and the decoded input, as raw values
+    /// (the pad's canonical controls) and canonical state with the
+    /// calibrated motion. Call it once a frame instead of `poll()` while
+    /// the device is under test.
+    #[wasm_bindgen(js_name = testInput, unchecked_return_type = "TestInput")]
+    pub fn test_input(&mut self, device: u32) -> Result<JsValue, JsError> {
         let id = device_id(device);
-        let (error, motion) = self.collect(id)?;
-        for report in &self.reports {
-            session
-                .session
-                .input_report(report.report_id, &report.data, report.timestamp);
-        }
+        let (_, motion) = self.collect(id)?;
+        let reports = self
+            .reports
+            .iter()
+            .map(|report| crate::test_bridge::TestInputReport {
+                report_id: report.report_id,
+                data: report.data.clone(),
+                timestamp: report.timestamp,
+            })
+            .collect();
+        let mut raw = RawState::for_layout(&canonical_layout());
+        let mut state = GamepadState::new();
         if let Some(input) = self.inputs.get(&id) {
-            let mut state = input.state;
+            state = input.state;
             state.motion = motion.or(state.motion);
-            let mut raw = RawState::for_layout(&canonical_layout());
             canonical_raw(&state, &mut raw);
             raw.motion = motion.into_iter().collect();
             raw.touches = state.touches;
             raw.power = state.power;
-            session.session.update(&raw, &state, now);
         }
-        let commands = session.session.take_commands();
-        if !commands.is_empty() {
-            if let Some(driver) = self.driver(id) {
-                for command in commands {
-                    // An output the pad lacks shows in the person's answer.
-                    let _ = driver.borrow_mut().send(command);
-                }
-                flush(&self.hid, id, &driver);
-            }
-        }
-        to_js(&HidPoll {
-            received: u32::try_from(self.reports.len()).unwrap_or(u32::MAX),
-            last: self.reports.last().map(report_view),
-            reports: Vec::new(),
-            input: self.inputs.get(&id).map(|&input| input.into()),
-            error,
-            motion,
+        crate::test_bridge::to_plain_js(&crate::test_bridge::TestInput {
+            raw,
+            state,
+            reports,
         })
-    }
-
-    /// Tells `session` that a device connected while it waits for the pad
-    /// under test to come back (the hotplug step), at `now`.
-    #[wasm_bindgen(js_name = testReconnected)]
-    pub fn test_reconnected(
-        &self,
-        device: u32,
-        session: &mut crate::testing::TestSession,
-        now: f64,
-    ) -> Result<(), JsError> {
-        let identity = self.test_identity(device_id(device))?;
-        session.session.added(&identity, now);
-        Ok(())
     }
 }
 

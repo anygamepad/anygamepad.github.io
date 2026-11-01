@@ -233,7 +233,12 @@
   <section class="detail test-detail" :data-stage="test.stage">
     <p :if="test.error" class="message error">{{ test.error }}</p>
 
-    <div :if="test.stage === 'list'" class="test-intro">
+    <div :if="test.stage === 'loading'" class="test-intro">
+      <h2>Test mode</h2>
+      <p>Loading the test mode…</p>
+    </div>
+
+    <div :elseif="test.stage === 'list'" class="test-intro">
       <h2>Test mode</h2>
       <p>Pick a controller from the list to see the ways to connect it, or connect one now and press one of its buttons: it is detected.</p>
       <p class="note">
@@ -245,12 +250,26 @@
     <div :elseif="test.stage === 'connect'" class="test-connect">
       <h2>{{ test.model?.title }}</h2>
       <p :if="test.model?.notes" class="facts">{{ test.model?.notes }}</p>
-      <label :if="test.unitOptions.length > 0" class="test-unit">
-        <span>Which one</span>
-        <select @change="(event) => testSetUnit(event.target.value)">
-          <option :each="code in test.unitOptions" :key="code" :value="code" :selected="code === test.unit">{{ code }}</option>
-        </select>
-      </label>
+      <div class="test-unit">
+        <label>
+          <span>Which one</span>
+          <input
+            type="text"
+            maxlength="16"
+            list="test-unit-codes"
+            placeholder="No code"
+            data-unit
+            :value="test.unit ?? ''"
+            @change="(event) => testSetUnit(event.target.value)"
+          />
+        </label>
+        <datalist id="test-unit-codes">
+          <option :each="code in test.unitOptions" :key="code" :value="code"></option>
+        </datalist>
+        <button :if="test.unitProposal && test.unit !== test.unitProposal" type="button" class="action" data-new-unit @click="testNewUnit()">New unit: {{ test.unitProposal }}</button>
+        <p :if="test.unitError" class="message error">{{ test.unitError }}</p>
+        <p class="note">A code to tell your pads apart, to write on a label: the report keeps it, never a name. Leave it empty for none.</p>
+      </div>
       <p>Pick how to connect it:</p>
       <ul class="cards">
         <li :each="card in test.cards" :key="card.key">
@@ -292,12 +311,26 @@
         <p>This browser does not tell how it is connected. Is it:</p>
         <button :each="option in test.transports" :key="option.transport" type="button" class="action" @click="testSetTransport(option.transport)">{{ option.name }}</button>
       </div>
-      <label :if="test.unitOptions.length > 0" class="test-unit">
-        <span>Which one</span>
-        <select @change="(event) => testSetUnit(event.target.value)">
-          <option :each="code in test.unitOptions" :key="code" :value="code" :selected="code === test.unit">{{ code }}</option>
-        </select>
-      </label>
+      <div class="test-unit">
+        <label>
+          <span>Which one</span>
+          <input
+            type="text"
+            maxlength="16"
+            list="test-unit-codes"
+            placeholder="No code"
+            data-unit
+            :value="test.unit ?? ''"
+            @change="(event) => testSetUnit(event.target.value)"
+          />
+        </label>
+        <datalist id="test-unit-codes">
+          <option :each="code in test.unitOptions" :key="code" :value="code"></option>
+        </datalist>
+        <button :if="test.unitProposal && test.unit !== test.unitProposal" type="button" class="action" data-new-unit @click="testNewUnit()">New unit: {{ test.unitProposal }}</button>
+        <p :if="test.unitError" class="message error">{{ test.unitError }}</p>
+        <p class="note">A code to tell your pads apart, to write on a label: the report keeps it, never a name. Leave it empty for none.</p>
+      </div>
       <div class="test-actions">
         <button type="button" class="action primary-btn" :disabled="!test.choice?.transportKnown" @click="testConfirm()">Confirm</button>
         <button type="button" class="action" @click="testChooseAnother()">Choose another</button>

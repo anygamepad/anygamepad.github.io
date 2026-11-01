@@ -31,8 +31,14 @@ serde.workspace = true
 serde_json = { workspace = true, optional = true, features = ["float_roundtrip"] }
 
 [dev-dependencies]
+# The inventory example reads and writes inventory files.
+anygamepad-db = { workspace = true, features = ["toml"] }
 jsonschema = { version = "0.58.6", default-features = false }
 serde_json.workspace = true
+
+[[example]]
+name = "inventory"
+required-features = ["json"]
 
 [[test]]
 name = "schema"

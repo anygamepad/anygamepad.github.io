@@ -1,11 +1,14 @@
 // Smoke test of the test mode (roadmap task H4) on the built site (dist/):
 //
+// - The test mode's WebAssembly module (W9) is fetched only once its tab
+//   opens.
 // - Gamepad API: a wired Xbox 360 controller connected without picking it is
 //   detected; the Full plan runs with a person simulated from the prompts
 //   (every button, sticks, triggers, rate, vibration answered yes, the
 //   player lights the API cannot drive, unplugging and plugging back); the
 //   summary, the review of the report's texts,
-//   saving in the browser, the "Tested here" mark, and the downloaded report
+//   saving in the browser, the "Tested here" mark, the unit's code (proposed
+//   for a pad this browser does not know, checked, kept), and the downloaded report
 //   (format, configuration, results, evidence).
 // - WebHID (Chromium only): a Bluetooth DualSense picked in the chooser and
 //   while the tester shows is detected, and the Quick plan runs on
@@ -72,6 +75,8 @@ try {
     }
   });
   page.on("pageerror", (error) => problems.push(`page error: ${error.message}`));
+  const fetched = [];
+  page.on("request", (request) => fetched.push(request.url()));
   await page.addInitScript(fakeGamepads);
   await page.addInitScript(fakeHid);
   await page.goto(url, { waitUntil: "networkidle" });
@@ -89,8 +94,12 @@ try {
     }
   };
 
+  const testingModule = () => fetched.filter((u) => /anygamepad_wasm_testing.*\.wasm/.test(u));
+  assert.ok(fetched.some((u) => /anygamepad_wasm_bg.*\.wasm/.test(u)), "the tester's module loads");
+  assert.deepEqual(testingModule(), [], "the test mode's module waits for its tab");
   await page.click(".mode-tab >> text=Test mode");
   await until("the list", stage, (s) => s === "list");
+  assert.equal(testingModule().length, 1, "the test mode's module loads with its tab");
   assert.ok((await page.locator(".test-list [data-model]").count()) >= 13);
   // The search filters the catalog.
   await page.fill(".test-search input", "dualshock");
@@ -101,6 +110,13 @@ try {
   await setPad(XBOX360);
   await until("detection", stage, (s) => s === "detected");
   assert.equal(await page.textContent("[data-detected]"), "Microsoft Xbox 360 Controller · XInput · USB cable");
+  // A pad this browser does not know yet gets a new unit code (F4).
+  assert.equal(await page.inputValue("[data-unit]"), "X360-01");
+  await page.fill("[data-unit]", "not a code!");
+  await page.press("[data-unit]", "Tab");
+  await until("the code's error", () => page.textContent(".test-unit .error").catch(() => ""), (t) => /letters, digits and hyphens/.test(t));
+  await page.click("[data-new-unit]");
+  assert.equal(await page.inputValue("[data-unit]"), "X360-01");
   await page.click(".test-detected >> text=Confirm");
   await until("the plans", stage, (s) => s === "plan");
   await page.click('[data-plan="full"]');
@@ -185,12 +201,15 @@ try {
   await page.click("[data-save]");
   await until("the saved note", () => page.textContent("[data-saved]").catch(() => ""), (t) => /^Saved in this browser/.test(t));
   const [download] = await Promise.all([page.waitForEvent("download"), page.click("[data-download]")]);
-  assert.match(download.suggestedFilename(), /^microsoft-xbox-360-xinput-usb-\w+-web-gamepad_api-\d{4}-\d{2}-\d{2}-1\.json$/);
+  assert.match(download.suggestedFilename(), /^x360-01-xinput-usb-\w+-web-gamepad_api-\d{4}-\d{2}-\d{2}-1\.json$/);
   const report = JSON.parse(await readFile(await download.path(), "utf8"));
   assert.equal(report.format, "anygamepad-test-report");
   assert.equal(report.plan.id, "full");
   assert.equal(report.configuration.start, "connecting");
-  assert.deepEqual(report.configuration.confirmed, report.configuration.detected);
+  // The unit is named, not detected.
+  const { unit, ...confirmed } = report.configuration.confirmed;
+  assert.equal(unit, "X360-01");
+  assert.deepEqual(confirmed, report.configuration.detected);
   assert.equal(report.configuration.confirmed.model, "microsoft/xbox-360");
   const notPassed = report.results.filter((result) => result.status !== "pass");
   assert.deepEqual(
@@ -207,6 +226,9 @@ try {
   await page.click("text=Test another way to connect it");
   await until("the cards", stage, (s) => s === "connect");
   assert.match(await page.textContent('[data-card="xinput/usb"]'), /Tested here/);
+  // The same unit stays picked; a new one would be the next number.
+  assert.equal(await page.inputValue("[data-unit]"), "X360-01");
+  assert.equal((await page.textContent("[data-new-unit]")).trim(), "New unit: X360-02");
   await page.click(".test-connect >> text=Back to the list");
   await setPad(null);
 
