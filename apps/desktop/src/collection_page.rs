@@ -79,7 +79,8 @@ impl CollectionPage {
         let new: Vec<&DeviceView> = snapshot
             .devices
             .iter()
-            .filter(|device| !self.recorded.contains(&device.id))
+            // Virtual pads of the test mode are not controllers to report.
+            .filter(|device| !device.made_here && !self.recorded.contains(&device.id))
             .collect();
         for device in new {
             self.recorded.insert(device.id);

@@ -15,7 +15,7 @@ use anygamepad::model::{
     Button, ButtonSet, ControllerMode, GamepadState, MotionSample, Output, OutputCommand,
     OutputSet, Power, PowerState, Sensor, SensorSet, TouchPoint, TouchpadInfo, Transport, Vec3,
 };
-use anygamepad::testing::{Prompt, Session, SessionSetup};
+use anygamepad::testing::{Prompt, Session, SessionSetup, VirtualCheck, VirtualTarget};
 use anygamepad::web::standard;
 use anygamepad_report::test_report::{
     Configuration, Selection, SessionStart, StepStatus, TestReport,
@@ -294,6 +294,7 @@ fn run(pad: &Pad, plan: &str) -> (TestReport, Vec<OutputCommand>) {
         outputs: pad.outputs,
         hid: pad.hid,
         unreadable: ButtonSet::default(),
+        virtual_targets: Vec::new(),
     })
     .unwrap();
     let layout = pad.layout();
@@ -503,6 +504,7 @@ fn detection_mismatch_and_skips() {
         outputs: pad.outputs,
         hid: false,
         unreadable: ButtonSet::default(),
+        virtual_targets: Vec::new(),
     })
     .unwrap();
     let layout = pad.layout();
@@ -549,6 +551,7 @@ fn setup_errors() {
         outputs: pad.outputs,
         hid: false,
         unreadable: ButtonSet::default(),
+        virtual_targets: Vec::new(),
     };
     assert!(Session::new(setup).is_err());
     let _ = ControllerMode::Xinput;
@@ -570,6 +573,7 @@ fn unreadable_buttons_and_nothing_happens() {
         outputs: pad.outputs,
         hid: false,
         unreadable: ButtonSet::from([Button::Mute]),
+        virtual_targets: Vec::new(),
     })
     .unwrap();
     let layout = pad.layout();
@@ -610,6 +614,7 @@ fn an_unreadable_button_does_not_apply() {
         outputs: pad.outputs,
         hid: true,
         unreadable: ButtonSet::from([Button::Mute]),
+        virtual_targets: Vec::new(),
     })
     .unwrap();
     let layout = pad.layout();
@@ -649,5 +654,170 @@ fn an_unreadable_button_does_not_apply() {
             .iter()
             .filter(|r| r.step != "controls.mute")
             .all(|r| r.status == StepStatus::Pass)
+    );
+}
+
+/// A session of the virtual pad plan, with these targets; the app checks
+/// each virtual pad with `check` and the person answers yes from the pad.
+fn run_virtual(
+    targets: Vec<VirtualTarget>,
+    check: impl Fn(&str) -> VirtualCheck,
+) -> (TestReport, Vec<(Prompt, OutputCommand)>) {
+    let pad = Pad::standard();
+    let mut session = Session::new(SessionSetup {
+        plan: TestPlan::get("virtual").unwrap().clone(),
+        model: pad.model(),
+        configuration: Configuration {
+            start: SessionStart::List,
+            confirmed: selection(&pad),
+            detected: None,
+        },
+        device: device(&pad),
+        outputs: pad.outputs,
+        hid: false,
+        unreadable: ButtonSet::default(),
+        virtual_targets: targets,
+    })
+    .unwrap();
+    let layout = pad.layout();
+    let mut state = GamepadState::new();
+    let mut commands = Vec::new();
+    let (mut prompt, mut k) = (Prompt::Wait, 0);
+    for tick in 0..10_000u32 {
+        let now = f64::from(tick) * 10.0;
+        let status = session.status();
+        if status.prompt == Prompt::Done {
+            break;
+        }
+        if status.prompt != prompt {
+            (prompt, k) = (status.prompt, 0);
+        }
+        if let Prompt::CheckVirtual { name, .. } = prompt {
+            if k == 3 {
+                session.virtual_checked(check(name), now);
+            }
+        }
+        let mut raw = RawState::for_layout(&layout);
+        pad.act(prompt, k, &mut raw);
+        state = pad.canonical(&raw, &state);
+        session.update(&raw, &state, now);
+        assert!(session.take_commands().is_empty());
+        commands.extend(
+            session
+                .take_virtual_commands()
+                .into_iter()
+                .map(|c| (prompt, c)),
+        );
+        k += 1;
+    }
+    assert!(session.is_done(), "stuck at {:?}", session.status());
+    let report = session.finish();
+    report.validate().unwrap();
+    (report, commands)
+}
+
+#[test]
+fn virtual_pads() {
+    let target = |name, title, unavailable| VirtualTarget {
+        name,
+        title,
+        rumble: true,
+        unavailable,
+    };
+    let (report, commands) = run_virtual(
+        vec![
+            target("xbox360", "Xbox 360 Controller", None),
+            target("dualsense", "DualSense", None),
+            target("switch-pro", "Switch Pro Controller", Some("no /dev/uhid")),
+        ],
+        |name| match name {
+            "xbox360" => VirtualCheck::Matched {
+                states: 40,
+                latency_ms: Some(2.5),
+            },
+            _ => VirtualCheck::Differs {
+                states: 3,
+                expected: "touchpad_click".into(),
+                observed: "nothing".into(),
+            },
+        },
+    );
+    let n = |status| (status, None::<String>);
+    assert_eq!(
+        statuses(&report)
+            .into_iter()
+            .map(|(step, status, observed)| (step, (status, observed)))
+            .collect::<Vec<_>>(),
+        vec![
+            // A generic model expects no identity, and nothing was detected.
+            (
+                "detection".into(),
+                (StepStatus::NotApplicable, Some("045e:028e".into()))
+            ),
+            ("virtual.xbox360".into(), n(StepStatus::Pass)),
+            ("virtual.xbox360.rumble".into(), n(StepStatus::Pass)),
+            (
+                "virtual.dualsense".into(),
+                (StepStatus::Fail, Some("nothing".into()))
+            ),
+            ("virtual.dualsense.rumble".into(), n(StepStatus::Pass)),
+            (
+                "virtual.switch-pro".into(),
+                (StepStatus::NotApplicable, Some("no /dev/uhid".into()))
+            ),
+            (
+                "virtual.switch-pro.rumble".into(),
+                (StepStatus::NotApplicable, Some("no /dev/uhid".into()))
+            ),
+        ]
+    );
+    let xbox = &report.results[1];
+    assert_eq!(xbox.check, "virtual_output");
+    assert_eq!(xbox.measurements["states"], 40.0);
+    assert_eq!(xbox.measurements["latency_ms"], 2.5);
+    assert_eq!(report.results[2].check, "virtual_rumble");
+    assert_eq!(
+        report.results[3].expected.as_deref(),
+        Some("touchpad_click")
+    );
+    // The vibration goes to the virtual pads: strong, weak, off, twice.
+    assert_eq!(commands.len(), 6, "{commands:?}");
+    assert_eq!(
+        Prompt::CheckVirtual {
+            name: "dualsense",
+            title: "DualSense"
+        }
+        .text(Default::default()),
+        "Checking a virtual DualSense: the app shows states on it and reads them back. \
+         Leave the pad alone."
+    );
+}
+
+#[test]
+fn virtual_pads_in_an_app_without_them() {
+    let (report, _) = run_virtual(Vec::new(), |_| unreachable!());
+    let last = report.results.last().unwrap();
+    assert_eq!(
+        (last.step.as_str(), last.status, last.observed.as_deref()),
+        (
+            "virtual",
+            StepStatus::NotApplicable,
+            Some("this app makes no virtual pads")
+        )
+    );
+    // A check that could not run is an error.
+    let (report, _) = run_virtual(
+        vec![VirtualTarget {
+            name: "xbox360",
+            title: "Xbox 360 Controller",
+            rumble: false,
+            unavailable: None,
+        }],
+        |_| VirtualCheck::Failed("the virtual pad did not appear".into()),
+    );
+    let last = report.results.last().unwrap();
+    assert_eq!(
+        (last.step.as_str(), last.status),
+        ("virtual.xbox360", StepStatus::Error)
     );
 }

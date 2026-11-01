@@ -1,6 +1,6 @@
 //! The main window: a header with the logo, one page per tab: devices
-//! (A2), collection (A3), settings, about; virtual pads (A5-A8) are a
-//! placeholder.
+//! (A2), collection (A3), test (H5), settings, about; virtual pads (A5-A8)
+//! are a placeholder.
 //!
 //! The window repaints only on input or when something wakes it (egui's
 //! reactive mode), so an idle app costs next to no CPU.
@@ -13,6 +13,7 @@ use crate::collection_page::CollectionPage;
 use crate::devices::{Devices, native_provider};
 use crate::devices_page::DevicesPage;
 use crate::settings::{LogLevel, Settings, Theme};
+use crate::test_page::TestPage;
 use crate::tray::{Tray, TrayEvent};
 use crate::widget::{Widget, WidgetOptions, WidgetSkin};
 
@@ -22,15 +23,17 @@ pub enum Tab {
     Devices,
     VirtualPad,
     Collection,
+    Test,
     Settings,
     About,
 }
 
 impl Tab {
-    const ALL: [Self; 5] = [
+    const ALL: [Self; 6] = [
         Self::Devices,
         Self::VirtualPad,
         Self::Collection,
+        Self::Test,
         Self::Settings,
         Self::About,
     ];
@@ -40,6 +43,7 @@ impl Tab {
             Self::Devices => "Devices",
             Self::VirtualPad => "Virtual pad",
             Self::Collection => "Collection",
+            Self::Test => "Test",
             Self::Settings => "Settings",
             Self::About => "About",
         }
@@ -61,6 +65,7 @@ pub struct DesktopApp {
     devices: Devices,
     devices_page: DevicesPage,
     collection_page: CollectionPage,
+    test_page: TestPage,
     widget: Widget,
 }
 
@@ -73,6 +78,7 @@ impl DesktopApp {
         settings_error: Option<String>,
         log_file: Option<PathBuf>,
         reports: Option<PathBuf>,
+        test_reports: Option<PathBuf>,
     ) -> Self {
         let icon = crate::Icon::app();
         let logo = cc.egui_ctx.load_texture(
@@ -98,6 +104,7 @@ impl DesktopApp {
             devices: Devices::start(native_provider(), cc.egui_ctx.clone()),
             devices_page: DevicesPage::default(),
             collection_page: CollectionPage::new(reports),
+            test_page: TestPage::new(test_reports),
             widget: Widget::default(),
             quitting: false,
         }
@@ -398,6 +405,7 @@ impl eframe::App for DesktopApp {
                     self.save_settings();
                 }
             }
+            Tab::Test => self.test_page.show(ui, &self.devices),
             Tab::Settings => self.settings_page(ui),
             Tab::About => self.about_page(ui),
         });

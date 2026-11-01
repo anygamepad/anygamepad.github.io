@@ -27,7 +27,8 @@ anygamepad-db.workspace = true
 anygamepad-model = { workspace = true, features = ["serde"] }
 schemars = { workspace = true, optional = true }
 serde.workspace = true
-serde_json = { workspace = true, optional = true }
+# `float_roundtrip`: a report read back holds exactly the numbers written.
+serde_json = { workspace = true, optional = true, features = ["float_roundtrip"] }
 
 [dev-dependencies]
 jsonschema = { version = "0.58.6", default-features = false }

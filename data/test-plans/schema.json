@@ -119,6 +119,11 @@
           "description": "The pad unplugged or turned off goes away, and comes back with the\nsame identity.",
           "type": "string",
           "const": "hotplug"
+        },
+        {
+          "description": "Desktop app: each type of virtual pad it can create reads back, through\nthe app's own provider, the states it shows; and vibration a game sends\nto it reaches the pad (the person answers). One step per type, and one\nper type for the vibration.",
+          "type": "string",
+          "const": "virtual_output"
         }
       ]
     },

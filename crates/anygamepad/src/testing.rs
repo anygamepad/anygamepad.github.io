@@ -20,6 +20,12 @@
 //! read (motion through the Gamepad API) or an output the provider cannot
 //! drive ends as not applicable.
 //!
+//! The desktop app's virtual pads ([`CheckKind::VirtualOutput`]) are
+//! checked by the app, which owns them: the session asks it to
+//! ([`Prompt::CheckVirtual`]) and records what it found
+//! ([`Session::virtual_checked`]); the vibration a game sends to a virtual
+//! pad ([`Prompt::WatchVirtual`]) is then asked about like any output.
+//!
 //! The person can answer yes/no questions and say "not on this pad" from
 //! the pad: south is yes, east is no, north is not sure; south and east
 //! together say the pad lacks the button asked for, as in the wizard.
@@ -133,6 +139,24 @@ pub enum Prompt {
     Unplug,
     /// Connect the pad again.
     Reconnect,
+    /// The app checks a virtual pad: it creates one, shows states on it,
+    /// reads them back and calls [`Session::virtual_checked`]. The pad is
+    /// left alone meanwhile.
+    CheckVirtual {
+        /// The virtual pad type, as in step IDs (`dualsense`).
+        name: &'static str,
+        /// Its name for people (`DualSense`).
+        title: &'static str,
+    },
+    /// The app sends the commands of [`Session::take_virtual_commands`] to
+    /// the virtual pad, as a game does, and passes what the virtual pad
+    /// receives on to the pad under test, which should vibrate.
+    WatchVirtual {
+        /// The virtual pad type, as in step IDs.
+        name: &'static str,
+        /// Its name for people.
+        title: &'static str,
+    },
     /// Every step ran.
     Done,
 }
@@ -166,6 +190,14 @@ impl Prompt {
             ),
             Self::Unplug => "Unplug the pad or turn it off.".into(),
             Self::Reconnect => "Connect the pad again.".into(),
+            Self::CheckVirtual { title, .. } => format!(
+                "Checking a virtual {title}: the app shows states on it and reads them back. \
+                 Leave the pad alone."
+            ),
+            Self::WatchVirtual { title, .. } => format!(
+                "Feel the pad: a game makes a virtual {title} vibrate (strong motor, then weak \
+                 motor), and the app passes it on."
+            ),
             Self::Done => "Done.".into(),
         }
     }
@@ -242,6 +274,48 @@ pub struct Status {
     pub prompt: Prompt,
 }
 
+/// A type of virtual pad the app can create, for the virtual output steps
+/// ([`CheckKind::VirtualOutput`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct VirtualTarget {
+    /// Its name in step IDs: lowercase words joined by hyphens
+    /// (`dualsense`, `switch-pro`).
+    pub name: &'static str,
+    /// Its name for people (`DualSense`).
+    pub title: &'static str,
+    /// Whether games can make it vibrate.
+    pub rumble: bool,
+    /// Why this machine cannot create it (`no /dev/uhid`), if it cannot:
+    /// its steps end as not applicable with this reason.
+    pub unavailable: Option<&'static str>,
+}
+
+/// What the app found when it checked a virtual pad
+/// ([`Prompt::CheckVirtual`]).
+#[derive(Clone, Debug, PartialEq)]
+pub enum VirtualCheck {
+    /// Every state shown read back the same.
+    Matched {
+        /// States shown and read back.
+        states: u32,
+        /// Mean time from showing a state to reading it back, in
+        /// milliseconds.
+        latency_ms: Option<f64>,
+    },
+    /// A state read back otherwise.
+    Differs {
+        /// States shown and read back.
+        states: u32,
+        /// What was shown, in canonical names (`south`, `left_stick_x+`).
+        expected: String,
+        /// What came back, in canonical names (`nothing` for nothing).
+        observed: String,
+    },
+    /// The check could not run: the pad could not be created, did not
+    /// appear, or could not be written.
+    Failed(String),
+}
+
 /// Why a session cannot start.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InvalidSetup(String);
@@ -275,6 +349,9 @@ pub struct SessionSetup {
     /// mute button in its reduced Bluetooth report): their steps end as not
     /// applicable.
     pub unreadable: ButtonSet,
+    /// The virtual pads the app can create, for the virtual output steps;
+    /// empty in apps without virtual pads (their step does not apply).
+    pub virtual_targets: Vec<VirtualTarget>,
 }
 
 /// A step, expanded for the model.
@@ -315,6 +392,10 @@ enum Kind {
     Battery,
     Output(Output),
     Hotplug,
+    VirtualCheck(VirtualTarget),
+    VirtualRumble(VirtualTarget),
+    /// A step that never runs: it always has a reason not to apply.
+    NotRun,
 }
 
 /// The state of the current step.
@@ -371,6 +452,8 @@ enum Phase {
     Hotplug {
         removed: bool,
     },
+    /// Waiting for the app's virtual pad check.
+    Virtual,
 }
 
 /// A test session. See the [module documentation](self).
@@ -392,6 +475,8 @@ pub struct Session {
     evidence: Evidence,
     last_frame: Option<RawState>,
     commands: Vec<OutputCommand>,
+    /// Commands for the virtual pad of the current step.
+    virtual_commands: Vec<OutputCommand>,
     /// When the current output script started.
     script_started: f64,
     /// Commands of the output script already sent.
@@ -411,6 +496,7 @@ impl Session {
             outputs,
             hid,
             unreadable,
+            virtual_targets,
         } = setup;
         let confirmed = &configuration.confirmed;
         if confirmed.model != model.id {
@@ -431,7 +517,14 @@ impl Session {
         let layout = view.layout.clone();
         let vendor_id = view.identity.vendor_id;
         let controls = model.controls_in(mode).clone();
-        let steps = expand(&plan, &controls, &layout, outputs, unreadable);
+        let steps = expand(
+            &plan,
+            &controls,
+            &layout,
+            outputs,
+            unreadable,
+            &virtual_targets,
+        );
         let mode = mode.id.clone();
         let plan = PlanRef {
             id: plan.id.clone(),
@@ -454,6 +547,7 @@ impl Session {
             evidence: Evidence::default(),
             last_frame: None,
             commands: Vec::new(),
+            virtual_commands: Vec::new(),
             script_started: 0.0,
             script_sent: 0,
             now: 0.0,
@@ -491,9 +585,15 @@ impl Session {
         self.report.notes = notes;
     }
 
-    /// The output commands to send to the device now, in order.
+    /// The output commands to send to the device under test now, in order.
     pub fn take_commands(&mut self) -> Vec<OutputCommand> {
         std::mem::take(&mut self.commands)
+    }
+
+    /// The output commands to send to the virtual pad now, as a game sends
+    /// them ([`Prompt::WatchVirtual`]), in order.
+    pub fn take_virtual_commands(&mut self) -> Vec<OutputCommand> {
+        std::mem::take(&mut self.virtual_commands)
     }
 
     /// The report, [scrubbed](TestReport::scrub): anonymous, with the
@@ -525,6 +625,17 @@ impl Session {
             },
             (Phase::Output { asking: true, .. }, Kind::Output(output)) => Prompt::Ask(output),
             (_, Kind::Output(output)) => Prompt::Watch(output),
+            (Phase::Output { asking: true, .. }, Kind::VirtualRumble(_)) => {
+                Prompt::Ask(Output::Rumble)
+            }
+            (_, Kind::VirtualRumble(target)) => Prompt::WatchVirtual {
+                name: target.name,
+                title: target.title,
+            },
+            (_, Kind::VirtualCheck(target)) => Prompt::CheckVirtual {
+                name: target.name,
+                title: target.title,
+            },
             (Phase::Hotplug { removed: false }, _) => Prompt::Unplug,
             (Phase::Hotplug { removed: true }, _) => Prompt::Reconnect,
             _ => Prompt::Wait,
@@ -673,6 +784,40 @@ impl Session {
         );
     }
 
+    /// What the app found when it checked the virtual pad of the current
+    /// step ([`Prompt::CheckVirtual`]), at `now`.
+    pub fn virtual_checked(&mut self, check: VirtualCheck, now: f64) {
+        self.now = now;
+        if self.phase != Phase::Virtual {
+            return;
+        }
+        match check {
+            VirtualCheck::Matched { states, latency_ms } => {
+                let mut measurements = vec![("states", f64::from(states))];
+                measurements.extend(latency_ms.map(|latency| ("latency_ms", latency)));
+                self.end(StepStatus::Pass, None, None, None, measurements);
+            }
+            VirtualCheck::Differs {
+                states,
+                expected,
+                observed,
+            } => self.end(
+                StepStatus::Fail,
+                Some(truncate(&expected)),
+                Some(truncate(&observed)),
+                None,
+                vec![("states", f64::from(states))],
+            ),
+            VirtualCheck::Failed(reason) => self.end(
+                StepStatus::Error,
+                None,
+                Some(truncate(&reason)),
+                None,
+                Vec::new(),
+            ),
+        }
+    }
+
     /// Repeats the current output test.
     pub fn repeat(&mut self, now: f64) {
         if let Phase::Output { asking, quiet } = &mut self.phase {
@@ -721,7 +866,8 @@ impl Session {
                     self.end(status, None, Some(observed.into()), None, measurements);
                     continue;
                 }
-                Kind::Output(_) => {
+                Kind::VirtualCheck(_) => self.phase = Phase::Virtual,
+                Kind::Output(_) | Kind::VirtualRumble(_) => {
                     self.phase = Phase::Output {
                         asking: false,
                         quiet: false,
@@ -994,14 +1140,18 @@ impl Session {
                 asking,
                 quiet: was_quiet,
             } => {
-                let Kind::Output(output) = kind else { return };
+                let (output, queue) = match kind {
+                    Kind::Output(output) => (output, &mut self.commands),
+                    Kind::VirtualRumble(_) => (Output::Rumble, &mut self.virtual_commands),
+                    _ => return,
+                };
                 if !*asking {
                     let script = script(output);
                     while let Some(&(at, command)) = script.get(self.script_sent) {
                         if now - self.script_started < at {
                             break;
                         }
-                        self.commands.push(command);
+                        queue.push(command);
                         self.script_sent += 1;
                     }
                     if self.script_sent >= script.len() {
@@ -1033,7 +1183,7 @@ impl Session {
                     // The next step waits for this press to end.
                 }
             }
-            Phase::Hotplug { .. } => {}
+            Phase::Hotplug { .. } | Phase::Virtual => {}
         }
     }
 
@@ -1389,13 +1539,16 @@ impl Session {
     }
 
     fn stop_outputs(&mut self) {
-        if let Some(Kind::Output(output)) = self.steps.get(self.index).map(|step| step.kind) {
-            if output == Output::Rumble {
-                self.commands.push(OutputCommand::Rumble(Rumble {
-                    low_frequency: 0.0,
-                    high_frequency: 0.0,
-                }));
-            }
+        let (output, queue) = match self.steps.get(self.index).map(|step| step.kind) {
+            Some(Kind::Output(output)) => (output, &mut self.commands),
+            Some(Kind::VirtualRumble(_)) => (Output::Rumble, &mut self.virtual_commands),
+            _ => return,
+        };
+        if output == Output::Rumble {
+            queue.push(OutputCommand::Rumble(Rumble {
+                low_frequency: 0.0,
+                high_frequency: 0.0,
+            }));
         }
     }
 
@@ -1502,13 +1655,14 @@ fn script(output: Output) -> Vec<(f64, OutputCommand)> {
 }
 
 /// The plan's steps for a model with `controls`, read through `layout`,
-/// with `outputs` drivable.
+/// with `outputs` drivable and `virtual_targets` to check.
 fn expand(
     plan: &TestPlan,
     controls: &Controls,
     layout: &RawLayout,
     outputs: OutputSet,
     unreadable: ButtonSet,
+    virtual_targets: &[VirtualTarget],
 ) -> Vec<Step> {
     let mut steps = Vec::new();
     let mut push =
@@ -1627,6 +1781,34 @@ fn expand(
                 }
             }
             CheckKind::Hotplug => push(step.id.clone(), check, Kind::Hotplug, None),
+            CheckKind::VirtualOutput => {
+                if virtual_targets.is_empty() {
+                    let reason = Some("this app makes no virtual pads");
+                    push(step.id.clone(), check, Kind::NotRun, reason);
+                }
+                for &target in virtual_targets {
+                    let id = format!("{}.{}", step.id, target.name);
+                    push(
+                        id.clone(),
+                        check,
+                        Kind::VirtualCheck(target),
+                        target.unavailable,
+                    );
+                    // The vibration reaches the pad only if it has motors the
+                    // app can drive.
+                    if target.rumble && controls.outputs.contains(Output::Rumble) {
+                        let reason = target.unavailable.or_else(|| {
+                            (!outputs.contains(Output::Rumble)).then_some("the API cannot drive it")
+                        });
+                        push(
+                            format!("{id}.rumble"),
+                            "virtual_rumble",
+                            Kind::VirtualRumble(target),
+                            reason,
+                        );
+                    }
+                }
+            }
         }
     }
     steps

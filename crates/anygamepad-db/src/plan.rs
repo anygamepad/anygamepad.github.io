@@ -106,6 +106,11 @@ pub enum CheckKind {
     /// The pad unplugged or turned off goes away, and comes back with the
     /// same identity.
     Hotplug,
+    /// Desktop app: each type of virtual pad it can create reads back, through
+    /// the app's own provider, the states it shows; and vibration a game sends
+    /// to it reaches the pad (the person answers). One step per type, and one
+    /// per type for the vibration.
+    VirtualOutput,
 }
 
 impl CheckKind {
@@ -126,6 +131,7 @@ impl CheckKind {
             Self::Lightbar => "lightbar",
             Self::PlayerLeds => "player_leds",
             Self::Hotplug => "hotplug",
+            Self::VirtualOutput => "virtual_output",
         }
     }
 
@@ -192,6 +198,14 @@ impl fmt::Display for InvalidPlan {
 impl std::error::Error for InvalidPlan {}
 
 impl TestPlan {
+    /// Whether the plan checks virtual pads ([`CheckKind::VirtualOutput`]):
+    /// only the desktop app runs it.
+    pub fn needs_virtual_pads(&self) -> bool {
+        self.steps
+            .iter()
+            .any(|step| step.check == CheckKind::VirtualOutput)
+    }
+
     /// Checks what the types cannot: the schema version, IDs, a version from
     /// 1, names, at least one step, unique step IDs, and parameters that
     /// fit their check (a side where one is needed and none elsewhere,
@@ -405,6 +419,8 @@ mod tests {
                 .any(|step| step.check == CheckKind::Buttons)
         );
         assert!(TestPlan::get("full").is_some());
+        assert!(!quick.needs_virtual_pads());
+        assert!(TestPlan::get("virtual").unwrap().needs_virtual_pads());
         for plan in TestPlan::embedded() {
             plan.validate().unwrap();
         }

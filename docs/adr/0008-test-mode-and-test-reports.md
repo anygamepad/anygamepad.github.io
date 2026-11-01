@@ -44,7 +44,11 @@ should be anonymous.
    (`data/test-plans/`, Quick and Full first) list steps, each a kind of
    check with parameters and the conditions under which it applies; they
    are validated by a schema and embedded in the apps. A new kind of check
-   is written once in the runner and every app gets it.
+   is written once in the runner and every app gets it. A check that needs
+   what only one app has is still the runner's, with the I/O left to that
+   app: the desktop app's virtual pads (`virtual_output`, H5) are created
+   and read back by the app while the runner asks for it and records the
+   result, and the web app does not offer plans with such steps.
 3. **A controller catalog and a lab inventory** (H2). The catalog
    (`data/controllers/`) describes models as sold: controls, sensors,
    outputs, and modes with how to switch to them, their transports and the

@@ -1,0 +1,19 @@
+#:schema ./schema.json
+
+# The desktop app's virtual pads (A5 to A8): each type the app can create
+# reads back what it shows, and vibration a game sends to it reaches the
+# pad under test. The web app does not offer this plan.
+
+schema_version = 1
+id = "virtual"
+version = 1
+name = "Virtual pads"
+description = "Desktop app only: detection, then each virtual pad type reads back what it shows and passes a game's vibration on to the pad. About half a minute per type."
+
+[[steps]]
+id = "detection"
+check = "detection"
+
+[[steps]]
+id = "virtual"
+check = "virtual_output"

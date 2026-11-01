@@ -40,6 +40,14 @@ Status: **active**. Supersedes [ROADMAP/2026-10-14/](../2026-10-14/README.md).
   app, is done (grey); its `.wasm` budget rose from 160 to 224 KiB (RECORD
   of H4). No date moves: H5 ran in parallel and is now the start of the
   critical path.
+- **Status update (2026-11-01, in place):** H5, the test mode in the
+  desktop app, is done (grey), with the virtual pad check
+  (`virtual_output`) and the `virtual` plan (RECORD of H5). Dates
+  recomputed: M4 on 2027-01-09, M3 on 2026-12-31, M5 on 2026-12-03, M6 on
+  2026-11-13. The critical path now runs through the macOS backend and its
+  virtual pads (t0 -> C6 -> A8 -> A9 -> A10 -> M4); the chain of the test
+  lab and the library (F4 -> H6 -> C4 -> D3 -> C8 -> C10) has 4 days of
+  slack. H6 waits for F4, the owner's list of controllers.
 - **F4** becomes the lab inventory in H2's format: blocked by H2, 3 days
   instead of 5.
 - **Tasks with merged code that were never tried on a real pad are in
@@ -102,7 +110,8 @@ Cross-cutting groundwork lives in [00-foundations.md](00-foundations.md).
 1. **Test lab** (owner request, 2026-10-31). Nine tasks have their code
    merged but were never tried on a real pad; the test modes (H4, H5) and
    the first test campaign (H6) close them, and every later task is checked
-   the same way. H5 -> H6 is the start of the critical path.
+   the same way. Both test modes are done; H6 waits for F4 (the owner's
+   list of controllers).
 2. **Library 0.1.0** (M3): the Windows and macOS backends (C5, C6), SDL3
    and gilrs (C13, C14), arbitration (C12), and the profiles and mode
    detection built on test reports (D3, C8).
@@ -181,7 +190,7 @@ controls passed (ADR 0008).
   their estimates), but the dependency graph (what blocks what) stays
   valid. Use the graph, not the dates, to decide what to pick up next.
 - The critical path ends at milestone M4 (desktop 0.1.0). Projected end:
-  **2027-01-12** (2027-01-09 in the 2026-10-14 version, before the test
+  **2027-01-09** (2027-01-09 in the 2026-10-14 version, before the test
   lab and the recomputed dates).
 - Slack is measured against M4 for every task, as in earlier versions.
 
@@ -206,9 +215,9 @@ gantt
     section Core library and device database
     C1 Canonical gamepad model :done, c1, 2026-10-10, 3d
     C2 Device identity, fingerprint and provider trait :done, c2, 2026-10-10, 3d
-    C4 Linux input backend (evdev + hidraw) :crit, active, c4, after c1 c2 h6, 3d
+    C4 Linux input backend (evdev + hidraw) :active, c4, after c1 c2 h6, 3d
     C5 Windows input backend (HID + XInput) :c5, after c1 c2 t0, 30d
-    C6 macOS input backend (IOKit HID + GameController) :c6, after c1 c2 t0, 25d
+    C6 macOS input backend (IOKit HID + GameController) :crit, c6, after c1 c2 t0, 25d
     C11 Web backend (Gamepad API + WebHID) and JS bindings :done, c11, 2026-10-13, 1d
     C13 SDL3 provider (incl. SDL HIDAPI drivers) :c13, after c1 c2 t0, 15d
     C14 gilrs provider (pure-Rust fallback) :c14, after c1 c2 t0, 10d
@@ -219,10 +228,10 @@ gantt
     C3 Mapping engine :done, c3, 2026-10-14, 1d
     C9 Public API, docs and examples :c9, after c3 t0, 15d
     D2 SDL GameControllerDB importer :done, d2, 2026-10-14, 1d
-    D3 Initial curated profiles (top devices) :crit, d3, after d1 c4 f4 h6, 20d
-    C8 Mode and clone detection heuristics :crit, c8, after c3 c4 d3 h9, 20d
+    D3 Initial curated profiles (top devices) :d3, after d1 c4 f4 h6, 20d
+    C8 Mode and clone detection heuristics :c8, after c3 c4 d3 h9, 20d
     D4 Profile embedding and runtime overrides :done, d4, 2026-10-25, 1d
-    C10 Library 0.1.0 release :crit, c10, after c5 c6 c7 c8 c9 c11 c12 c14 d4, 5d
+    C10 Library 0.1.0 release :c10, after c5 c6 c7 c8 c9 c11 c12 c14 d4, 5d
     section Collection pipeline
     P1 Device report schema (shared crate) :done, p1, 2026-10-14, 1d
     P2 Sync API and PostgreSQL storage :p2, after p1 t0, 20d
@@ -244,8 +253,8 @@ gantt
     H10 Automatic detection of the pad, model, mode and transport :done, h10, 2026-10-31, 1d
     H3 Test runner and test plans (sans-IO) :done, h3, 2026-10-31, 1d
     H4 Test mode in the web app :done, h4, 2026-11-01, 1d
-    H5 Test mode in the desktop app :crit, h5, after h3 h10, 10d
-    H6 First test campaign (closes the implemented tasks) :crit, h6, after h4 h5 f4, 10d
+    H5 Test mode in the desktop app :done, h5, 2026-11-01, 1d
+    H6 First test campaign (closes the implemented tasks) :h6, after h4 h5 f4, 10d
     H7 Replay tests from test reports :h7, after h3, 7d
     H8 Coverage matrix and compatibility page :h8, after h1 f4, 7d
     H9 Collection campaign (every pad, mode, transport and OS) :h9, after h6, 20d
@@ -259,12 +268,12 @@ gantt
     A4 Virtual pad abstraction and emulated profiles :done, a4, 2026-10-30, 1d
     A5 Linux virtual output (uinput + UHID) :active, a5, after a4 c4, 3d
     A7 Windows virtual output via ViGEmBus (X360, DS4) :a7, after a4 c5, 15d
-    A8 macOS virtual output (IOHIDUserDevice) :a8, after a4 c6, 25d
+    A8 macOS virtual output (IOHIDUserDevice) :crit, a8, after a4 c6, 25d
     A2 Device list and live view :active, a2, after a1 c4, 2d
     A3 Collection mode :active, a3, after a2 w4 p1 p3, 5d
     A6 Physical device hiding (grab/HidHide/seize) :a6, after a5 c5 c6, 15d
     A11 Always-on-top input widget (overlay) :active, a11, after a2, 3d
-    A9 Packaging and code signing :a9, after a3 a6 a7 a8 a11, 15d
+    A9 Packaging and code signing :crit, a9, after a3 a6 a7 a8 a11, 15d
     A10 Desktop app 0.1.0 release :crit, a10, after a9 c10, 5d
     M4 Desktop app 0.1.0 :milestone, crit, m4, after a10, 0d
     section Report sync
@@ -276,12 +285,13 @@ gantt
 
 The zero-slack chain from the baseline to the desktop release (M4):
 
-1. t0 -> H5 -> H6 -> C4 -> D3 -> C8 -> C10 -> A10 -> M4
+1. t0 -> C6 -> A8 -> A9 -> A10 -> M4
 
-H9 has 3 days of slack. The desktop app's own chain
-(A5 -> A6 -> A9) has 3 days: the desktop release waits for the library
-(C10). Everything else has slack (see the `Slack` column in each detailed
-file).
+The macOS backend (C6) and the macOS virtual pads (A8) now set the
+desktop release. The test lab and the library
+(F4 -> H6 -> C4 -> D3 -> C8 -> C10) have 4 days of slack, the
+Windows chain (C5 -> A7) 5, H9 7. Everything else
+has slack (see the `Slack` column in each detailed file).
 
 ## Dependency graph (who blocks whom)
 
@@ -508,9 +518,9 @@ flowchart LR
     classDef crit fill:#fdd,stroke:#c00,stroke-width:2px
     classDef active fill:#def,stroke:#36c,stroke-width:2px
     classDef done fill:#eee,stroke:#999,color:#666
-    class c4,c8,c10,d3,a10,h5,h6,m4 crit
-    class c15,c7,w3,a1,a5,a2,a3,a11 active
-    class f1,f2,f3,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,a4,h1,h2,h3,h4,h10,m1,m2 done
+    class c6,a8,a9,a10,m4 crit
+    class c4,c15,c7,w3,a1,a5,a2,a3,a11 active
+    class f1,f2,f3,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,a4,h1,h2,h3,h4,h5,h10,m1,m2 done
 ```
 
 ## Milestones
@@ -519,10 +529,10 @@ flowchart LR
 |-----------|------------|-------------|
 | M1 Core runs in the browser | C3, C11, D4 | 2026-10-25 (done) |
 | M2 Web tester live and collecting (reports saved locally and shared as issues) | W7 | 2026-10-25 (done) |
-| M6 Test lab running (test modes in the web and desktop apps, first campaign done) | H6 | 2026-11-20 |
-| M5 Reports synchronized with the sync server | P5, P6 | 2026-12-10 |
-| M3 Library 0.1.0 | C10 | 2027-01-07 |
-| M4 Desktop app 0.1.0 | A10 | 2027-01-12 |
+| M6 Test lab running (test modes in the web and desktop apps, first campaign done) | H6 | 2026-11-13 |
+| M5 Reports synchronized with the sync server | P5, P6 | 2026-12-03 |
+| M3 Library 0.1.0 | C10 | 2026-12-31 |
+| M4 Desktop app 0.1.0 | A10 | 2027-01-09 |
 
 ## Top risks
 

@@ -9,6 +9,8 @@ runner (`anygamepad::testing`), which writes a test report
 - `quick.toml`: detection and every button, about a minute.
 - `full.toml`: everything the first set of checks covers, about five
   minutes.
+- `virtual.toml`: the desktop app's virtual pads (H5); the web app does
+  not offer it.
 - One TOML file per plan, named after its `id`. Raise `version` whenever
   the steps change, so reports say which steps ran.
 - `schema.json` is the JSON Schema of the format, generated from the Rust
@@ -39,6 +41,7 @@ test, and leaves out what the model lacks.
 | `battery` | - | Nothing to do: the battery reports a state |
 | `rumble`, `lightbar`, `player_leds` | - | The app drives the output (strong then weak motor; red, green, blue; players one to four); the person answers yes, no or not sure, on the screen or the pad (south, east, north) |
 | `hotplug` | - | Unplug the pad or turn it off, then connect it again; passes when it comes back with the same identity |
+| `virtual_output` | - | Desktop app only. Two steps per virtual pad type the app can create (`<id>.<type>`, as `virtual.dualsense`, check `virtual_output`; then `<id>.<type>.rumble`, check `virtual_rumble`): the app shows a series of states on a new virtual pad and reads it back through its own provider, passing when every state reads back as shown; then a game's vibration sent to the virtual pad must reach the pad under test (the person answers). Types this machine cannot create (no `/dev/uhid`, no permission, no backend on this OS yet) end as `not_applicable`, with the reason |
 
 Steps whose control the model lacks are left out (no `touchpad` step for
 a pad without one). Steps the API cannot read (motion through the

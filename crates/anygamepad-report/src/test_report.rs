@@ -180,7 +180,7 @@ pub struct StepResult {
     /// The step's ID in the plan: lowercase words joined by dots
     /// (`controls.south`, `sticks.left.circle`).
     pub step: String,
-    /// The kind of check (`control`, `stick_circle`, `rumble`).
+    /// The kind of check (`button`, `stick_circle`, `rumble`).
     pub check: String,
     /// The outcome.
     pub status: StepStatus,
@@ -218,8 +218,8 @@ pub enum StepStatus {
     Fail,
     /// The person skipped it.
     Skipped,
-    /// It does not apply: the pad lacks the control ("Not on this pad"), or
-    /// the API cannot read it.
+    /// It does not apply: the pad lacks the control ("Not on this pad"), the
+    /// API cannot read it, or this machine cannot run it (no virtual pads).
     NotApplicable,
     /// The app could not run it (the device went away, an output failed).
     Error,

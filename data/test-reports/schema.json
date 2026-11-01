@@ -1557,7 +1557,7 @@
           ]
         },
         "check": {
-          "description": "The kind of check (`control`, `stick_circle`, `rumble`).",
+          "description": "The kind of check (`button`, `stick_circle`, `rumble`).",
           "type": "string"
         },
         "duration_ms": {
@@ -1642,7 +1642,7 @@
           "const": "skipped"
         },
         {
-          "description": "It does not apply: the pad lacks the control (\"Not on this pad\"), or\nthe API cannot read it.",
+          "description": "It does not apply: the pad lacks the control (\"Not on this pad\"), the\nAPI cannot read it, or this machine cannot run it (no virtual pads).",
           "type": "string",
           "const": "not_applicable"
         },

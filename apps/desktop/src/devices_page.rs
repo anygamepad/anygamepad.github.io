@@ -81,6 +81,9 @@ impl DevicesPage {
                     ui.set_width(ui.available_width());
                     ui.label(egui::RichText::new(name).strong());
                     ui.label(egui::RichText::new(ids).small().weak());
+                    if device.made_here {
+                        ui.label(egui::RichText::new("Virtual pad of a test").small().weak());
+                    }
                 })
                 .response
                 .interact(Sense::click());

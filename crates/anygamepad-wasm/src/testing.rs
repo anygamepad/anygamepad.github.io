@@ -152,11 +152,13 @@ pub fn lab_units() -> Result<JsValue, JsError> {
     to_js(&units)
 }
 
-/// The embedded test plans.
+/// The embedded test plans the web app runs: all but the desktop app's
+/// virtual pad plans.
 #[wasm_bindgen(js_name = testPlans, unchecked_return_type = "PlanInfo[]")]
 pub fn test_plans() -> Result<JsValue, JsError> {
     let plans: Vec<PlanInfo> = TestPlan::embedded()
         .iter()
+        .filter(|plan| !plan.needs_virtual_pads())
         .map(|plan| PlanInfo {
             id: plan.id.clone(),
             name: plan.name.clone(),
@@ -349,6 +351,7 @@ pub(crate) fn start(
         outputs,
         hid,
         unreadable,
+        virtual_targets: Vec::new(),
     })
     .map_err(|error| JsError::new(&error.to_string()))?;
     Ok(TestSession { session })

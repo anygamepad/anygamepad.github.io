@@ -210,8 +210,8 @@ gantt
     H2 Controller catalog and lab inventory format :done, h2, 2026-10-31, 1d
     H3 Test runner and test plans (sans-IO) :done, h3, 2026-10-31, 1d
     H4 Test mode in the web app :done, h4, 2026-11-01, 1d
-    H5 Test mode in the desktop app :crit, h5, after h3 h10, 10d
-    H6 First test campaign (closes the implemented tasks) :crit, h6, after h4 h5 f4, 10d
+    H5 Test mode in the desktop app :done, h5, 2026-11-01, 1d
+    H6 First test campaign (closes the implemented tasks) :h6, after h4 h5 f4, 10d
     H7 Replay tests from test reports :h7, after h3, 7d
     H8 Coverage matrix and compatibility page :h8, after h1 f4, 7d
     H9 Collection campaign (every pad, mode, transport and OS) :h9, after h6, 20d
@@ -226,11 +226,11 @@ gantt
 | H2 | Controller catalog and lab inventory format | 7 | D1 | F4, H3, H10 | 2026-10-31 | 2026-10-31 | done |
 | H3 | Test runner and test plans (sans-IO) | 15 | H1, H2, C3, W4 | H4, H5, H7 | 2026-10-31 | 2026-10-31 | done |
 | H4 | Test mode in the web app | 10 | H3, H10 | H6 | 2026-11-01 | 2026-11-01 | done |
-| H5 | **Test mode in the desktop app** | 10 | H3, H10 | H6 | 2026-10-31 | 2026-11-10 | 0 |
-| H6 | **First test campaign (closes the implemented tasks)** | 10 | H4, H5, F4 | C4, C15, D3, W3, A1, H9, M6 | 2026-11-10 | 2026-11-20 | 0 |
-| H7 | Replay tests from test reports | 7 | H3 | - | 2026-10-31 | 2026-11-07 | 66 |
-| H8 | Coverage matrix and compatibility page | 7 | H1, F4 | - | 2026-11-03 | 2026-11-10 | 63 |
-| H9 | Collection campaign (every pad, mode, transport and OS) | 20 | H6 | C8 | 2026-11-20 | 2026-12-10 | 3 |
+| H5 | Test mode in the desktop app | 10 | H3, H10 | H6 | 2026-11-01 | 2026-11-01 | done |
+| H6 | First test campaign (closes the implemented tasks) | 10 | H4, H5, F4 | C4, C15, D3, W3, A1, H9, M6 | 2026-11-03 | 2026-11-13 | 4 |
+| H7 | Replay tests from test reports | 7 | H3 | - | 2026-10-31 | 2026-11-07 | 63 |
+| H8 | Coverage matrix and compatibility page | 7 | H1, F4 | - | 2026-11-03 | 2026-11-10 | 60 |
+| H9 | Collection campaign (every pad, mode, transport and OS) | 20 | H6 | C8 | 2026-11-13 | 2026-12-03 | 7 |
 | H10 | Automatic detection of the pad, model, mode and transport | 5 | H2 | H4, H5 | 2026-10-31 | 2026-10-31 | done |
 
 ### H1 — Test report format
@@ -388,6 +388,16 @@ runs a session on the demo pad (Windows, macOS, CI).
 **Done when:** a test runs a Quick session on the demo pad and checks the
 report file; on Linux, the virtual output suite runs where `/dev/uinput`
 and `/dev/uhid` exist and is skipped with a reason where they do not.
+
+Status (2026-11-01): done
+(`RECORD/2026-11-01.h5-desktop-test-mode.completed.md`): the "Test" page,
+the session in the device worker, `test-reports/`, the `virtual_output`
+check and the `virtual` plan (not offered by the web app), and the demo
+pad following the prompts. Tests run the Quick, Full and Virtual pads
+plans on the demo pad and read the report file back. A machine without
+write access to `/dev/uinput` or `/dev/uhid` (and Windows and macOS for
+now) ends each virtual pad type as not applicable with the reason; the
+read-back through the kernel's drivers is first tried in H6.
 
 ### H6 — First test campaign
 
