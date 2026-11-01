@@ -1,0 +1,23 @@
+[package]
+name = "anygamepad-hid"
+description = "HID report descriptor parser and report reader for anygamepad."
+readme = "README.md"
+keywords = ["gamepad", "controller", "hid", "usb"]
+categories = ["hardware-support", "parser-implementations"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+anygamepad-model.workspace = true
+
+[dev-dependencies]
+# The mapping engine, to test the reader's layout end to end.
+anygamepad.workspace = true
