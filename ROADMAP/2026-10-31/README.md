@@ -36,6 +36,10 @@ Status: **active**. Supersedes [ROADMAP/2026-10-14/](../2026-10-14/README.md).
   Quick and Full plans, is done (grey). Dates recomputed: M4 on
   2027-01-12, M3 on 2027-01-07, M5 on 2026-12-10, M6 on 2026-11-20; the
   critical path now starts at H4 and H5.
+- **Status update (2026-11-01, in place):** H4, the test mode in the web
+  app, is done (grey); its `.wasm` budget rose from 160 to 224 KiB (RECORD
+  of H4). No date moves: H5 ran in parallel and is now the start of the
+  critical path.
 - **F4** becomes the lab inventory in H2's format: blocked by H2, 3 days
   instead of 5.
 - **Tasks with merged code that were never tried on a real pad are in
@@ -98,7 +102,7 @@ Cross-cutting groundwork lives in [00-foundations.md](00-foundations.md).
 1. **Test lab** (owner request, 2026-10-31). Nine tasks have their code
    merged but were never tried on a real pad; the test modes (H4, H5) and
    the first test campaign (H6) close them, and every later task is checked
-   the same way. H4/H5 -> H6 is the start of the critical path.
+   the same way. H5 -> H6 is the start of the critical path.
 2. **Library 0.1.0** (M3): the Windows and macOS backends (C5, C6), SDL3
    and gilrs (C13, C14), arbitration (C12), and the profiles and mode
    detection built on test reports (D3, C8).
@@ -239,7 +243,7 @@ gantt
     H2 Controller catalog and lab inventory format :done, h2, 2026-10-31, 1d
     H10 Automatic detection of the pad, model, mode and transport :done, h10, 2026-10-31, 1d
     H3 Test runner and test plans (sans-IO) :done, h3, 2026-10-31, 1d
-    H4 Test mode in the web app :crit, h4, after h3 h10, 10d
+    H4 Test mode in the web app :done, h4, 2026-11-01, 1d
     H5 Test mode in the desktop app :crit, h5, after h3 h10, 10d
     H6 First test campaign (closes the implemented tasks) :crit, h6, after h4 h5 f4, 10d
     H7 Replay tests from test reports :h7, after h3, 7d
@@ -270,10 +274,9 @@ gantt
 
 ### Critical path
 
-Zero-slack chains from the baseline to the desktop release (M4):
+The zero-slack chain from the baseline to the desktop release (M4):
 
-1. t0 -> H4 -> H6 -> C4 -> D3 -> C8 -> C10 -> A10 -> M4
-2. t0 -> H5 -> H6 -> C4 -> D3 -> C8 -> C10 -> A10 -> M4
+1. t0 -> H5 -> H6 -> C4 -> D3 -> C8 -> C10 -> A10 -> M4
 
 H9 has 3 days of slack. The desktop app's own chain
 (A5 -> A6 -> A9) has 3 days: the desktop release waits for the library
@@ -505,9 +508,9 @@ flowchart LR
     classDef crit fill:#fdd,stroke:#c00,stroke-width:2px
     classDef active fill:#def,stroke:#36c,stroke-width:2px
     classDef done fill:#eee,stroke:#999,color:#666
-    class c4,c8,c10,d3,a10,h4,h5,h6,m4 crit
+    class c4,c8,c10,d3,a10,h5,h6,m4 crit
     class c15,c7,w3,a1,a5,a2,a3,a11 active
-    class f1,f2,f3,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,a4,h1,h2,h3,h10,m1,m2 done
+    class f1,f2,f3,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,a4,h1,h2,h3,h4,h10,m1,m2 done
 ```
 
 ## Milestones

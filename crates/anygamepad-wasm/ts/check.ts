@@ -2,7 +2,26 @@
 // CI copies this file next to the `wasm-bindgen` output and runs `tsc` on it;
 // it is never executed.
 
-import init, { Gamepads, HidDevices, MappingWizard, version } from "./anygamepad_wasm.js";
+import init, {
+  catalogModels,
+  Gamepads,
+  HidDevices,
+  labUnits,
+  MappingWizard,
+  testPlans,
+  version,
+  type CatalogModel,
+  type ChoiceResult,
+  type Detection,
+  type LabUnit,
+  type PlanInfo,
+  type PromptView,
+  type TestOutcome,
+  type TestResultView,
+  type TestSession,
+  type TestSetup,
+  type TestStatus,
+} from "./anygamepad_wasm.js";
 import type {
   Axis,
   Button,
@@ -191,4 +210,41 @@ export async function webHid(button: HTMLButtonElement): Promise<void> {
     await devices.close(device);
   }
   devices.free();
+}
+
+/** Runs the test mode as the web app does (H4). */
+function testMode(gamepads: Gamepads, devices: HidDevices, device: number): void {
+  const models: CatalogModel[] = catalogModels();
+  const units: LabUnit[] = labUnits();
+  const plans: PlanInfo[] = testPlans();
+  const connection = models[0]?.modes[0]?.connections[0];
+  const detection: Detection = gamepads.identify(device);
+  const best = detection.candidates[0];
+  const choice: ChoiceResult = gamepads.checkChoice(device, "sony/dualsense", "ps5", "usb");
+  const seen = choice.result === "differs" ? choice.seen.candidates.length : 0;
+  const hidDetection: Detection = devices.identify(device);
+  const setup: TestSetup = {
+    plan: plans[0]?.id ?? "quick",
+    start: "connecting",
+    confirmed: { model: best?.model ?? "generic/hid", mode: best?.mode ?? "dinput", transport: "usb", unit: units[0]?.code },
+    detected: undefined,
+  };
+  const session: TestSession = gamepads.startTest(device, setup, Date.now());
+  gamepads.feedTest(device, session, performance.now());
+  devices.feedTest(device, devices.startTest(device, setup, Date.now()), performance.now());
+  const status: TestStatus = session.status();
+  const prompt: PromptView = status.prompt;
+  if (prompt.kind === "press") console.log(prompt.button, status.text);
+  if (prompt.kind === "ask") session.answer("yes", performance.now());
+  session.skip(performance.now());
+  session.notOnThisPad(performance.now());
+  session.nothingHappens(performance.now());
+  session.repeat(performance.now());
+  session.setNotes("Left stick drifts.");
+  gamepads.testReconnected(device, session, performance.now());
+  const results: TestResultView[] = session.results();
+  const outcome: TestOutcome = session.outcome(1);
+  console.log(connection?.known, seen, hidDetection.generic, results.length, outcome.file_name, outcome.summary.pass);
+  console.log(JSON.stringify(outcome.report), outcome.review[0]?.concern, session.isDone());
+  session.free();
 }

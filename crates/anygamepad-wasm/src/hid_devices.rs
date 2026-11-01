@@ -623,11 +623,22 @@ impl HidDevices {
             None,
         )?;
         // The decoded pad's raw elements are its canonical controls, with
-        // the motion sensors, touchpad and battery the decoder reads.
+        // the motion sensors, touchpad and battery the decoder reads, except
+        // from a Bluetooth pad's reduced report, which carries none of them
+        // nor the mute button.
+        let reduced = self
+            .inputs
+            .get(&id)
+            .is_some_and(|input| input.form == playstation::ReportForm::BluetoothReduced);
         let mut layout = canonical_layout();
-        layout.sensors = SensorSet::from([Sensor::Gyroscope, Sensor::Accelerometer]);
-        layout.touchpads = vec![model.touchpad()];
-        layout.battery = true;
+        let mut unreadable = anygamepad::model::ButtonSet::default();
+        if reduced {
+            unreadable.insert(anygamepad::model::Button::Mute);
+        } else {
+            layout.sensors = SensorSet::from([Sensor::Gyroscope, Sensor::Accelerometer]);
+            layout.touchpads = vec![model.touchpad()];
+            layout.battery = true;
+        }
         let outputs = self
             .driver(id)
             .map_or(OutputSet::EMPTY, |driver| driver.borrow().outputs());
@@ -637,7 +648,7 @@ impl HidDevices {
             ..anygamepad_report::HidData::default()
         });
         report.views.push(view);
-        crate::testing::start(setup, report, outputs, true)
+        crate::testing::start(setup, report, outputs, true, unreadable)
     }
 
     /// Like `poll()`, and feeds `session` with the input reports and the

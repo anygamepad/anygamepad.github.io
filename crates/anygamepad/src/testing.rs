@@ -271,6 +271,10 @@ pub struct SessionSetup {
     /// Whether the app feeds input reports ([`Session::input_report`]):
     /// the evidence then holds them instead of raw states.
     pub hid: bool,
+    /// Buttons of the model the API is known not to read (a PlayStation pad's
+    /// mute button in its reduced Bluetooth report): their steps end as not
+    /// applicable.
+    pub unreadable: ButtonSet,
 }
 
 /// A step, expanded for the model.
@@ -406,6 +410,7 @@ impl Session {
             device,
             outputs,
             hid,
+            unreadable,
         } = setup;
         let confirmed = &configuration.confirmed;
         if confirmed.model != model.id {
@@ -426,7 +431,7 @@ impl Session {
         let layout = view.layout.clone();
         let vendor_id = view.identity.vendor_id;
         let controls = model.controls_in(mode).clone();
-        let steps = expand(&plan, &controls, &layout, outputs);
+        let steps = expand(&plan, &controls, &layout, outputs, unreadable);
         let mode = mode.id.clone();
         let plan = PlanRef {
             id: plan.id.clone(),
@@ -641,6 +646,28 @@ impl Session {
             StepStatus::NotApplicable,
             None,
             Some("not on this pad".into()),
+            None,
+            Vec::new(),
+        );
+    }
+
+    /// The person says nothing happens: the control asked for gets no
+    /// response (the API does not read it, or the mapping misses it). The
+    /// step fails, observing nothing.
+    pub fn nothing_happens(&mut self, now: f64) {
+        self.now = now;
+        if self.is_done() || self.phase == Phase::Pending {
+            return;
+        }
+        let expected = match self.steps[self.index].kind {
+            Kind::Button(button) => Some(button.as_str().to_owned()),
+            _ => None,
+        };
+        self.stop_outputs();
+        self.end(
+            StepStatus::Fail,
+            expected,
+            Some("nothing".into()),
             None,
             Vec::new(),
         );
@@ -1481,6 +1508,7 @@ fn expand(
     controls: &Controls,
     layout: &RawLayout,
     outputs: OutputSet,
+    unreadable: ButtonSet,
 ) -> Vec<Step> {
     let mut steps = Vec::new();
     let mut push =
@@ -1506,7 +1534,10 @@ fn expand(
                 for button in BUTTON_ORDER.iter().copied().chain(extras) {
                     if controls.buttons.contains(button) {
                         let id = format!("{}.{}", step.id, button.as_str());
-                        push(id, check, Kind::Button(button), None);
+                        let reason = unreadable
+                            .contains(button)
+                            .then_some("the API does not read it");
+                        push(id, check, Kind::Button(button), reason);
                     }
                 }
             }

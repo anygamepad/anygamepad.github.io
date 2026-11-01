@@ -12,8 +12,8 @@ use anygamepad::model::identity::{
 };
 use anygamepad::model::raw::{RawAxisInfo, RawLayout, RawSource, RawState};
 use anygamepad::model::{
-    Button, ControllerMode, GamepadState, MotionSample, Output, OutputCommand, OutputSet, Power,
-    PowerState, Sensor, SensorSet, TouchPoint, TouchpadInfo, Transport, Vec3,
+    Button, ButtonSet, ControllerMode, GamepadState, MotionSample, Output, OutputCommand,
+    OutputSet, Power, PowerState, Sensor, SensorSet, TouchPoint, TouchpadInfo, Transport, Vec3,
 };
 use anygamepad::testing::{Prompt, Session, SessionSetup};
 use anygamepad::web::standard;
@@ -293,6 +293,7 @@ fn run(pad: &Pad, plan: &str) -> (TestReport, Vec<OutputCommand>) {
         device: device(pad),
         outputs: pad.outputs,
         hid: pad.hid,
+        unreadable: ButtonSet::default(),
     })
     .unwrap();
     let layout = pad.layout();
@@ -501,6 +502,7 @@ fn detection_mismatch_and_skips() {
         device: device(&pad),
         outputs: pad.outputs,
         hid: false,
+        unreadable: ButtonSet::default(),
     })
     .unwrap();
     let layout = pad.layout();
@@ -546,7 +548,106 @@ fn setup_errors() {
         device: device(&pad),
         outputs: pad.outputs,
         hid: false,
+        unreadable: ButtonSet::default(),
     };
     assert!(Session::new(setup).is_err());
     let _ = ControllerMode::Xinput;
+}
+
+#[test]
+fn unreadable_buttons_and_nothing_happens() {
+    let pad = Pad::dualsense();
+    let configuration = Configuration {
+        start: SessionStart::List,
+        confirmed: selection(&pad),
+        detected: None,
+    };
+    let mut session = Session::new(SessionSetup {
+        plan: TestPlan::get("quick").unwrap().clone(),
+        model: pad.model(),
+        configuration,
+        device: device(&pad),
+        outputs: pad.outputs,
+        hid: false,
+        unreadable: ButtonSet::from([Button::Mute]),
+    })
+    .unwrap();
+    let layout = pad.layout();
+    let raw = RawState::for_layout(&layout);
+    let state = GamepadState::new();
+    for t in 0..20 {
+        session.update(&raw, &state, f64::from(t) * 10.0);
+    }
+    assert_eq!(session.status().prompt, Prompt::Press(Button::South));
+    session.nothing_happens(200.0);
+    let report = session.finish();
+    report.validate().unwrap();
+    let south = &report.results[1];
+    assert_eq!(
+        (
+            south.status,
+            south.observed.as_deref(),
+            south.expected.as_deref()
+        ),
+        (StepStatus::Fail, Some("nothing"), Some("south"))
+    );
+    assert!(report.device.user.missing_buttons.is_empty());
+}
+
+#[test]
+fn an_unreadable_button_does_not_apply() {
+    let pad = Pad::dualsense();
+    let configuration = Configuration {
+        start: SessionStart::List,
+        confirmed: selection(&pad),
+        detected: None,
+    };
+    let mut session = Session::new(SessionSetup {
+        plan: TestPlan::get("quick").unwrap().clone(),
+        model: pad.model(),
+        configuration,
+        device: device(&pad),
+        outputs: pad.outputs,
+        hid: true,
+        unreadable: ButtonSet::from([Button::Mute]),
+    })
+    .unwrap();
+    let layout = pad.layout();
+    let mut state = GamepadState::new();
+    // Press every button asked for until the session ends.
+    let mut now = 0.0;
+    let mut last = Prompt::Wait;
+    let mut ticks = 0;
+    while !session.is_done() && ticks < 20_000 {
+        ticks += 1;
+        let prompt = session.status().prompt;
+        if prompt != last {
+            last = prompt;
+            ticks = 0;
+        }
+        let mut raw = RawState::for_layout(&layout);
+        if let Prompt::Press(button) = prompt {
+            if (5..15).contains(&ticks) {
+                raw.buttons[pad.index(button)] = 1.0;
+            }
+        }
+        state = pad.canonical(&raw, &state);
+        session.update(&raw, &state, now);
+        now += 10.0;
+    }
+    let report = session.finish();
+    let mute = report
+        .results
+        .iter()
+        .find(|r| r.step == "controls.mute")
+        .unwrap();
+    assert_eq!(mute.status, StepStatus::NotApplicable);
+    assert_eq!(mute.observed.as_deref(), Some("the API does not read it"));
+    assert!(
+        report
+            .results
+            .iter()
+            .filter(|r| r.step != "controls.mute")
+            .all(|r| r.status == StepStatus::Pass)
+    );
 }

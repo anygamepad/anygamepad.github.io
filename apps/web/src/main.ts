@@ -35,5 +35,6 @@ App.mount("#app", {
   openShare: tester.openShare,
   closeShare: tester.closeShare,
   copyAndOpenIssue: tester.copyAndOpenIssue,
+  ...tester.testActions,
 });
 tester.start(App.data as unknown as TesterView);

@@ -209,7 +209,7 @@ gantt
     H1 Test report format :done, h1, 2026-10-31, 1d
     H2 Controller catalog and lab inventory format :done, h2, 2026-10-31, 1d
     H3 Test runner and test plans (sans-IO) :done, h3, 2026-10-31, 1d
-    H4 Test mode in the web app :crit, h4, after h3 h10, 10d
+    H4 Test mode in the web app :done, h4, 2026-11-01, 1d
     H5 Test mode in the desktop app :crit, h5, after h3 h10, 10d
     H6 First test campaign (closes the implemented tasks) :crit, h6, after h4 h5 f4, 10d
     H7 Replay tests from test reports :h7, after h3, 7d
@@ -225,7 +225,7 @@ gantt
 | H1 | Test report format | 5 | P1 | P4, H3, H8 | 2026-10-31 | 2026-10-31 | done |
 | H2 | Controller catalog and lab inventory format | 7 | D1 | F4, H3, H10 | 2026-10-31 | 2026-10-31 | done |
 | H3 | Test runner and test plans (sans-IO) | 15 | H1, H2, C3, W4 | H4, H5, H7 | 2026-10-31 | 2026-10-31 | done |
-| H4 | **Test mode in the web app** | 10 | H3, H10 | H6 | 2026-10-31 | 2026-11-10 | 0 |
+| H4 | Test mode in the web app | 10 | H3, H10 | H6 | 2026-11-01 | 2026-11-01 | done |
 | H5 | **Test mode in the desktop app** | 10 | H3, H10 | H6 | 2026-10-31 | 2026-11-10 | 0 |
 | H6 | **First test campaign (closes the implemented tasks)** | 10 | H4, H5, F4 | C4, C15, D3, W3, A1, H9, M6 | 2026-11-10 | 2026-11-20 | 0 |
 | H7 | Replay tests from test reports | 7 | H3 | - | 2026-10-31 | 2026-11-07 | 66 |
@@ -363,6 +363,14 @@ files; nothing is shared by itself. Works in Chromium, Firefox and Safari
 **Done when:** the smoke test runs a Quick session with a fake Gamepad API
 pad and a Full session with a fake WebHID DualSense (outputs answered) in
 Chromium, Firefox and WebKit, and downloads a report that validates.
+
+Status (2026-11-01): done
+(`RECORD/2026-11-01.h4-web-test-mode.completed.md`): the "Test mode" tab,
+its wasm bindings, the `test-reports` store, and
+`apps/web/tests/smoke-test-mode.mjs`. The fake WebHID DualSense streams no
+sticks or motion, so the smoke test runs the Full plan on a Gamepad API pad
+and the Quick plan on the WebHID DualSense. The `.wasm` budget rose from
+160 to 224 KiB for it.
 
 ### H5 — Test mode in the desktop app
 

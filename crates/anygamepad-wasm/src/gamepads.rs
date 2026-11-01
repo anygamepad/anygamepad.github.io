@@ -477,7 +477,7 @@ impl Gamepads {
             None,
         )?;
         report.views.push(self.report_view(id).ok_or_else(unknown)?);
-        crate::testing::start(setup, report, info.outputs, false)
+        crate::testing::start(setup, report, info.outputs, false, Default::default())
     }
 
     /// Feeds `session` with an open gamepad's values as read by the last

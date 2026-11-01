@@ -41,6 +41,8 @@ cannot send headers); the dev server runs without one.
 | `src/live.ts` | Live view of a Gamepad API pad: update rate, drawing, raw buttons and axes |
 | `src/hid-live.ts` | Live view of a WebHID pad: report form, drawing, touchpad, motion, battery, raw reports |
 | `src/wizard.ts` | The guided wizard's view: asks for each control in turn (the library's `MappingWizard` decides) |
+| `src/test-mode.ts` | The test mode (roadmap H4): the list of controllers, the ways to connect one, detection, the session (the library's `TestSession` decides) and its anonymous test report |
+| `src/storage.ts` | IndexedDB: saved device reports (`reports`) and test reports (`test-reports`) |
 | `src/drawing.ts`, `src/layouts.ts` | Controller drawings of the canonical state, one per family |
 | `src/art/` | The owner's controller illustrations, marked up with data attributes |
 | `src/rate.ts` | Update rate meters |
@@ -49,3 +51,5 @@ cannot send headers); the dev server runs without one.
 | `src/wasm/` | wasm-pack output (generated, not committed) |
 | `scripts/check-size.mjs` | Bundle size budget |
 | `tests/smoke.mjs` | Smoke test of the built site (Chromium, Firefox, WebKit) |
+| `tests/smoke-test-mode.mjs` | Smoke test of the test mode: a Full session on a Gamepad API pad, a Quick one on a WebHID DualSense (Chromium) |
+| `tests/fakes.mjs` | The fake gamepads and WebHID device both smoke tests use |

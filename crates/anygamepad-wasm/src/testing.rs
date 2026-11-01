@@ -12,7 +12,9 @@ use anygamepad::db::lab::Code;
 use anygamepad::db::plan::Side;
 use anygamepad::db::{Catalog, Inventory, TestPlan};
 use anygamepad::model::identity::DeviceIdentity;
-use anygamepad::model::{Button, ControllerMode, FaceLayout, Family, Output, OutputSet, Transport};
+use anygamepad::model::{
+    Button, ButtonSet, ControllerMode, FaceLayout, Family, Output, OutputSet, Transport,
+};
 use anygamepad::testing::{Prompt, Session, SessionSetup};
 use anygamepad_report::Report;
 use anygamepad_report::test_report::{
@@ -317,6 +319,7 @@ pub(crate) fn start(
     device: Report,
     outputs: OutputSet,
     hid: bool,
+    unreadable: ButtonSet,
 ) -> Result<TestSession, JsError> {
     let setup: TestSetup =
         serde_wasm_bindgen::from_value(setup).map_err(|error| JsError::new(&error.to_string()))?;
@@ -345,6 +348,7 @@ pub(crate) fn start(
         device,
         outputs,
         hid,
+        unreadable,
     })
     .map_err(|error| JsError::new(&error.to_string()))?;
     Ok(TestSession { session })
@@ -501,8 +505,10 @@ pub struct ReviewText {
 /// The finished report and what the page shows of it.
 #[derive(Clone, Debug, Serialize, Tsify)]
 pub struct TestOutcome {
-    /// The anonymous test report as indented JSON (`anygamepad-test-report`).
-    pub json: String,
+    /// The anonymous test report (`anygamepad-test-report`), as a
+    /// JSON-compatible object: `JSON.stringify()` gives the file.
+    #[tsify(type = "Record<string, unknown>")]
+    pub report: anygamepad_report::test_report::TestReport,
     /// Its file name.
     pub file_name: String,
     /// How many steps ended each way.
@@ -575,6 +581,13 @@ impl TestSession {
         self.session.not_on_this_pad(now);
     }
 
+    /// Nothing happens when the person uses the control asked for: the step
+    /// fails, observing nothing.
+    #[wasm_bindgen(js_name = nothingHappens)]
+    pub fn nothing_happens(&mut self, now: f64) {
+        self.session.nothing_happens(now);
+    }
+
     /// Repeats the current output test.
     pub fn repeat(&mut self, now: f64) {
         self.session.repeat(now);
@@ -612,7 +625,7 @@ impl TestSession {
         to_js_objects(&results)
     }
 
-    /// The report so far, anonymous: its JSON, file name (`n` tells it from
+    /// The report so far, anonymous: the report, its file name (`n` tells it from
     /// others of the same day), summary and texts to review. The session
     /// goes on; call it again after `setNotes()`.
     #[wasm_bindgen(unchecked_return_type = "TestOutcome")]
@@ -623,9 +636,6 @@ impl TestSession {
             .validate()
             .map_err(|error| JsError::new(&error.to_string()))?;
         let summary = report.summary();
-        let json = report
-            .to_json_pretty()
-            .map_err(|error| JsError::new(&error.to_string()))?;
         let review = report
             .review(Catalog::embedded())
             .into_iter()
@@ -637,9 +647,12 @@ impl TestSession {
                 }),
             })
             .collect();
-        to_js(&TestOutcome {
-            json,
-            file_name: report.file_name(n),
+        let file_name = report.file_name(n);
+        // Maps as objects, so that `JSON.stringify()` writes the
+        // measurements.
+        to_js_objects(&TestOutcome {
+            report,
+            file_name,
             summary: TestSummary {
                 pass: summary.pass,
                 fail: summary.fail,

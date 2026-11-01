@@ -1,6 +1,7 @@
 /**
- * IndexedDB storage for device reports (ADR 0007, task W6).
- * Database `anygamepad`, object store `reports`.
+ * IndexedDB storage for device reports (ADR 0007, task W6) and test reports
+ * (ADR 0008, task H4). Database `anygamepad`, object stores `reports` and
+ * `test-reports`.
  */
 
 export interface StoredReport {
@@ -23,7 +24,9 @@ export interface StoredReport {
 
 const DB_NAME = "anygamepad";
 const STORE_NAME = "reports";
-const DB_VERSION = 1;
+const TEST_STORE_NAME = "test-reports";
+// 2: the test reports' store (H4).
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBDatabase> | undefined;
 
@@ -44,6 +47,9 @@ export function openDb(): Promise<IDBDatabase> {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains(TEST_STORE_NAME)) {
+        db.createObjectStore(TEST_STORE_NAME, { keyPath: "id", autoIncrement: true });
       }
     };
 
@@ -152,6 +158,64 @@ export async function markReportShared(id: number): Promise<void> {
       updateReq.onsuccess = () => resolve();
       updateReq.onerror = () => reject(updateReq.error);
     };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** A test report saved in this browser (H4), with what the lists show. */
+export interface StoredTestReport {
+  id: number;
+  /** The compact JSON document of the test report. */
+  report: string;
+  /** Its file name. */
+  fileName: string;
+  /** When it was saved in this browser. */
+  savedAt: number;
+  /** The configuration it tested. */
+  model: string;
+  mode: string;
+  transport: string;
+  unit: string | null;
+  /** The environment: OS, browser engine and API. */
+  os: string;
+  browser: string;
+  api: string;
+  /** The plan, and how many steps passed and failed. */
+  plan: string;
+  pass: number;
+  fail: number;
+}
+
+/** Saves a test report in IndexedDB. Never automatic: the person's action. */
+export async function saveTestReport(entry: Omit<StoredTestReport, "id">): Promise<StoredTestReport> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(TEST_STORE_NAME, "readwrite").objectStore(TEST_STORE_NAME).add(entry);
+    req.onsuccess = () => resolve({ ...entry, id: req.result as number });
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** Lists the saved test reports, newest first. */
+export async function listTestReports(): Promise<StoredTestReport[]> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(TEST_STORE_NAME, "readonly").objectStore(TEST_STORE_NAME).getAll();
+    req.onsuccess = () => {
+      const reports = (req.result as StoredTestReport[]) || [];
+      reports.sort((a, b) => b.savedAt - a.savedAt);
+      resolve(reports);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** Deletes a saved test report. */
+export async function deleteTestReport(id: number): Promise<void> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(TEST_STORE_NAME, "readwrite").objectStore(TEST_STORE_NAME).delete(id);
+    req.onsuccess = () => resolve();
     req.onerror = () => reject(req.error);
   });
 }
