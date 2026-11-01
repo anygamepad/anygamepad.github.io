@@ -1,0 +1,17 @@
+#:schema ./schema.json
+
+# Detection and every control of the model: about a minute.
+
+schema_version = 1
+id = "quick"
+version = 1
+name = "Quick"
+description = "Detection and every button: about a minute."
+
+[[steps]]
+id = "detection"
+check = "detection"
+
+[[steps]]
+id = "controls"
+check = "buttons"

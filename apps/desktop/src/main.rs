@@ -17,7 +17,10 @@ mod logging;
 mod paths;
 mod settings;
 mod style;
+mod test_mode;
+mod test_page;
 mod tray;
+mod virtual_pads;
 mod widget;
 
 use std::sync::Arc;
@@ -51,6 +54,7 @@ fn main() -> eframe::Result {
     let settings_file = paths.as_ref().map(Paths::settings_file);
     let log_file = paths.as_ref().map(Paths::log_file);
     let reports = paths.as_ref().map(Paths::reports);
+    let test_reports = paths.as_ref().map(Paths::test_reports);
     let (settings, settings_error) = match settings_file.as_deref().map(Settings::load) {
         Some(Ok(settings)) => (settings, None),
         Some(Err(error)) => (
@@ -94,6 +98,7 @@ fn main() -> eframe::Result {
                 settings_error,
                 log_file,
                 reports,
+                test_reports,
             )))
         }),
     );

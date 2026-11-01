@@ -9,7 +9,9 @@ import { gzipSync } from "node:zlib";
 
 const KIB = 1024;
 const BUDGETS = {
-  ".wasm": 160 * KIB,
+  // 160 until the test mode (H4, 2026-11-01): its runner, catalog, plans
+  // and report format add about 56 KiB (RECORD/2026-11-01.h4-web-test-mode).
+  ".wasm": 224 * KIB,
   ".js": 80 * KIB,
   ".css": 16 * KIB,
 };

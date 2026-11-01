@@ -1,0 +1,38 @@
+#:schema ../schema.json
+
+schema_version = 1
+id = "microsoft/xbox-series"
+vendor = "Microsoft"
+name = "Xbox Wireless Controller (Xbox Series X|S)"
+family = "xbox"
+notes = "View is `select`, Menu `start`, Xbox `home`, the Share button `share`."
+
+[controls]
+buttons = [
+    "south", "east", "west", "north",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "left_shoulder", "right_shoulder", "left_trigger", "right_trigger",
+    "left_stick", "right_stick", "select", "start", "home", "share",
+]
+axes = ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y", "left_trigger", "right_trigger"]
+outputs = ["rumble", "trigger_rumble"]
+battery = true
+
+[[modes]]
+id = "xbox"
+name = "Xbox"
+kind = "xbox"
+
+[[modes.connections]]
+transport = "usb"
+how_to = "Connect it with a USB-C data cable."
+identities = [{ vendor_id = 0x045e, product_id = 0x0b12 }]
+
+[[modes.connections]]
+transport = "bluetooth_le"
+how_to = "Hold the pair button on its top until the Xbox button flashes quickly, then pair it in the system's Bluetooth settings."
+identities = [{ vendor_id = 0x045e, product_id = 0x0b13 }]
+
+[[modes.connections]]
+transport = "dongle"
+how_to = "Plug in the Xbox Wireless Adapter, press its button, then the controller's pair button. Linux needs the out-of-tree xone driver."

@@ -6,7 +6,7 @@ Gamepad input normalization: one canonical gamepad model for every controller,
 mode, transport and operating system.
 
 - Web app: <https://anygamepad.github.io> (not live yet)
-- Plan: [ROADMAP/2026-10-14/](ROADMAP/2026-10-14/README.md)
+- Plan: [ROADMAP/2026-10-31/](ROADMAP/2026-10-31/README.md)
 - Privacy: <https://anygamepad.github.io/privacy/> (maintainer side:
   [docs/privacy/](docs/privacy/README.md))
 - Contributor and agent rules: [AGENTS.md](AGENTS.md)
@@ -23,7 +23,11 @@ mode, transport and operating system.
 | `crates/anygamepad-wasm` | `wasm-bindgen` bindings used by the web app |
 | `apps/` | Web app, desktop app and ingestion server |
 | `data/profiles/` | Curated device profiles |
+| `data/controllers/` | Controller catalog: models, modes and how to connect them |
+| `data/lab/` | Lab inventory format (units and machines of the test lab) |
 | `data/reports/` | Device report format, schema and example |
+| `data/test-plans/` | Test plans the apps' test modes run (Quick, Full) |
+| `data/test-reports/` | Test report format, schema and example; the test reports the lab keeps |
 | `docs/adr/` | Architecture decision records |
 | `docs/privacy/` | Consent texts, retention and the handling of shared reports |
 

@@ -69,6 +69,10 @@ jobs:
       - run: cargo test -p anygamepad-report --all-features --locked
       # The library without its default `web` provider.
       - run: cargo clippy -p anygamepad --all-targets --no-default-features --locked -- -D warnings
+      # The test runner of the apps' test modes (feature `testing`): its
+      # end-to-end tests run the Quick and Full plans on built pads.
+      - run: cargo clippy -p anygamepad --all-targets --features testing --locked -- -D warnings
+      - run: cargo test -p anygamepad --features testing --locked
 
   wasm:
     runs-on: ubuntu-latest
@@ -85,6 +89,7 @@ jobs:
       - run: cargo clippy -p anygamepad-model --all-features --target wasm32-unknown-unknown --locked -- -D warnings
       - run: cargo clippy -p anygamepad-db --all-features --target wasm32-unknown-unknown --locked -- -D warnings
       - run: cargo clippy -p anygamepad-report --all-features --target wasm32-unknown-unknown --locked -- -D warnings
+      - run: cargo clippy -p anygamepad --features testing --target wasm32-unknown-unknown --locked -- -D warnings
       # wasm-bindgen-test-runner must match the wasm-bindgen version in Cargo.lock.
       - id: wasm-bindgen
         run: echo "version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')" >> "$GITHUB_OUTPUT"
@@ -119,6 +124,7 @@ jobs:
       - run: cargo +1.85 check -p anygamepad-model --all-features --locked
       - run: cargo +1.85 check -p anygamepad-db --all-features --locked
       - run: cargo +1.85 check -p anygamepad-report --all-features --locked
+      - run: cargo +1.85 check -p anygamepad --features testing --locked
       - run: cargo +1.85 check --workspace --exclude anygamepad-virtual --exclude anygamepad-desktop --target wasm32-unknown-unknown --locked
 
   # The web app and its WebAssembly bindings: the build artifacts.

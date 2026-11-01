@@ -12,7 +12,8 @@ pub struct Paths {
     pub config: PathBuf,
     /// Logs (`anygamepad.log`).
     pub logs: PathBuf,
-    /// Data the user keeps: device reports in `reports/` (A3).
+    /// Data the user keeps: device reports in `reports/` (A3), test
+    /// reports in `test-reports/` (H5).
     pub data: PathBuf,
 }
 
@@ -79,6 +80,11 @@ impl Paths {
     pub fn reports(&self) -> PathBuf {
         self.data.join("reports")
     }
+
+    /// The folder of test report files.
+    pub fn test_reports(&self) -> PathBuf {
+        self.data.join("test-reports")
+    }
 }
 
 #[cfg(test)]
@@ -119,6 +125,10 @@ mod tests {
         assert_eq!(
             paths.reports(),
             PathBuf::from("/home/a/.local/share/anygamepad/reports")
+        );
+        assert_eq!(
+            paths.test_reports(),
+            PathBuf::from("/home/a/.local/share/anygamepad/test-reports")
         );
         assert_eq!(Paths::for_os("linux", env(&[])), None);
     }

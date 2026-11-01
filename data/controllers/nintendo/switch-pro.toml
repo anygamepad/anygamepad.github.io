@@ -1,0 +1,35 @@
+#:schema ../schema.json
+
+schema_version = 1
+id = "nintendo/switch-pro"
+vendor = "Nintendo"
+name = "Nintendo Switch Pro Controller"
+family = "switch_pro"
+notes = "ZL and ZR are digital. Minus is `select`, plus `start`, Home `home`, Capture `capture`."
+
+[controls]
+buttons = [
+    "south", "east", "west", "north",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "left_shoulder", "right_shoulder", "left_trigger", "right_trigger",
+    "left_stick", "right_stick", "select", "start", "home", "capture",
+]
+axes = ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y"]
+sensors = ["gyroscope", "accelerometer"]
+outputs = ["rumble", "hd_rumble", "player_leds"]
+battery = true
+
+[[modes]]
+id = "switch"
+name = "Switch"
+kind = "switch"
+
+[[modes.connections]]
+transport = "usb"
+how_to = "Connect it with a USB-C data cable."
+identities = [{ vendor_id = 0x057e, product_id = 0x2009 }]
+
+[[modes.connections]]
+transport = "bluetooth"
+how_to = "Hold the sync button on its top until the player lights run, then pair it in the system's Bluetooth settings."
+identities = [{ vendor_id = 0x057e, product_id = 0x2009 }]

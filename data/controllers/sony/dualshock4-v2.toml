@@ -1,0 +1,36 @@
+#:schema ../schema.json
+
+schema_version = 1
+id = "sony/dualshock4-v2"
+vendor = "Sony"
+name = "DUALSHOCK 4 Wireless Controller (CUH-ZCT2)"
+family = "dualshock4"
+notes = "PlayStation 4 controller. Second revision: the light bar also shows through the touchpad. Share is `select`, Options `start`, PS `home`."
+
+[controls]
+buttons = [
+    "south", "east", "west", "north",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "left_shoulder", "right_shoulder", "left_trigger", "right_trigger",
+    "left_stick", "right_stick", "select", "start", "home", "touchpad_click",
+]
+axes = ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y", "left_trigger", "right_trigger"]
+sensors = ["gyroscope", "accelerometer"]
+touchpads = [{ max_fingers = 2, width = 1920, height = 942 }]
+outputs = ["rumble", "lightbar"]
+battery = true
+
+[[modes]]
+id = "ps4"
+name = "PS4"
+kind = "ps4"
+
+[[modes.connections]]
+transport = "usb"
+how_to = "Connect it with a micro-USB data cable."
+identities = [{ vendor_id = 0x054c, product_id = 0x09cc }]
+
+[[modes.connections]]
+transport = "bluetooth"
+how_to = "Hold Share and PS until the light bar flashes quickly, then pair it in the system's Bluetooth settings. To disconnect it, hold PS for about ten seconds."
+identities = [{ vendor_id = 0x054c, product_id = 0x09cc }]

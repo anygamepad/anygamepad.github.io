@@ -65,6 +65,12 @@ pub enum Finding {
     TooLong,
     /// An input report that can carry identifiers.
     IdentifyingReport,
+    /// Text after an OS version's numbers, which test reports do not keep
+    /// (a custom Linux kernel can put any text there).
+    OsVersionDetail,
+    /// Free text a test report does not keep (`user.product`: the
+    /// configuration says what the pad is).
+    FreeText,
 }
 
 impl fmt::Display for Finding {
@@ -75,6 +81,8 @@ impl fmt::Display for Finding {
             Self::ControlCharacters => "control characters",
             Self::TooLong => "a text that is too long",
             Self::IdentifyingReport => "an input report that can carry identifiers",
+            Self::OsVersionDetail => "text after the OS version's numbers",
+            Self::FreeText => "free text the format does not keep",
         })
     }
 }
@@ -193,7 +201,7 @@ pub(crate) fn text_findings(text: &str, max_chars: usize) -> Vec<Finding> {
 /// Cleans a text field in place: control characters become spaces,
 /// identifiers become [`REDACTED`], surrounding spaces go, and the text is
 /// cut at `max_chars` characters. Returns what was found.
-fn scrub_text(text: &mut String, max_chars: usize) -> Vec<Finding> {
+pub(crate) fn scrub_text(text: &mut String, max_chars: usize) -> Vec<Finding> {
     let mut findings = Vec::new();
     if has_control(text) {
         *text = text

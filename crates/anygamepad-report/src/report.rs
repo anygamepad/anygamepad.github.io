@@ -8,7 +8,7 @@ use anygamepad_db::Mapping;
 use anygamepad_model::hid::HidCollection;
 use anygamepad_model::identity::{Browser, DeviceIdentity, Fingerprint, Os};
 use anygamepad_model::raw::RawLayout;
-use anygamepad_model::{AxisSet, ButtonSet, Capabilities, Family, OutputSet};
+use anygamepad_model::{AxisSet, ButtonSet, Capabilities, ControllerMode, Family, OutputSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{FORMAT, MAX_SAMPLES, SCHEMA_VERSION};
@@ -139,36 +139,6 @@ impl UserStatement {
             && self.missing_buttons.is_empty()
             && self.missing_axes.is_empty()
     }
-}
-
-/// A mode a controller can be switched to, as printed on mode switches or
-/// told in manuals.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum ControllerMode {
-    /// XInput ("X"): an Xbox 360 controller to Windows.
-    Xinput,
-    /// DirectInput ("D"): a generic HID game controller.
-    Dinput,
-    /// Nintendo Switch ("S"): a Switch Pro Controller.
-    Switch,
-    /// PlayStation 3: a DualShock 3.
-    Ps3,
-    /// PlayStation 4: a DualShock 4.
-    Ps4,
-    /// PlayStation 5: a DualSense.
-    Ps5,
-    /// Xbox One or Series controller (GIP), not XInput emulation.
-    Xbox,
-    /// Android ("A").
-    Android,
-    /// iOS, iPadOS or macOS (MFi).
-    Apple,
-    /// Keyboard and mouse emulation.
-    KeyboardMouse,
-    /// Another mode.
-    Other,
 }
 
 /// How one provider, or one browser API, sees a device.

@@ -1,0 +1,95 @@
+#:schema ./schema.json
+
+# Everything the first set of checks covers: about five minutes. Steps the
+# model lacks are left out; steps the API cannot read end as not
+# applicable.
+
+schema_version = 1
+id = "full"
+version = 1
+name = "Full"
+description = "Detection, every button, sticks and triggers, update rate, motion, touchpad, battery, vibration and lights, unplugging: about five minutes."
+
+[[steps]]
+id = "detection"
+check = "detection"
+
+[[steps]]
+id = "controls"
+check = "buttons"
+
+[[steps]]
+id = "sticks.left.rest"
+check = "stick_rest"
+side = "left"
+seconds = 1.5
+tolerance = 0.15
+
+[[steps]]
+id = "sticks.right.rest"
+check = "stick_rest"
+side = "right"
+seconds = 1.5
+tolerance = 0.15
+
+[[steps]]
+id = "sticks.left.circle"
+check = "stick_circle"
+side = "left"
+tolerance = 0.9
+
+[[steps]]
+id = "sticks.right.circle"
+check = "stick_circle"
+side = "right"
+tolerance = 0.9
+
+[[steps]]
+id = "triggers.left"
+check = "trigger_pull"
+side = "left"
+tolerance = 0.95
+
+[[steps]]
+id = "triggers.right"
+check = "trigger_pull"
+side = "right"
+tolerance = 0.95
+
+[[steps]]
+id = "rate"
+check = "rate"
+seconds = 3.0
+
+[[steps]]
+id = "motion.rest"
+check = "motion_rest"
+seconds = 1.5
+
+[[steps]]
+id = "motion.turn"
+check = "motion_turn"
+
+[[steps]]
+id = "touchpad"
+check = "touchpad"
+
+[[steps]]
+id = "battery"
+check = "battery"
+
+[[steps]]
+id = "outputs.rumble"
+check = "rumble"
+
+[[steps]]
+id = "outputs.lightbar"
+check = "lightbar"
+
+[[steps]]
+id = "outputs.player-leds"
+check = "player_leds"
+
+[[steps]]
+id = "hotplug"
+check = "hotplug"

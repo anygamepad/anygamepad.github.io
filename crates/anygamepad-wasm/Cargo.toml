@@ -19,7 +19,8 @@ workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-anygamepad.workspace = true
+# The test runner of the test mode (ADR 0008).
+anygamepad = { workspace = true, features = ["testing"] }
 anygamepad-report.workspace = true
 # Same crate as `anygamepad::model`, with the TypeScript declarations.
 anygamepad-model = { workspace = true, features = ["tsify"] }

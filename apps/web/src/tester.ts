@@ -22,6 +22,7 @@ import {
   type WizardStatus,
   type ScrubResult,
   type Redaction,
+  type Transport,
 } from "./wasm/anygamepad_wasm.js";
 import { deleteReport, listReports, markReportShared, saveReport, type StoredReport } from "./storage";
 import { ActivityLog } from "./activity";
@@ -30,6 +31,7 @@ import { HidLiveView } from "./hid-live";
 import { layoutFor } from "./layouts";
 import { LiveView } from "./live";
 import { CountMeter, RateMeter } from "./rate";
+import { emptyTestView, TestMode, type TestHost, type TestPad, type TestView } from "./test-mode";
 import { rawNames, WizardView } from "./wizard";
 
 /** One connected pad, as the page lists it. */
@@ -67,6 +69,9 @@ export interface ActiveShare {
 
 /** The data the page renders. */
 export interface TesterView {
+  /** The tester, or the test mode (H4). */
+  mode: "tester" | "test";
+  test: TestView;
   environment: Environment | null;
   pads: PadRow[];
   /** Key of the pad shown large. */
@@ -93,6 +98,8 @@ export interface TesterView {
 }
 
 export const emptyView = (): TesterView => ({
+  mode: "tester",
+  test: emptyTestView(),
   environment: null,
   pads: [],
   selected: null,
@@ -279,6 +286,39 @@ export class Tester {
   private frame = 0;
   private readonly log = new ActivityLog();
   private lastRateLog = 0;
+  private testMode: TestMode | undefined;
+  /** Each pad's canonical state at the last frame, for the test mode. */
+  private readonly states = new Map<string, GamepadState | undefined>();
+
+  /** The test mode's actions, for App.html; they wait for `start()`. */
+  readonly testActions = {
+    setMode: (mode: "tester" | "test"): void => {
+      this.view.mode = mode;
+      this.log.event("mode", { mode });
+    },
+    testSearch: (text: string): void => this.testMode?.search(text),
+    testPickModel: (id: string, unit?: string): void => this.testMode?.pickModel(id, unit),
+    testPickCard: (key: string): void => this.testMode?.pickCard(key),
+    testBack: (): void => this.testMode?.back(),
+    testBackToCards: (): void => this.testMode?.backToCards(),
+    testGoOn: (): void => this.testMode?.goOn(),
+    testPickCandidate: (index: number): void => this.testMode?.pickCandidate(index),
+    testSetTransport: (transport: Transport): void => this.testMode?.setTransport(transport),
+    testSetUnit: (code: string): void => this.testMode?.setUnit(code),
+    testConfirm: (): void => this.testMode?.confirm(),
+    testChooseAnother: (): void => this.testMode?.chooseAnother(),
+    testStart: (plan: string): void => this.testMode?.start(plan),
+    testAnswer: (answer: "yes" | "no" | "not_sure"): void => this.testMode?.answer(answer),
+    testSkip: (): void => this.testMode?.skip(),
+    testNotOnThisPad: (): void => this.testMode?.notOnThisPad(),
+    testNothingHappens: (): void => this.testMode?.nothingHappens(),
+    testRepeat: (): void => this.testMode?.repeat(),
+    testStop: (): void => this.testMode?.stop(),
+    testSetNotes: (text: string): void => this.testMode?.setNotes(text),
+    testSave: (): void => void this.testMode?.save(),
+    testDownload: (): void => this.testMode?.download(),
+    testNext: (): void => this.testMode?.next(),
+  };
 
   /** Starts reading gamepads into `view` (a component's reactive data). */
   start(view: TesterView): void {
@@ -309,6 +349,11 @@ export class Tester {
       webhid: view.webhid,
       hint: view.hint,
     });
+    try {
+      this.testMode = new TestMode(this.testHost(), view.test);
+    } catch (error) {
+      this.log.event("error", { message: `test mode: ${String(error)}` });
+    }
     document.addEventListener("visibilitychange", this.onVisibility);
     this.onVisibility();
     listReports()
@@ -588,18 +633,37 @@ export class Tester {
     if (!gamepads) return;
     try {
       let changed = false;
+      const added: string[] = [];
+      const removed: string[] = [];
       for (const event of gamepads.update()) {
         changed = true;
-        if (event.type === "added") this.addGamepad(gamepads, event.device);
-        else this.remove(`gamepad:${event.device}`);
+        const key = `gamepad:${event.device}`;
+        if (event.type === "added") {
+          this.addGamepad(gamepads, event.device);
+          added.push(key);
+        } else {
+          this.remove(key);
+          removed.push(key);
+        }
       }
       for (const event of this.hids?.update() ?? []) {
         changed = true;
-        if (event.type === "added") this.addHid(event.device);
-        else this.remove(`webhid:${event.device}`);
+        const key = `webhid:${event.device}`;
+        if (event.type === "added") {
+          this.addHid(event.device);
+          added.push(key);
+        } else {
+          this.remove(key);
+          removed.push(key);
+        }
       }
       if (changed) this.refresh();
       const now = performance.now();
+      for (const key of removed) this.testMode?.removed(key, now);
+      for (const key of added) {
+        const pad = this.testPads().find((p) => p.key === key);
+        if (pad) this.testMode?.added(pad, now);
+      }
       for (const pad of this.pads.values()) {
         if (pad.source !== "gamepad") continue;
         const timestamp = gamepads.timestamp(pad.id);
@@ -678,7 +742,36 @@ export class Tester {
     );
   }
 
+  /** What the test mode needs from the tester. */
+  private testHost(): TestHost {
+    return {
+      gamepads: () => this.gamepads,
+      hids: () => this.hids,
+      environment: () => this.view.environment,
+      pads: () => this.testPads(),
+    };
+  }
+
+  /** The pads the page lists, for the test mode. */
+  private testPads(): TestPad[] {
+    return this.view.pads.flatMap((row) => {
+      const pad = this.pads.get(row.key);
+      if (!pad) return [];
+      return [
+        {
+          key: row.key,
+          source: pad.source,
+          id: pad.id,
+          name: row.name,
+          open: pad.source === "gamepad" || pad.open,
+          state: this.states.get(row.key),
+        },
+      ];
+    });
+  }
+
   private remove(key: string): void {
+    this.states.delete(key);
     const pad = this.pads.get(key);
     window.clearTimeout(pad?.rumbleTimer);
     pad?.run?.wizard.free();
@@ -757,6 +850,7 @@ export class Tester {
       this.drainHid(now);
       const reads = this.readGamepads();
       this.drawSelected(now, reads);
+      this.testMode?.frame(now);
       this.logRates(now);
     } catch (error) {
       this.fail(`Drawing the gamepads failed (${String(error)}).`);
@@ -775,6 +869,7 @@ export class Tester {
       const snapshot = gamepads.snapshot(pad.id);
       if (snapshot === undefined) continue;
       const state = pad.info.canonical ? gamepads.state(pad.id) : undefined;
+      this.states.set(pad.row.key, state);
       this.log.gamepad(pad.row.key, snapshot, state);
       reads.set(pad.row.key, { snapshot, state });
     }
@@ -796,6 +891,8 @@ export class Tester {
     if (!hids) return;
     for (const pad of this.pads.values()) {
       if (pad.source !== "webhid" || !pad.open) continue;
+      // Under test, the test mode reads it (its reports are evidence).
+      if (this.testMode?.owns(pad.row.key)) continue;
       const recording = pad.recording;
       let poll;
       try {
@@ -807,6 +904,7 @@ export class Tester {
         continue;
       }
       pad.rate.add(poll.received, now);
+      this.states.set(pad.row.key, poll.input?.state);
       this.log.hid(pad.row.key, poll);
       if (recording) {
         for (const report of poll.reports) {

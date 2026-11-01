@@ -24,14 +24,19 @@ default = ["web", "native"]
 # parts (evdev decoding) build everywhere.
 native = ["dep:evdev", "dep:nix"]
 web = ["dep:js-sys", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys"]
+# The test runner of the apps' test modes (ADR 0008): `anygamepad::testing`,
+# which writes test reports (anygamepad-report).
+testing = ["dep:anygamepad-report"]
 
 [dependencies]
 anygamepad-db.workspace = true
 anygamepad-model.workspace = true
+anygamepad-report = { workspace = true, optional = true }
 
 [dev-dependencies]
 # Curated profiles are TOML files.
 anygamepad-db = { workspace = true, features = ["toml"] }
+anygamepad-report.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev = { version = "0.13.2", optional = true }
@@ -56,3 +61,7 @@ web-sys = { workspace = true, optional = true, features = [
 [[example]]
 name = "linux_pads"
 required-features = ["native"]
+
+[[test]]
+name = "testing"
+required-features = ["testing", "web"]

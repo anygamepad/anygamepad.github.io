@@ -19,7 +19,8 @@ name = "anygamepad"
 path = "src/main.rs"
 
 [dependencies]
-anygamepad.workspace = true
+# The test mode (H5) runs the library's test runner.
+anygamepad = { workspace = true, features = ["testing"] }
 anygamepad-report = { workspace = true, features = ["json"] }
 anygamepad-virtual.workspace = true
 # egui through eframe (ADR 0004), with the glow renderer: see
