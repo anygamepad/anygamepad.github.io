@@ -19,8 +19,9 @@ workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# The test runner of the test mode (ADR 0008).
-anygamepad = { workspace = true, features = ["testing"] }
+# The test mode's runner is a module of its own (anygamepad-wasm-testing,
+# W9): this one hands it the devices.
+anygamepad.workspace = true
 anygamepad-report.workspace = true
 # Same crate as `anygamepad::model`, with the TypeScript declarations.
 anygamepad-model = { workspace = true, features = ["tsify"] }

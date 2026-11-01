@@ -233,7 +233,12 @@
   <section class="detail test-detail" :data-stage="test.stage">
     <p :if="test.error" class="message error">{{ test.error }}</p>
 
-    <div :if="test.stage === 'list'" class="test-intro">
+    <div :if="test.stage === 'loading'" class="test-intro">
+      <h2>Test mode</h2>
+      <p>Loading the test mode…</p>
+    </div>
+
+    <div :elseif="test.stage === 'list'" class="test-intro">
       <h2>Test mode</h2>
       <p>Pick a controller from the list to see the ways to connect it, or connect one now and press one of its buttons: it is detected.</p>
       <p class="note">

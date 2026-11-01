@@ -17,6 +17,9 @@ Status: **active**. Supersedes [ROADMAP/2026-10-31/](../2026-10-31/README.md).
   that the tester's `.wasm` goes back within its 160 KiB budget
   ([04-web-app.md](04-web-app.md#w9--test-mode-as-a-separately-loaded-webassembly-module)).
   It has slack and blocks nothing.
+- **Status update (2026-11-01, in place):** W9 is done (grey): the tester's
+  `.wasm` is back within 160 KiB, and the test mode's module (160.7 KiB)
+  loads once its tab opens (RECORD of W9). It had slack: no date moves.
 - **Done in the 2026-10-31 version** (grey): H1, H2, H3, H10 (the test
   report format, the catalog and inventory formats, the runner and plans,
   automatic detection), H4 and H5 (the test modes in the web and desktop
@@ -485,7 +488,7 @@ flowchart LR
     classDef done fill:#eee,stroke:#999,color:#666
     class c6,a8,a9,a10,m4 crit
     class c4,c15,c7,w3,a1,a5,a2,a3,a11 active
-    class f1,f2,f3,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,a4,h1,h2,h3,h4,h5,h10,m1,m2 done
+    class f1,f2,f3,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,w9,a4,h1,h2,h3,h4,h5,h10,m1,m2 done
 ```
 
 ## Milestones

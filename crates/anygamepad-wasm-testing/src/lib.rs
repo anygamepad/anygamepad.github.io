@@ -1,9 +1,33 @@
-//! The test mode's bindings (roadmap task H4, ADR 0008): the controller
-//! catalog, the lab inventory and the test plans for the page's lists,
-//! automatic detection (`Gamepads.identify()`, `HidDevices.identify()`,
-//! `checkChoice()`), and `TestSession`, the library's test runner
-//! (`anygamepad::testing`) fed by `Gamepads.feedTest()` or
-//! `HidDevices.feedTest()` once a frame.
+//! WebAssembly bindings of the web app's test mode (roadmap tasks H4 and
+//! W9, ADR 0008), a module of its own that the page loads when the Test
+//! mode tab first opens: the controller catalog, the lab inventory and the
+//! test plans for the page's lists, automatic detection ([`identify`],
+//! [`check_choice`]), and [`TestSession`], the library's test runner
+//! (`anygamepad::testing`).
+//!
+//! It reads no device. The tester's module (`anygamepad-wasm`) describes
+//! each device as a [`TestDevice`] (`Gamepads.testDevice()`,
+//! `HidDevices.testDevice()`) and, once a frame, gives what it read as a
+//! [`TestInput`] (`testInput()`); the page sends the commands of
+//! [`TestSession::take_commands`] back through it. The two modules share no
+//! memory, only these values.
+//!
+//! ```js
+//! const testing = await import("./wasm-testing/anygamepad_wasm_testing.js");
+//! await testing.default();
+//! const device = gamepads.testDevice(id, Date.now());
+//! const best = testing.identify(device).candidates[0];
+//! const session = testing.startTest(device, {
+//!   plan: "quick",
+//!   start: "connecting",
+//!   confirmed: { model: best.model, mode: best.mode, transport: best.transport ?? "usb" },
+//! });
+//! function frame(now) {
+//!   session.feed(gamepads.testInput(id), now);
+//!   for (const command of session.takeCommands()) gamepads.send(id, command);
+//!   show(session.status());
+//! }
+//! ```
 
 use std::collections::BTreeMap;
 
@@ -12,8 +36,10 @@ use anygamepad::db::lab::Code;
 use anygamepad::db::plan::Side;
 use anygamepad::db::{Catalog, Inventory, TestPlan};
 use anygamepad::model::identity::DeviceIdentity;
+use anygamepad::model::raw::RawState;
 use anygamepad::model::{
-    Button, ButtonSet, ControllerMode, FaceLayout, Family, Output, OutputSet, Transport,
+    Button, ButtonSet, ControllerMode, FaceLayout, Family, GamepadState, Output, OutputCommand,
+    OutputSet, Transport,
 };
 use anygamepad::testing::{Prompt, Session, SessionSetup};
 use anygamepad_report::Report;
@@ -24,7 +50,64 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use crate::gamepads::to_js;
+/// A device as the test mode reads it, from the tester's module
+/// (`Gamepads.testDevice()`, `HidDevices.testDevice()`).
+#[derive(Clone, Debug, Deserialize, Tsify)]
+pub struct TestDevice {
+    /// The device report of the device; its first view is the API the page
+    /// reads it through.
+    #[tsify(type = "Record<string, unknown>")]
+    pub report: Report,
+    /// The outputs the page can drive on it.
+    pub outputs: OutputSet,
+    /// Whether its input comes with the HID input reports
+    /// (`TestInput.reports`), kept as the evidence.
+    pub hid: bool,
+    /// Buttons of the pad the API is known not to read.
+    pub unreadable: ButtonSet,
+}
+
+impl TestDevice {
+    fn from_js(device: JsValue) -> Result<Self, JsError> {
+        serde_wasm_bindgen::from_value(device).map_err(|error| JsError::new(&error.to_string()))
+    }
+
+    fn identity(&self) -> Result<&DeviceIdentity, JsError> {
+        self.report
+            .views
+            .first()
+            .map(|view| &view.identity)
+            .ok_or_else(|| JsError::new("the device report has no view"))
+    }
+}
+
+/// What a device read at one frame, from the tester's module
+/// (`testInput()`).
+#[derive(Clone, Debug, Deserialize, Tsify)]
+pub struct TestInput {
+    /// Its raw values, in the order of its layout.
+    pub raw: RawState,
+    /// Its canonical state.
+    pub state: GamepadState,
+    /// The HID input reports received since the last frame, oldest first.
+    #[serde(default)]
+    pub reports: Vec<TestInputReport>,
+}
+
+/// One HID input report.
+#[derive(Clone, Debug, Deserialize, Tsify)]
+pub struct TestInputReport {
+    /// Its report ID (0 without IDs).
+    pub report_id: u8,
+    /// Its data, without the report ID.
+    pub data: Vec<u8>,
+    /// When it arrived (`performance.now()`).
+    pub timestamp: f64,
+}
+
+fn to_js<T: Serialize + ?Sized>(value: &T) -> Result<JsValue, JsError> {
+    serde_wasm_bindgen::to_value(value).map_err(|error| JsError::new(&error.to_string()))
+}
 
 /// A catalog model, for the page's list.
 #[derive(Clone, Debug, Serialize, Tsify)]
@@ -237,22 +320,33 @@ pub enum ChoiceResult {
     NoSuchChoice,
 }
 
-/// What `identity` can be.
-pub(crate) fn detect(identity: &DeviceIdentity) -> Detection {
-    Catalog::embedded()
-        .identify(identity, Some(Inventory::embedded()))
-        .into()
+/// What catalog model, mode and transport a device can be, most likely
+/// first (H10).
+#[wasm_bindgen(unchecked_return_type = "Detection")]
+pub fn identify(
+    #[wasm_bindgen(unchecked_param_type = "TestDevice")] device: JsValue,
+) -> Result<JsValue, JsError> {
+    let device = TestDevice::from_js(device)?;
+    let detection: Detection = Catalog::embedded()
+        .identify(device.identity()?, Some(Inventory::embedded()))
+        .into();
+    to_js(&detection)
 }
 
-/// Whether `identity` is the model, mode and transport picked.
-pub(crate) fn check_choice(
-    identity: &DeviceIdentity,
+/// Whether a device is the model, mode and transport picked from the
+/// list.
+#[wasm_bindgen(js_name = checkChoice, unchecked_return_type = "ChoiceResult")]
+pub fn check_choice(
+    #[wasm_bindgen(unchecked_param_type = "TestDevice")] device: JsValue,
     model: &str,
     mode: &str,
-    transport: Transport,
-) -> ChoiceResult {
-    match Catalog::embedded().check_choice(
-        identity,
+    #[wasm_bindgen(unchecked_param_type = "Transport")] transport: JsValue,
+) -> Result<JsValue, JsError> {
+    let device = TestDevice::from_js(device)?;
+    let transport: Transport =
+        serde_wasm_bindgen::from_value(transport).map_err(|e| JsError::new(&e.to_string()))?;
+    let result = match Catalog::embedded().check_choice(
+        device.identity()?,
         model,
         mode,
         transport,
@@ -262,7 +356,8 @@ pub(crate) fn check_choice(
         ChoiceCheck::NotKnown => ChoiceResult::NotKnown,
         ChoiceCheck::Differs(seen) => ChoiceResult::Differs { seen: seen.into() },
         ChoiceCheck::NoSuchChoice => ChoiceResult::NoSuchChoice,
-    }
+    };
+    to_js(&result)
 }
 
 /// A controller in one mode over one transport, as the page gives it.
@@ -314,15 +409,18 @@ fn selection(selection: TestSelection) -> Result<Selection, JsError> {
     })
 }
 
-/// A test session on `device`, whose first view is the API the page reads
-/// the pad through.
-pub(crate) fn start(
-    setup: JsValue,
-    device: Report,
-    outputs: OutputSet,
-    hid: bool,
-    unreadable: ButtonSet,
+/// Starts a test session on a device.
+#[wasm_bindgen(js_name = startTest)]
+pub fn start_test(
+    #[wasm_bindgen(unchecked_param_type = "TestDevice")] device: JsValue,
+    #[wasm_bindgen(unchecked_param_type = "TestSetup")] setup: JsValue,
 ) -> Result<TestSession, JsError> {
+    let TestDevice {
+        report: device,
+        outputs,
+        hid,
+        unreadable,
+    } = TestDevice::from_js(device)?;
     let setup: TestSetup =
         serde_wasm_bindgen::from_value(setup).map_err(|error| JsError::new(&error.to_string()))?;
     let plan = TestPlan::get(&setup.plan)
@@ -531,16 +629,53 @@ const fn status_name(status: StepStatus) -> &'static str {
 }
 
 /// A test mode session: the library's test runner on one pad. Start it
-/// with `Gamepads.startTest()` or `HidDevices.startTest()`, feed it once a
-/// frame with `feedTest()`, show `status()`, and pass on what the person
-/// says.
+/// with [`start_test`], feed it once a frame with what the tester's module
+/// read ([`feed`](Self::feed)), send the commands it asks for, show
+/// `status()`, and pass on what the person says.
 #[wasm_bindgen]
 pub struct TestSession {
-    pub(crate) session: Session,
+    session: Session,
 }
 
 #[wasm_bindgen]
 impl TestSession {
+    /// Feeds what the device read at `now` (`performance.now()`): its input
+    /// reports, then its raw and canonical state.
+    pub fn feed(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "TestInput")] input: JsValue,
+        now: f64,
+    ) -> Result<(), JsError> {
+        let input: TestInput =
+            serde_wasm_bindgen::from_value(input).map_err(|e| JsError::new(&e.to_string()))?;
+        for report in &input.reports {
+            self.session
+                .input_report(report.report_id, &report.data, report.timestamp);
+        }
+        self.session.update(&input.raw, &input.state, now);
+        Ok(())
+    }
+
+    /// The output commands to send to the device now, in order (through
+    /// the tester's `send()`).
+    #[wasm_bindgen(js_name = takeCommands, unchecked_return_type = "OutputCommand[]")]
+    pub fn take_commands(&mut self) -> Result<JsValue, JsError> {
+        let commands: Vec<OutputCommand> = self.session.take_commands();
+        to_js(&commands)
+    }
+
+    /// A device connected while the session waits for the pad under test
+    /// to come back (the hotplug step), at `now`.
+    pub fn added(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "TestDevice")] device: JsValue,
+        now: f64,
+    ) -> Result<(), JsError> {
+        let device = TestDevice::from_js(device)?;
+        self.session.added(device.identity()?, now);
+        Ok(())
+    }
+
     /// Where the session is and what the person is asked to do.
     #[wasm_bindgen(unchecked_return_type = "TestStatus")]
     pub fn status(&self) -> Result<JsValue, JsError> {
@@ -673,4 +808,10 @@ fn to_js_objects<T: Serialize + ?Sized>(value: &T) -> Result<JsValue, JsError> {
     value
         .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
         .map_err(|error| JsError::new(&error.to_string()))
+}
+
+/// Returns the version of the anygamepad library compiled into this module.
+#[wasm_bindgen]
+pub fn version() -> String {
+    anygamepad::VERSION.to_owned()
 }

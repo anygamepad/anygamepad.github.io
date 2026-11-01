@@ -104,11 +104,13 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      # The generated `.d.ts` must declare every type it references and fit
-      # the way the web app uses the bindings (crates/anygamepad-wasm/ts).
+      # The generated `.d.ts` of both modules (the tester's, the test mode's)
+      # must declare every type they reference and fit the way the web app
+      # uses them together (crates/anygamepad-wasm/ts).
       - name: Type-check the TypeScript declarations
         run: |
           wasm-bindgen --target web --out-dir target/ts-check target/wasm32-unknown-unknown/debug/anygamepad_wasm.wasm
+          wasm-bindgen --target web --out-dir target/ts-check target/wasm32-unknown-unknown/debug/anygamepad_wasm_testing.wasm
           cp crates/anygamepad-wasm/ts/check.ts crates/anygamepad-wasm/ts/tsconfig.json target/ts-check/
           cd target/ts-check && npx --yes -p typescript@6.0.3 tsc -p .
 
@@ -150,7 +152,8 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
-      # Bindings (wasm-pack, then wasm-opt from the pinned binaryen).
+      # Bindings of both modules (wasm-pack, then wasm-opt from the pinned
+      # binaryen).
       - run: npm run wasm
       # Type-check, then build into dist/.
       - run: npm run build
@@ -169,6 +172,11 @@ jobs:
         with:
           name: wasm-bindings
           path: apps/web/src/wasm
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasm-testing-bindings
+          path: apps/web/src/wasm-testing
           retention-days: 14
       - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v4

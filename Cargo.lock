@@ -262,6 +262,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "anygamepad-wasm-testing"
+version = "0.0.4"
+dependencies = [
+ "anygamepad",
+ "anygamepad-model",
+ "anygamepad-report",
+ "serde",
+ "serde-wasm-bindgen",
+ "tsify",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "arboard"
 version = "3.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

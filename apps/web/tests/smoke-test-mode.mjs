@@ -1,5 +1,7 @@
 // Smoke test of the test mode (roadmap task H4) on the built site (dist/):
 //
+// - The test mode's WebAssembly module (W9) is fetched only once its tab
+//   opens.
 // - Gamepad API: a wired Xbox 360 controller connected without picking it is
 //   detected; the Full plan runs with a person simulated from the prompts
 //   (every button, sticks, triggers, rate, vibration answered yes, the
@@ -72,6 +74,8 @@ try {
     }
   });
   page.on("pageerror", (error) => problems.push(`page error: ${error.message}`));
+  const fetched = [];
+  page.on("request", (request) => fetched.push(request.url()));
   await page.addInitScript(fakeGamepads);
   await page.addInitScript(fakeHid);
   await page.goto(url, { waitUntil: "networkidle" });
@@ -89,8 +93,12 @@ try {
     }
   };
 
+  const testingModule = () => fetched.filter((u) => /anygamepad_wasm_testing.*\.wasm/.test(u));
+  assert.ok(fetched.some((u) => /anygamepad_wasm_bg.*\.wasm/.test(u)), "the tester's module loads");
+  assert.deepEqual(testingModule(), [], "the test mode's module waits for its tab");
   await page.click(".mode-tab >> text=Test mode");
   await until("the list", stage, (s) => s === "list");
+  assert.equal(testingModule().length, 1, "the test mode's module loads with its tab");
   assert.ok((await page.locator(".test-list [data-model]").count()) >= 13);
   // The search filters the catalog.
   await page.fill(".test-search input", "dualshock");

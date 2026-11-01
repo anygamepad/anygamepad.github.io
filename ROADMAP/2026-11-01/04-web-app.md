@@ -47,7 +47,7 @@ gantt
     W5 Normalized view (mapping engine + profiles) :done, w5, 2026-10-21, 4d
     W6 Local report store, sharing and consent flow :done, w6, 2026-10-14, 11d
     W7 Public launch of the web tester :done, w7, 2026-10-25, 1d
-    W9 Test mode as a separately loaded WebAssembly module :w9, after h4, 3d
+    W9 Test mode as a separately loaded WebAssembly module :done, w9, 2026-11-01, 1d
 ```
 
 ## Tasks
@@ -62,7 +62,7 @@ gantt
 | W5 | Normalized view (mapping engine + profiles) | 10 | W2, C3, D2, D4 | W7 | 2026-10-21 | 2026-10-25 | done |
 | W6 | Local report store, sharing and consent flow | 10 | W4, P1, P3 | P6, W7 | 2026-10-14 | 2026-10-25 | done |
 | W7 | Public launch of the web tester | 5 | W5, W6 | M2 | 2026-10-25 | 2026-10-25 | done |
-| W9 | Test mode as a separately loaded WebAssembly module | 3 | H4 | - | 2026-11-01 | 2026-11-04 | 67 |
+| W9 | Test mode as a separately loaded WebAssembly module | 3 | H4 | - | 2026-11-01 | 2026-11-01 | done |
 
 ### W1 — Web app scaffolding and WASM build pipeline
 
@@ -274,3 +274,9 @@ for; the two modules share no memory, only these values.
 test mode's module has its own budget, both smoke tests pass in Chromium,
 Firefox and WebKit, and the test mode's module is fetched only once the
 tab opens.
+
+Status (2026-11-01): done
+(`RECORD/2026-11-01.w9-test-mode-wasm-module.completed.md`): the crate
+`anygamepad-wasm-testing`, `testDevice()` and `testInput()` in the
+tester's module. The tester's `.wasm` is 155.5 KiB (160 budget), the test
+mode's 160.7 KiB (176 budget), loaded once the tab opens.

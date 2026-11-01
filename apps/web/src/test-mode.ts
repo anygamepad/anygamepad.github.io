@@ -7,26 +7,45 @@
 // The tester (tester.ts) owns the devices and the frame loop: it tells the
 // test mode about pads that come and go, and calls `frame()` once a frame.
 // Logic lives here; App.html only renders `view.test`.
+//
+// The runner, catalog and plans are a WebAssembly module of their own (W9),
+// loaded when the tab first opens (`loadTesting()`). The tester's module
+// describes each pad (`testDevice()`), gives what it read once a frame
+// (`testInput()`) and sends the outputs the session asks for (`send()`).
 
-import {
-  catalogModels,
-  labUnits,
-  testPlans,
-  type CatalogModel,
-  type ChoiceResult,
-  type DetectedCandidate,
-  type Detection,
-  type Environment,
-  type Gamepads,
-  type GamepadState,
-  type HidDevices,
-  type PlanInfo,
-  type TestSelection,
-  type TestSession,
-  type TestStatus,
-  type Transport,
+import type {
+  Environment,
+  Gamepads,
+  GamepadState,
+  HidDevices,
+  OutputCommand,
+  Transport,
 } from "./wasm/anygamepad_wasm.js";
+import type {
+  CatalogModel,
+  ChoiceResult,
+  DetectedCandidate,
+  Detection,
+  PlanInfo,
+  TestDevice,
+  TestSelection,
+  TestSession,
+  TestStatus,
+} from "./wasm-testing/anygamepad_wasm_testing.js";
 import { listTestReports, saveTestReport, type StoredTestReport } from "./storage";
+
+/** The test mode's WebAssembly module. */
+export type TestingModule = typeof import("./wasm-testing/anygamepad_wasm_testing.js");
+
+/** Loads and starts the test mode's module (once; later calls share it). */
+let loading: Promise<TestingModule> | undefined;
+export const loadTesting = (): Promise<TestingModule> => {
+  loading ??= import("./wasm-testing/anygamepad_wasm_testing.js").then(async (module) => {
+    await module.default();
+    return module;
+  });
+  return loading;
+};
 
 /** A connected pad, as the tester gives it. */
 export interface TestPad {
@@ -50,7 +69,7 @@ export interface TestHost {
   pads(): TestPad[];
 }
 
-type Stage = "list" | "connect" | "waiting" | "check" | "detected" | "plan" | "running" | "summary";
+type Stage = "loading" | "list" | "connect" | "waiting" | "check" | "detected" | "plan" | "running" | "summary";
 
 export interface UnitRow {
   code: string;
@@ -131,7 +150,7 @@ export interface TestView {
 }
 
 export const emptyTestView = (): TestView => ({
-  stage: "list",
+  stage: "loading",
   search: "",
   units: [],
   models: [],
@@ -236,20 +255,22 @@ export class TestMode {
   private armed = false;
 
   constructor(
+    private readonly testing: TestingModule,
     private readonly host: TestHost,
     private readonly view: TestView,
   ) {
-    this.models = catalogModels();
+    this.models = testing.catalogModels();
     const names = new Map(this.models.map((model) => [model.id, titleOf(model)]));
-    this.unitList = labUnits().map((unit) => ({
+    this.unitList = testing.labUnits().map((unit) => ({
       code: unit.code,
       model: unit.model,
       title: `${unit.code} · ${names.get(unit.model) ?? unit.model}`,
       notes: unit.notes ?? "",
     }));
-    view.plans = testPlans();
+    view.plans = testing.testPlans();
     view.units = this.unitList;
     this.filter();
+    view.stage = "list";
     listTestReports()
       .then((reports) => {
         this.reports = reports;
@@ -361,11 +382,8 @@ export class TestMode {
       detected: plan.detected,
     };
     try {
-      if (pad.source === "gamepad") {
-        this.session = this.host.gamepads()?.startTest(pad.id, setup, Date.now());
-      } else {
-        this.session = this.host.hids()?.startTest(pad.id, setup, Date.now());
-      }
+      const device = this.testDevice(pad);
+      if (device) this.session = this.testing.startTest(device, setup);
     } catch (error) {
       this.view.error = `Cannot test this pad here (${String(error)}).`;
       return;
@@ -553,10 +571,8 @@ export class TestMode {
     const transport = picked.transport;
     let result: ChoiceResult | undefined;
     try {
-      result =
-        pad.source === "gamepad"
-          ? this.host.gamepads()?.checkChoice(pad.id, model.id, picked.mode, transport)
-          : this.host.hids()?.checkChoice(pad.id, model.id, picked.mode, transport);
+      const device = this.testDevice(pad);
+      result = device && this.testing.checkChoice(device, model.id, picked.mode, transport);
     } catch {
       return;
     }
@@ -583,7 +599,8 @@ export class TestMode {
 
   private identify(pad: TestPad): Detection | undefined {
     try {
-      return pad.source === "gamepad" ? this.host.gamepads()?.identify(pad.id) : this.host.hids()?.identify(pad.id);
+      const device = this.testDevice(pad);
+      return device && this.testing.identify(device);
     } catch {
       return undefined;
     }
@@ -623,11 +640,17 @@ export class TestMode {
     if (!session) return;
     const pad = this.sessionPad && this.host.pads().find((p) => p.key === this.sessionPad?.key);
     try {
-      if (pad && this.sessionPad?.source === "gamepad") this.host.gamepads()?.feedTest(pad.id, session, now);
-      else if (pad?.open) this.host.hids()?.feedTest(pad.id, session, now);
+      if (pad && this.sessionPad?.source === "gamepad") {
+        const input = this.host.gamepads()?.testInput(pad.id);
+        if (input) session.feed(input, now);
+      } else if (pad?.open) {
+        const input = this.host.hids()?.testInput(pad.id);
+        if (input) session.feed(input, now);
+      }
     } catch {
       // Unplugged since the last sample: its removal comes with the next one.
     }
+    this.sendCommands();
     const status = session.status();
     this.view.status = status;
     this.view.promptKey = promptKey(status);
@@ -639,12 +662,35 @@ export class TestMode {
     if (status.prompt.kind === "done") this.finish();
   }
 
+  /** Sends the outputs the session asks for to the pad under test. */
+  private sendCommands(): void {
+    const session = this.session;
+    const pad = this.sessionPad;
+    if (!session || !pad) return;
+    for (const command of session.takeCommands() as OutputCommand[]) {
+      // An output that fails shows in the person's answer.
+      try {
+        if (pad.source === "gamepad") this.host.gamepads()?.send(pad.id, command);
+        else this.host.hids()?.send(pad.id, command).catch(() => undefined);
+      } catch {
+        // The pad lacks this output, or went away.
+      }
+    }
+  }
+
+  /** A pad as the test mode's module reads it; throws when it cannot be tested here. */
+  private testDevice(pad: TestPad): TestDevice | undefined {
+    return pad.source === "gamepad"
+      ? this.host.gamepads()?.testDevice(pad.id, Date.now())
+      : this.host.hids()?.testDevice(pad.id, Date.now());
+  }
+
   private reconnected(pad: TestPad, now: number): void {
     const session = this.session;
     if (!session) return;
     try {
-      if (pad.source === "gamepad") this.host.gamepads()?.testReconnected(pad.id, session, now);
-      else this.host.hids()?.testReconnected(pad.id, session, now);
+      const device = this.testDevice(pad);
+      if (device) session.added(device, now);
     } catch {
       return;
     }
@@ -652,6 +698,8 @@ export class TestMode {
   }
 
   private finish(): void {
+    // Stops the outputs a stopped step left on.
+    this.sendCommands();
     this.view.results = this.resultRows();
     this.view.stage = "summary";
     this.outcome();

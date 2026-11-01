@@ -14,7 +14,7 @@ Needs Node 22.12+, the Rust toolchain of the repository and
 
 ```sh
 npm ci
-npm run wasm       # build the bindings into src/wasm (release; wasm:dev for a debug build)
+npm run wasm       # build both modules into src/wasm and src/wasm-testing (release; wasm:dev for a debug build)
 npm run dev        # dev server with hot reload
 npm run build      # type-check, then build into dist/
 npm run size       # check dist/ against the bundle size budget
@@ -48,7 +48,8 @@ cannot send headers); the dev server runs without one.
 | `src/rate.ts` | Update rate meters |
 | `src/theme.ts` | Light, dark or system theme |
 | `src/*.html` | jq79 components (rendering only) |
-| `src/wasm/` | wasm-pack output (generated, not committed) |
+| `src/wasm/` | wasm-pack output of the tester's module, `anygamepad-wasm` (generated, not committed) |
+| `src/wasm-testing/` | wasm-pack output of the test mode's module, `anygamepad-wasm-testing`, loaded when the Test mode tab first opens (W9; generated, not committed) |
 | `scripts/check-size.mjs` | Bundle size budget |
 | `tests/smoke.mjs` | Smoke test of the built site (Chromium, Firefox, WebKit) |
 | `tests/smoke-test-mode.mjs` | Smoke test of the test mode: a Full session on a Gamepad API pad, a Quick one on a WebHID DualSense (Chromium) |

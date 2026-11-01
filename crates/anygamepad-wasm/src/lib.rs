@@ -2,8 +2,10 @@
 //!
 //! [`Gamepads`] exposes the library's web provider to JavaScript, and
 //! `HidDevices` (wasm32 only) its WebHID access. [`MappingWizard`] runs the
-//! library's guided mapping wizard on a pad of either, and [`TestSession`]
-//! its test runner (the test mode, ADR 0008). Values are
+//! library's guided mapping wizard on a pad of either. The test mode (ADR
+//! 0008) is a module of its own (`anygamepad-wasm-testing`, W9): both hand
+//! it a device ([`TestDevice`]) and what it read each frame
+//! ([`TestInput`]). Values are
 //! converted with serde-wasm-bindgen, and the generated `.d.ts` declares
 //! their TypeScript types (through tsify), so the frontend never writes the
 //! canonical model by hand.
@@ -32,7 +34,7 @@ mod gamepads;
 #[cfg(target_arch = "wasm32")]
 mod hid_devices;
 mod report;
-mod testing;
+mod test_bridge;
 mod wizard;
 
 pub use gamepads::{
@@ -44,11 +46,7 @@ pub use hid_devices::{
     DecodedInput, HidDeviceInfo, HidDevices, HidFilter, HidInputReport, HidPoll, RawImu, ReportForm,
 };
 pub use report::{Redaction, ScrubResult};
-pub use testing::{
-    CatalogConnection, CatalogMode, CatalogModel, ChoiceResult, DetectedCandidate, Detection,
-    LabUnit, PlanInfo, PromptView, ReviewText, TestOutcome, TestResultView, TestSelection,
-    TestSession, TestSetup, TestStatus, TestSummary, catalog_models, lab_units, test_plans,
-};
+pub use test_bridge::{TestDevice, TestInput, TestInputReport};
 pub use wizard::{
     MappingWizard, WizardInput, WizardMissing, WizardPhase, WizardResult, WizardStatus, WizardStep,
     WizardTarget,

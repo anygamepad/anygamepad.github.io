@@ -31,7 +31,7 @@ import { HidLiveView } from "./hid-live";
 import { layoutFor } from "./layouts";
 import { LiveView } from "./live";
 import { CountMeter, RateMeter } from "./rate";
-import { emptyTestView, TestMode, type TestHost, type TestPad, type TestView } from "./test-mode";
+import { emptyTestView, loadTesting, TestMode, type TestHost, type TestPad, type TestView } from "./test-mode";
 import { rawNames, WizardView } from "./wizard";
 
 /** One connected pad, as the page lists it. */
@@ -287,6 +287,8 @@ export class Tester {
   private readonly log = new ActivityLog();
   private lastRateLog = 0;
   private testMode: TestMode | undefined;
+  /** Whether the test mode's module is loading. */
+  private testLoading = false;
   /** Each pad's canonical state at the last frame, for the test mode. */
   private readonly states = new Map<string, GamepadState | undefined>();
 
@@ -295,6 +297,7 @@ export class Tester {
     setMode: (mode: "tester" | "test"): void => {
       this.view.mode = mode;
       this.log.event("mode", { mode });
+      if (mode === "test") this.openTestMode();
     },
     testSearch: (text: string): void => this.testMode?.search(text),
     testPickModel: (id: string, unit?: string): void => this.testMode?.pickModel(id, unit),
@@ -349,11 +352,6 @@ export class Tester {
       webhid: view.webhid,
       hint: view.hint,
     });
-    try {
-      this.testMode = new TestMode(this.testHost(), view.test);
-    } catch (error) {
-      this.log.event("error", { message: `test mode: ${String(error)}` });
-    }
     document.addEventListener("visibilitychange", this.onVisibility);
     this.onVisibility();
     listReports()
@@ -743,6 +741,23 @@ export class Tester {
   }
 
   /** What the test mode needs from the tester. */
+  /** Loads the test mode's module the first time its tab opens (W9). */
+  private openTestMode(): void {
+    if (this.testMode || this.testLoading || !this.gamepads) return;
+    this.testLoading = true;
+    loadTesting()
+      .then((testing) => {
+        this.testMode = new TestMode(testing, this.testHost(), this.view.test);
+      })
+      .catch((error: unknown) => {
+        this.view.test.error = `The test mode did not load (${String(error)}).`;
+        this.log.event("error", { message: `test mode: ${String(error)}` });
+      })
+      .finally(() => {
+        this.testLoading = false;
+      });
+  }
+
   private testHost(): TestHost {
     return {
       gamepads: () => this.gamepads,

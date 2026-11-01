@@ -9,8 +9,10 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "wasm": "wasm-pack build ../../crates/anygamepad-wasm --release --target web --no-pack --out-dir ../../apps/web/src/wasm && wasm-opt -Oz src/wasm/anygamepad_wasm_bg.wasm -o src/wasm/anygamepad_wasm_bg.wasm",
-    "wasm:dev": "wasm-pack build ../../crates/anygamepad-wasm --dev --target web --no-pack --out-dir ../../apps/web/src/wasm",
+    "wasm": "npm run wasm:tester && npm run wasm:testing",
+    "wasm:tester": "wasm-pack build ../../crates/anygamepad-wasm --release --target web --no-pack --out-dir ../../apps/web/src/wasm && wasm-opt -Oz src/wasm/anygamepad_wasm_bg.wasm -o src/wasm/anygamepad_wasm_bg.wasm",
+    "wasm:testing": "wasm-pack build ../../crates/anygamepad-wasm-testing --release --target web --no-pack --out-dir ../../apps/web/src/wasm-testing && wasm-opt -Oz src/wasm-testing/anygamepad_wasm_testing_bg.wasm -o src/wasm-testing/anygamepad_wasm_testing_bg.wasm",
+    "wasm:dev": "wasm-pack build ../../crates/anygamepad-wasm --dev --target web --no-pack --out-dir ../../apps/web/src/wasm && wasm-pack build ../../crates/anygamepad-wasm-testing --dev --target web --no-pack --out-dir ../../apps/web/src/wasm-testing",
     "check": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
     "dev": "vite",
     "build": "npm run check && vite build",
