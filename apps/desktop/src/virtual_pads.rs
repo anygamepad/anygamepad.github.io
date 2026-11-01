@@ -12,6 +12,17 @@
 //! pads do, and passes on to it the vibration a game sends: the session
 //! asks the person whether it arrived.
 
+// The check itself does no I/O and builds everywhere, with its tests; only
+// the Linux runner uses it until Windows (A7) and macOS (A8) have virtual
+// pads.
+#![cfg_attr(
+    not(target_os = "linux"),
+    allow(
+        dead_code,
+        reason = "virtual pads run on Linux only (A5); A7 and A8 add the others"
+    )
+)]
+
 use std::collections::BTreeSet;
 
 use anygamepad::model::{Axis, Button, Capabilities, GamepadState, Output};
