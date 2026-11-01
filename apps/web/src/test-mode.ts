@@ -130,9 +130,15 @@ export interface TestView {
   candidate: number;
   /** Transports the person picks from when the API does not tell. */
   transports: { transport: Transport; name: string }[];
-  /** Units of the model, the one picked last first. */
+  /** Units of the model this browser knows (the inventory's, the saved
+   * reports'), the one picked last first. */
   unitOptions: string[];
+  /** The unit's code; `null` for none. */
   unit: string | null;
+  /** The code a new unit of the model would get (`DS5-03`, F4). */
+  unitProposal: string;
+  /** Why the code typed cannot be one. */
+  unitError: string | null;
   padName: string;
   check: string | null;
   plans: PlanInfo[];
@@ -161,6 +167,8 @@ export const emptyTestView = (): TestView => ({
   candidate: 0,
   transports: [],
   unitOptions: [],
+  unitProposal: "",
+  unitError: null,
   unit: null,
   padName: "",
   check: null,
@@ -297,8 +305,7 @@ export class TestMode {
     const model = this.model(id);
     if (!model) return;
     this.view.model = { id, title: titleOf(model), notes: model.notes ?? "" };
-    this.view.unitOptions = this.unitsOf(id);
-    this.view.unit = unit ?? this.view.unitOptions[0] ?? null;
+    this.offerUnits(id, unit);
     this.picked = null;
     this.view.error = null;
     this.refreshCards();
@@ -308,7 +315,7 @@ export class TestMode {
   readonly pickCard = (key: string): void => {
     const card = this.view.cards.find((c) => c.key === key);
     const model = this.view.model;
-    if (!card || !model) return;
+    if (!card || !model || this.view.unitError) return;
     this.picked = { mode: card.mode, transport: card.transport };
     // Picked after "Choose another": the pad is already connected.
     if (this.padKey && this.detection) {
@@ -351,12 +358,23 @@ export class TestMode {
   };
 
   readonly setUnit = (code: string): void => {
-    this.view.unit = code === "" ? null : code;
+    const trimmed = code.trim();
+    this.view.unit = trimmed === "" ? null : trimmed;
+    this.view.unitError =
+      trimmed === "" || this.testing.isUnitCode(trimmed)
+        ? null
+        : "A code is 1 to 16 letters, digits and hyphens (DS5-03), never a name.";
+  };
+
+  /** Names the pad as a new unit, with the proposed code. */
+  readonly newUnit = (): void => {
+    this.setUnit(this.view.unitProposal);
   };
 
   readonly confirm = (): void => {
     const candidate = this.detection?.candidates[this.view.candidate];
     if (this.view.stage !== "detected" || !candidate || candidate.transport === undefined) return;
+    if (this.view.unitError) return;
     const confirmed = this.selection(candidate.model, candidate.mode, candidate.transport, this.view.unit);
     this.plan = { start: "connecting", confirmed, detected: this.best(this.detection) };
     this.toPlan();
@@ -617,8 +635,7 @@ export class TestMode {
         transport: connection.transport,
         name: TRANSPORT_NAMES[connection.transport],
       })) ?? [];
-    this.view.unitOptions = this.unitsOf(candidate.model);
-    this.view.unit = this.view.unitOptions[0] ?? null;
+    this.offerUnits(candidate.model);
     this.view.choice = {
       title: this.describe(candidate.model, candidate.mode, candidate.transport),
       transportKnown: candidate.transport !== undefined,
@@ -771,12 +788,33 @@ export class TestMode {
     return this.models.find((model) => model.id === id);
   }
 
-  /** The units of a model, the one picked last on this machine first. */
+  /** The units of a model this browser knows: the inventory's and those
+   * of the saved reports, the one picked last on this machine first. */
   private unitsOf(model: string): string[] {
-    const codes = this.unitList.filter((unit) => unit.model === model).map((unit) => unit.code);
+    const codes = [
+      ...this.unitList.filter((unit) => unit.model === model).map((unit) => unit.code),
+      ...this.reports.filter((report) => report.model === model).flatMap((report) => (report.unit ? [report.unit] : [])),
+    ].filter((code, index, all) => all.indexOf(code) === index);
     const last = readLastUnit(model);
     if (last && codes.includes(last)) return [last, ...codes.filter((code) => code !== last)];
     return codes;
+  }
+
+  /** Offers a model's units: `unit`, else the one picked last, else a new
+   * one with the proposed code (F4: units are named as they are tested). */
+  private offerUnits(model: string, unit?: string): void {
+    const used = [
+      ...this.unitList.map((known) => known.code),
+      ...this.reports.flatMap((report) => (report.unit ? [report.unit] : [])),
+    ];
+    this.view.unitOptions = this.unitsOf(model);
+    try {
+      this.view.unitProposal = this.testing.proposeUnitCode(model, used);
+    } catch {
+      this.view.unitProposal = "";
+    }
+    this.view.unitError = null;
+    this.view.unit = unit ?? this.view.unitOptions[0] ?? (this.view.unitProposal || null);
   }
 
   private selection(model: string, mode: string, transport: Transport, unit: string | null): TestSelection {

@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use anygamepad::db::catalog::Model;
 use anygamepad::db::detect::ChoiceCheck;
-use anygamepad::db::lab::Code;
+use anygamepad::db::lab::{Code, propose_code};
 use anygamepad::db::{Catalog, Inventory, TestPlan};
 use anygamepad::model::{Button, Transport};
 use anygamepad::provider::DeviceId;
@@ -80,6 +80,10 @@ pub struct TestPage {
     /// The model picked or detected.
     model: Option<&'static Model>,
     unit: Option<Code>,
+    /// The unit's code as typed.
+    unit_text: String,
+    /// Whether `unit_text` is not a code.
+    unit_invalid: bool,
     /// The unit picked last, per model, this run of the app.
     last_units: BTreeMap<String, Code>,
     /// The mode and transport picked from the cards.
@@ -159,6 +163,8 @@ impl TestPage {
             pad: None,
             model: None,
             unit: None,
+            unit_text: String::new(),
+            unit_invalid: false,
             last_units: BTreeMap::new(),
             picked: None,
             candidates: Vec::new(),
@@ -311,17 +317,68 @@ impl TestPage {
 
     fn show_candidate(&mut self, candidate: &Candidate) {
         self.model = Some(candidate.model);
-        self.unit = self.units_of(&candidate.model.id).into_iter().next();
+        self.offer_units(candidate.model, None);
     }
 
-    /// The units of a model, the one picked last first.
+    /// The units of a model this computer knows (the inventory's, the saved
+    /// reports'), the one picked last first.
     fn units_of(&self, model: &str) -> Vec<Code> {
         let last = self.last_units.get(model);
-        self.inventory
+        let mut codes: Vec<Code> = self
+            .inventory
             .proposed_units(model, last)
             .into_iter()
             .map(|unit| unit.code.clone())
-            .collect()
+            .collect();
+        let saved = self.saved.iter().flatten();
+        for test in saved.filter(|test| test.confirmed.model == model) {
+            if let Some(code) = &test.confirmed.unit {
+                if !codes.contains(code) {
+                    codes.push(code.clone());
+                }
+            }
+        }
+        if let Some(position) = last.and_then(|last| codes.iter().position(|c| c == last)) {
+            let code = codes.remove(position);
+            codes.insert(0, code);
+        }
+        codes
+    }
+
+    /// The code a new unit of `model` would get (F4): its short name and
+    /// the next number free among the codes this computer knows.
+    fn proposal(&self, model: &Model) -> Code {
+        let saved = self.saved.iter().flatten();
+        let used: Vec<&str> = self
+            .inventory
+            .units
+            .iter()
+            .map(|unit| unit.code.as_str())
+            .chain(saved.filter_map(|test| test.confirmed.unit.as_ref().map(Code::as_str)))
+            .collect();
+        propose_code(model, used)
+    }
+
+    /// Offers a model's units: `unit`, else the one picked last, else a new
+    /// one with the proposed code (units are named as they are tested).
+    fn offer_units(&mut self, model: &Model, unit: Option<Code>) {
+        let unit = unit
+            .or_else(|| self.units_of(&model.id).into_iter().next())
+            .unwrap_or_else(|| self.proposal(model));
+        self.set_unit(unit.as_str().to_owned());
+    }
+
+    fn set_unit(&mut self, text: String) {
+        let trimmed = text.trim();
+        (self.unit, self.unit_invalid) = if trimmed.is_empty() {
+            (None, false)
+        } else {
+            match Code::new(trimmed) {
+                Ok(code) => (Some(code), false),
+                Err(_) => (None, true),
+            }
+        };
+        self.unit_text = text;
     }
 
     fn check_pad(&mut self, device: &DeviceView) {
@@ -403,7 +460,7 @@ impl TestPage {
 
     fn pick_model(&mut self, model: &'static Model, unit: Option<Code>) {
         self.model = Some(model);
-        self.unit = unit.or_else(|| self.units_of(&model.id).into_iter().next());
+        self.offer_units(model, unit);
         self.picked = None;
         self.error = None;
         self.stage = Stage::Connect;
@@ -413,6 +470,9 @@ impl TestPage {
         let Some(model) = self.model else {
             return;
         };
+        if self.unit_invalid {
+            return;
+        }
         self.picked = Some((mode.clone(), transport));
         // Picked after "Choose another": the pad is already connected.
         if let Some(device) = self.pad.and_then(|id| pads(snapshot).find(|d| d.id == id)) {
@@ -437,6 +497,9 @@ impl TestPage {
         let Some(candidate) = self.candidates.get(self.candidate).cloned() else {
             return;
         };
+        if self.unit_invalid {
+            return;
+        }
         let Some(transport) = candidate.transport else {
             return;
         };
@@ -677,25 +740,53 @@ impl TestPage {
             return;
         };
         let units = self.units_of(&model.id);
-        if units.is_empty() {
-            return;
-        }
+        let proposal = self.proposal(model);
         ui.horizontal(|ui| {
             ui.label("Unit");
-            let selected = self
-                .unit
-                .as_ref()
-                .map_or("None".to_owned(), |u| u.as_str().to_owned());
-            egui::ComboBox::from_id_salt("test-unit")
-                .selected_text(selected)
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.unit, None, "None");
-                    for unit in units {
-                        let label = unit.as_str().to_owned();
-                        ui.selectable_value(&mut self.unit, Some(unit), label);
-                    }
-                });
+            let mut text = self.unit_text.clone();
+            let edit = ui.add(
+                egui::TextEdit::singleline(&mut text)
+                    .hint_text("No code")
+                    .char_limit(16)
+                    .desired_width(120.0),
+            );
+            if edit.changed() {
+                self.set_unit(text);
+            }
+            if !units.is_empty() {
+                egui::ComboBox::from_id_salt("test-unit")
+                    .selected_text("Known")
+                    .show_ui(ui, |ui| {
+                        for unit in units {
+                            if ui
+                                .selectable_label(self.unit.as_ref() == Some(&unit), unit.as_str())
+                                .clicked()
+                            {
+                                self.set_unit(unit.as_str().to_owned());
+                            }
+                        }
+                    });
+            }
+            if self.unit.as_ref() != Some(&proposal)
+                && ui.button(format!("New unit: {proposal}")).clicked()
+            {
+                self.set_unit(proposal.as_str().to_owned());
+            }
         });
+        if self.unit_invalid {
+            ui.colored_label(
+                ui.visuals().error_fg_color,
+                "A code is 1 to 16 letters, digits and hyphens (DS5-03), never a name.",
+            );
+        }
+        ui.label(
+            RichText::new(
+                "A code to tell your pads apart, to write on a label: the report keeps it, never \
+                 a name. Leave it empty for none.",
+            )
+            .small()
+            .weak(),
+        );
     }
 
     fn connect(&mut self, ui: &mut egui::Ui, snapshot: &Snapshot) {
@@ -1105,4 +1196,53 @@ fn results_grid(ui: &mut egui::Ui, results: &[ResultLine]) {
                 ui.end_row();
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use anygamepad::model::ControllerMode;
+    use anygamepad_report::test_report::Selection;
+
+    use super::*;
+
+    fn saved(model: &str, unit: &str) -> SavedTest {
+        SavedTest {
+            path: PathBuf::from(format!("{unit}.json")),
+            confirmed: Selection {
+                unit: Some(Code::new(unit).unwrap()),
+                model: model.into(),
+                mode: "ps5".into(),
+                kind: ControllerMode::Ps5,
+                transport: Transport::Usb,
+            },
+        }
+    }
+
+    #[test]
+    fn units_are_named_as_they_are_tested() {
+        let mut page = TestPage::new(None);
+        page.saved = Some(vec![
+            saved("sony/dualsense", "DS5-01"),
+            saved("sony/dualsense", "DS5-02"),
+        ]);
+        let catalog = Catalog::embedded();
+        let dualsense = catalog.get("sony/dualsense").unwrap();
+        // A model with saved units: one of them, and a new one would be next.
+        page.pick_model(dualsense, None);
+        assert_eq!(page.unit_text, "DS5-01");
+        assert_eq!(page.proposal(dualsense).as_str(), "DS5-03");
+        // A model this computer does not know yet: a new unit.
+        page.pick_model(catalog.get("microsoft/xbox-series").unwrap(), None);
+        assert_eq!(page.unit.as_ref().map(Code::as_str), Some("XSX-01"));
+        // What is not a code is refused; empty means no unit.
+        page.set_unit("my pad!".into());
+        assert!(page.unit_invalid && page.unit.is_none());
+        page.set_unit(" ".into());
+        assert!(!page.unit_invalid && page.unit.is_none());
+        // The unit picked last comes first.
+        page.last_units
+            .insert("sony/dualsense".into(), Code::new("DS5-02").unwrap());
+        page.pick_model(dualsense, None);
+        assert_eq!(page.unit_text, "DS5-02");
+    }
 }

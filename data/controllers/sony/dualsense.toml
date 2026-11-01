@@ -4,6 +4,7 @@ schema_version = 1
 id = "sony/dualsense"
 vendor = "Sony"
 name = "DualSense Wireless Controller"
+short = "DS5"
 family = "dualsense"
 notes = "PlayStation 5 controller (CFI-ZCT1). Create is `select`, Options `start`, PS `home`."
 

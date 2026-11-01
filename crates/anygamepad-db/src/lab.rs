@@ -19,7 +19,7 @@ use std::fmt;
 use anygamepad_model::identity::{BrowserEngine, Os};
 use serde::{Deserialize, Serialize};
 
-use crate::catalog::{Catalog, MAX_NOTE_CHARS, check_text};
+use crate::catalog::{Catalog, MAX_NOTE_CHARS, Model, check_text};
 
 /// Version of the inventory format this library reads and writes.
 pub const INVENTORY_SCHEMA_VERSION: u32 = 1;
@@ -254,6 +254,38 @@ pub(crate) fn encode_inventory(inventory: &Inventory) -> Result<Vec<u8>, postcar
 /// Decodes an inventory encoded by [`encode_inventory`].
 pub(crate) fn decode_inventory(bytes: &[u8]) -> Result<Inventory, postcard::Error> {
     postcard::from_bytes(bytes)
+}
+
+/// A code for a new unit of `model`: the model's short name and the next
+/// number free among `used`, the codes this machine knows (`DS5-03`);
+/// `PAD` for a model without a short name. Numbers have at least two
+/// digits; codes of other forms in `used` are ignored.
+///
+/// ```
+/// use anygamepad_db::Catalog;
+/// use anygamepad_db::lab::propose_code;
+///
+/// let dualsense = Catalog::embedded().get("sony/dualsense").unwrap();
+/// assert_eq!(propose_code(dualsense, ["DS5-01", "DS5-02", "XSX-07"]).as_str(), "DS5-03");
+/// let generic = Catalog::embedded().get("generic/hid").unwrap();
+/// assert_eq!(propose_code(generic, []).as_str(), "PAD-01");
+/// ```
+pub fn propose_code<'a>(model: &Model, used: impl IntoIterator<Item = &'a str>) -> Code {
+    let prefix = model.short.as_deref().unwrap_or("PAD");
+    let last = used
+        .into_iter()
+        .filter_map(|code| {
+            let (head, number) = code.rsplit_once('-')?;
+            if !head.eq_ignore_ascii_case(prefix) || number.is_empty() {
+                return None;
+            }
+            number.parse::<u32>().ok()
+        })
+        .max()
+        .unwrap_or(0);
+    let code = format!("{prefix}-{:02}", last.saturating_add(1));
+    // A prefix has at most 8 characters and a number at most 10 digits.
+    Code::new(&code).expect("a short name, a hyphen and a number make a code")
 }
 
 /// The JSON Schema of an inventory file, as committed in

@@ -22,9 +22,9 @@ gantt
     F3 done :milestone, f3, 2026-10-10, 0d
     D1 done :milestone, d1, 2026-10-14, 0d
     D4 done :milestone, d4, 2026-10-25, 0d
-    H6 done :milestone, h6, 2026-11-14, 0d
-    H9 done :milestone, h9, 2026-12-04, 0d
-    D3 done :milestone, d3, 2026-12-07, 0d
+    H6 done :milestone, h6, 2026-11-11, 0d
+    H9 done :milestone, h9, 2026-12-01, 0d
+    D3 done :milestone, d3, 2026-12-04, 0d
     section Core library
     C1 Canonical gamepad model :done, c1, 2026-10-10, 3d
     C2 Device identity, fingerprint and provider trait :done, c2, 2026-10-10, 3d
@@ -49,19 +49,19 @@ gantt
 |----|------|-----:|------------|--------|-------|-----|------:|
 | C1 | Canonical gamepad model | 10 | F1, F3 | C4, C5, C6, C11, C13, C14, C3, C15, A4 | 2026-10-10 | 2026-10-13 | done |
 | C2 | Device identity, fingerprint and provider trait | 10 | F3 | C4, C5, C6, C11, C13, C14, C15, D1, P1 | 2026-10-10 | 2026-10-13 | done |
-| C4 | Linux input backend (evdev + hidraw) | 3 (of 20) | C1, C2, H6 | C7, C12, C8, D3, A5, A2 | 2026-11-14 | 2026-11-17 | 4 |
+| C4 | Linux input backend (evdev + hidraw) | 3 (of 20) | C1, C2, H6 | C7, C12, C8, D3, A5, A2 | 2026-11-11 | 2026-11-14 | 7 |
 | C5 | Windows input backend (HID + XInput) | 30 | C1, C2 | C10, A7, A6 | 2026-11-01 | 2026-12-01 | 5 |
 | C6 | **macOS input backend (IOKit HID + GameController)** | 25 | C1, C2 | C10, A8, A6 | 2026-11-01 | 2026-11-26 | 0 |
 | C11 | Web backend (Gamepad API + WebHID) and JS bindings | 20 | C1, C2 | C10, W2, M1 | 2026-10-13 | 2026-10-14 | done |
 | C13 | SDL3 provider (incl. SDL HIDAPI drivers) | 15 | C1, C2 | C12 | 2026-11-01 | 2026-11-16 | 30 |
 | C14 | gilrs provider (pure-Rust fallback) | 10 | C1, C2 | C10 | 2026-11-01 | 2026-11-11 | 50 |
 | C3 | Mapping engine | 20 | C1, D1 | C9, C8, D4, W5, H3, M1 | 2026-10-14 | 2026-10-14 | done |
-| C15 | PlayStation input decoder (sans-IO) | 2 (of 10) | C1, C2, H6 | C7, W3 | 2026-11-14 | 2026-11-16 | 38 |
-| C7 | Native protocol drivers (PlayStation outputs and IMU, Switch Pro) | 7 (of 20) | C4, C15 | C10 | 2026-11-17 | 2026-11-24 | 37 |
-| C12 | Multi-provider arbitration (dedup, priority) | 15 | C4, C13 | C10 | 2026-11-17 | 2026-12-02 | 29 |
+| C15 | PlayStation input decoder (sans-IO) | 2 (of 10) | C1, C2, H6 | C7, W3 | 2026-11-11 | 2026-11-13 | 41 |
+| C7 | Native protocol drivers (PlayStation outputs and IMU, Switch Pro) | 7 (of 20) | C4, C15 | C10 | 2026-11-14 | 2026-11-21 | 40 |
+| C12 | Multi-provider arbitration (dedup, priority) | 15 | C4, C13 | C10 | 2026-11-16 | 2026-12-01 | 30 |
 | C9 | Public API, docs and examples | 15 | C3 | C10 | 2026-11-01 | 2026-11-16 | 45 |
-| C8 | Mode and clone detection heuristics | 20 | C3, C4, D3, H9 | C10 | 2026-12-07 | 2026-12-27 | 4 |
-| C10 | Library 0.1.0 release | 5 | C5, C6, C7, C8, C9, C11, C12, C14, D4 | A10, M3 | 2026-12-27 | 2027-01-01 | 4 |
+| C8 | Mode and clone detection heuristics | 20 | C3, C4, D3, H9 | C10 | 2026-12-04 | 2026-12-24 | 7 |
+| C10 | Library 0.1.0 release | 5 | C5, C6, C7, C8, C9, C11, C12, C14, D4 | A10, M3 | 2026-12-24 | 2026-12-29 | 7 |
 
 ### C1 — Canonical gamepad model
 

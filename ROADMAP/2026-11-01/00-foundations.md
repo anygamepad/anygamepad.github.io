@@ -18,7 +18,7 @@ gantt
     F1 Cargo workspace, licensing, CI matrix :done, f1, 2026-10-10, 1d
     F2 Prior-art research spike :done, f2, 2026-10-10, 1d
     F3 Architecture decision records :done, f3, 2026-10-10, 1d
-    F4 Lab inventory from test reports :f4, after f2 h2 h4 h5, 3d
+    F4 Lab inventory from test reports :done, f4, 2026-11-01, 1d
 ```
 
 ## Tasks
@@ -28,7 +28,7 @@ gantt
 | F1 | Cargo workspace, licensing, CI matrix | 5 | - | C1, W1 | 2026-10-10 | 2026-10-10 | done |
 | F2 | Prior-art research spike | 10 | - | F3, F4 | 2026-10-10 | 2026-10-10 | done |
 | F3 | Architecture decision records | 5 | F2 | C1, C2, W1, A1 | 2026-10-10 | 2026-10-10 | done |
-| F4 | Lab inventory from test reports | 3 | F2, H2, H4, H5 | D3, H6, H8 | 2026-11-01 | 2026-11-04 | 4 |
+| F4 | Lab inventory from test reports | 3 | F2, H2, H4, H5 | D3, H6, H8 | 2026-11-01 | 2026-11-01 | done |
 
 ### F1 — Cargo workspace, licensing, CI matrix
 
@@ -148,3 +148,9 @@ matrix (H8) shows which of their configurations are untested.
 
 **Done when:** both test modes name units, and the tool builds from a
 folder of test reports an inventory that validates against H2's schema.
+
+Status (2026-11-01): done
+(`RECORD/2026-11-01.f4-inventory-from-test-reports.completed.md`): the
+catalog's `short` names, `lab::propose_code`, the unit field of both test
+modes, `test_report::add_units` and the `inventory` example of
+`anygamepad-report`. The inventory itself fills up during H6.

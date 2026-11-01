@@ -17,6 +17,14 @@ Status: **active**. Supersedes [ROADMAP/2026-10-31/](../2026-10-31/README.md).
   that the tester's `.wasm` goes back within its 160 KiB budget
   ([04-web-app.md](04-web-app.md#w9--test-mode-as-a-separately-loaded-webassembly-module)).
   It has slack and blocks nothing.
+- **Status update (2026-11-01, in place):** F4 is done (grey): both test
+  modes name units (a code proposed from the model's new `short` name,
+  such as `DS5-03`, or typed), and
+  `cargo run -p anygamepad-report --features json --example inventory`
+  adds the units of a folder of test reports to `data/lab/inventory.toml`
+  (RECORD of F4). H6 can start. Dates recomputed: M3 on 2026-12-29, M5 on
+  2026-12-01, M6 on 2026-11-11; M4 stays on 2027-01-10, and the test lab
+  and library chain has 7 days of slack.
 - **Status update (2026-11-01, in place):** W9 is done (grey): the tester's
   `.wasm` is back within 160 KiB, and the test mode's module (160.7 KiB)
   loads once its tab opens (RECORD of W9). It had slack: no date moves.
@@ -28,8 +36,7 @@ Status: **active**. Supersedes [ROADMAP/2026-10-31/](../2026-10-31/README.md).
   2027-01-10, M3 on 2027-01-01, M5 on 2026-12-04, M6 on 2026-11-14. The
   critical path runs through the macOS backend and its virtual pads
   (t0 -> C6 -> A8 -> A9 -> A10 -> M4); the chain of the test lab and the
-  library (F4 -> H6 -> C4 -> D3 -> C8 -> C10) has 4 days of
-  slack.
+  library (F4 -> H6 -> C4 -> D3 -> C8 -> C10) has 4 days of slack.
 - The owner directions of 2026-10-14 and 2026-10-31 still apply:
   `germadev/motorust` as the library's first consumer (not re-planned, not
   urgent), local-first reports
@@ -75,8 +82,8 @@ Cross-cutting groundwork lives in [00-foundations.md](00-foundations.md).
 1. **Test lab** (owner request, 2026-10-31). Nine tasks have their code
    merged but were never tried on a real pad; the test modes (H4, H5) and
    the first test campaign (H6) close them, and every later task is checked
-   the same way. Both test modes are done; F4 makes them name the units,
-   so the inventory grows from the reports of H6.
+   the same way. Both test modes are done and name the units (F4), so
+   the inventory grows from the reports of H6, which can start.
 2. **Library 0.1.0** (M3): the Windows and macOS backends (C5, C6), SDL3
    and gilrs (C13, C14), arbitration (C12), and the profiles and mode
    detection built on test reports (D3, C8).
@@ -175,7 +182,7 @@ gantt
     F1 Cargo workspace, licensing, CI matrix :done, f1, 2026-10-10, 1d
     F2 Prior-art research spike :done, f2, 2026-10-10, 1d
     F3 Architecture decision records :done, f3, 2026-10-10, 1d
-    F4 Lab inventory from test reports :f4, after f2 h2 h4 h5, 3d
+    F4 Lab inventory from test reports :done, f4, 2026-11-01, 1d
     section Core library and device database
     C1 Canonical gamepad model :done, c1, 2026-10-10, 3d
     C2 Device identity, fingerprint and provider trait :done, c2, 2026-10-10, 3d
@@ -253,8 +260,8 @@ The zero-slack chain from the baseline to the desktop release (M4):
 
 The macOS backend (C6) and the macOS virtual pads (A8) now set the
 desktop release. The test lab and the library
-(F4 -> H6 -> C4 -> D3 -> C8 -> C10) have 4 days of slack, the
-Windows chain (C5 -> A7) 5, H9 7. Everything else
+(F4 -> H6 -> C4 -> D3 -> C8 -> C10) have 7 days of slack, the
+Windows chain (C5 -> A7) 5, H9 10. Everything else
 has slack (see the `Slack` column in each detailed file).
 
 ## Dependency graph (who blocks whom)
@@ -488,7 +495,7 @@ flowchart LR
     classDef done fill:#eee,stroke:#999,color:#666
     class c6,a8,a9,a10,m4 crit
     class c4,c15,c7,w3,a1,a5,a2,a3,a11 active
-    class f1,f2,f3,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,w9,a4,h1,h2,h3,h4,h5,h10,m1,m2 done
+    class f1,f2,f3,f4,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,w9,a4,h1,h2,h3,h4,h5,h10,m1,m2 done
 ```
 
 ## Milestones
@@ -497,9 +504,9 @@ flowchart LR
 |-----------|------------|-------------|
 | M1 Core runs in the browser | C3, C11, D4 | 2026-10-25 (done) |
 | M2 Web tester live and collecting (reports saved locally and shared as issues) | W7 | 2026-10-25 (done) |
-| M6 Test lab running (test modes in the web and desktop apps, first campaign done) | H6 | 2026-11-14 |
-| M5 Reports synchronized with the sync server | P5, P6 | 2026-12-04 |
-| M3 Library 0.1.0 | C10 | 2027-01-01 |
+| M6 Test lab running (test modes in the web and desktop apps, first campaign done) | H6 | 2026-11-11 |
+| M5 Reports synchronized with the sync server | P5, P6 | 2026-12-01 |
+| M3 Library 0.1.0 | C10 | 2026-12-29 |
 | M4 Desktop app 0.1.0 | A10 | 2027-01-10 |
 
 ## Top risks

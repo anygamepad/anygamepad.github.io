@@ -20,7 +20,7 @@ gantt
     D1 done :milestone, d1, 2026-10-14, 0d
     W6 done :milestone, w6, 2026-10-25, 0d
     H1 done :milestone, h1, 2026-10-31, 0d
-    A3 done :milestone, a3, 2026-11-24, 0d
+    A3 done :milestone, a3, 2026-11-21, 0d
     section Collection pipeline
     P1 Device report schema (shared crate) :done, p1, 2026-10-14, 1d
     P2 Sync API and PostgreSQL storage :p2, after p1 t0, 20d
@@ -39,7 +39,7 @@ gantt
 | P3 | Privacy, consent, data retention policy | 10 | P1 | W6, A3 | 2026-10-14 | 2026-10-14 | done |
 | P4 | Curation tooling (reports to profile PRs) | 20 | P1, D1, H1 | - | 2026-11-01 | 2026-11-21 | 50 |
 | P5 | Hosting, backups, monitoring | 10 | P2 | M5 | 2026-11-21 | 2026-12-01 | 40 |
-| P6 | Report sync in the web and desktop apps | 10 | P2, W6, A3 | M5 | 2026-11-24 | 2026-12-04 | 37 |
+| P6 | Report sync in the web and desktop apps | 10 | P2, W6, A3 | M5 | 2026-11-21 | 2026-12-01 | 40 |
 
 ### P1 — Device report schema
 

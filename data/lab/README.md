@@ -20,8 +20,26 @@ transports are untested.
 
 Each unit and each machine has a **code**: 1 to 16 ASCII letters, digits
 and hyphens, starting with a letter or a digit (`DS5-02`, `XSX-01`,
-`LINUX-1`). A suggested scheme for units is the model's short name and a
-number. Codes cannot hold a person's name, by design.
+`LINUX-1`). Codes cannot hold a person's name, by design.
+
+The test modes propose a code for a unit the inventory does not have yet:
+the model's `short` name in the catalog and the next number free on that
+machine (`DS5-03`; `PAD-01` for a model without one, such as the generic
+types), as asset tags usually go: a type prefix and a number, short
+enough to write on a label stuck to the pad. Any other code works.
+
+## Building the inventory from test reports
+
+The owner tests first and lists later (F4, 2026-11-01): each test report
+names its unit, and a tool adds the units it finds to `inventory.toml`,
+keeping what is there:
+
+```sh
+cargo run -p anygamepad-report --features json --example inventory -- <folder of test reports> data/lab/inventory.toml
+```
+
+It prints what it added, and any code that two reports give to different
+models (left out). Notes and machines are written by hand.
 
 Test reports name a unit by its code, so what a code means stays with the
 person who gave it. They never name machines: a report says the OS, its

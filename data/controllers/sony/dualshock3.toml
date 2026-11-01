@@ -4,6 +4,7 @@ schema_version = 1
 id = "sony/dualshock3"
 vendor = "Sony"
 name = "DUALSHOCK 3 Wireless Controller"
+short = "DS3"
 family = "dualshock3"
 notes = "PlayStation 3 controller (CECHZC2). Its face buttons, d-pad, shoulders and triggers are pressure-sensitive; only the triggers' pressure is canonical. Fakes are common."
 

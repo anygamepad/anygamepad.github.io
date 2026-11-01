@@ -235,6 +235,24 @@ pub fn lab_units() -> Result<JsValue, JsError> {
     to_js(&units)
 }
 
+/// A code for a new unit of a catalog model (F4): its short name and the
+/// next number free among `used`, the codes this browser knows (`DS5-03`).
+#[wasm_bindgen(js_name = proposeUnitCode)]
+pub fn propose_unit_code(model: &str, used: Vec<String>) -> Result<String, JsError> {
+    let model = Catalog::embedded()
+        .get(model)
+        .ok_or_else(|| JsError::new(&format!("no catalog model `{model}`")))?;
+    let code = anygamepad::db::lab::propose_code(model, used.iter().map(String::as_str));
+    Ok(code.to_string())
+}
+
+/// Whether `code` can name a unit: 1 to 16 ASCII letters, digits and
+/// hyphens, starting with a letter or a digit.
+#[wasm_bindgen(js_name = isUnitCode)]
+pub fn is_unit_code(code: &str) -> bool {
+    Code::new(code).is_ok()
+}
+
 /// The embedded test plans the web app runs: all but the desktop app's
 /// virtual pad plans.
 #[wasm_bindgen(js_name = testPlans, unchecked_return_type = "PlanInfo[]")]

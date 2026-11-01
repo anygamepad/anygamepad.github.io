@@ -15,9 +15,9 @@ use anygamepad_model::raw::RawState;
 use anygamepad_model::{ControllerMode, Transport};
 use anygamepad_report::privacy::Finding;
 use anygamepad_report::test_report::{
-    Answer, Concern, Configuration, Evidence, Frame, MAX_TEST_REPORT_BYTES, Millis, PlanRef,
-    Selection, SessionStart, StepResult, StepStatus, TestReport, TestReportError, TimedReport,
-    anonymous_os_version, json_schema,
+    Answer, Concern, Configuration, Evidence, Frame, InventoryUpdate, MAX_TEST_REPORT_BYTES,
+    Millis, PlanRef, Selection, SessionStart, StepResult, StepStatus, TestReport, TestReportError,
+    TimedReport, add_units, anonymous_os_version, json_schema,
 };
 use anygamepad_report::{HexBytes, Report};
 use common::{desktop_report, web_report};
@@ -178,6 +178,16 @@ fn example_is_up_to_date_and_valid() {
     let summary = report.summary();
     assert_eq!((summary.pass, summary.not_applicable), (3, 1));
     assert!(!report.configuration.detection_differs());
+    // Detection proposes a unit, the person names another: it still fits.
+    let mut configuration = report.configuration.clone();
+    if let Some(detected) = &mut configuration.detected {
+        detected.unit = Some(Code::new("DS5-09").unwrap());
+    }
+    assert!(!configuration.detection_differs());
+    if let Some(detected) = &mut configuration.detected {
+        detected.transport = Transport::Bluetooth;
+    }
+    assert!(configuration.detection_differs());
 }
 
 #[test]
@@ -486,4 +496,59 @@ fn a_full_session_fits() {
         println!("full session, hid: {hid}: {size} bytes");
         assert!(size <= MAX_TEST_REPORT_BYTES, "{size} bytes (hid: {hid})");
     }
+}
+
+#[test]
+fn inventory_from_reports() {
+    use anygamepad_db::Inventory;
+    use anygamepad_db::lab::Unit;
+
+    let unit = |code: &str, model: &str| Unit {
+        code: Code::new(code).unwrap(),
+        model: model.into(),
+        notes: None,
+    };
+    let report = |code: Option<&str>, model: &str| {
+        let mut report = example();
+        report.configuration.confirmed.unit = code.map(|code| Code::new(code).unwrap());
+        report.configuration.confirmed.model = model.into();
+        report
+    };
+    let mut inventory = Inventory {
+        schema_version: 1,
+        units: vec![Unit {
+            notes: Some("White.".into()),
+            ..unit("DS5-01", "sony/dualsense")
+        }],
+        machines: Vec::new(),
+    };
+    let reports = [
+        report(Some("DS5-01"), "sony/dualsense"),
+        report(Some("DS5-02"), "sony/dualsense"),
+        report(None, "microsoft/xbox-series"),
+        report(Some("XSX-01"), "microsoft/xbox-series"),
+        report(Some("DS5-02"), "sony/dualsense"),
+        // The same code for another model: left out, once.
+        report(Some("DS5-01"), "sony/dualshock4-v2"),
+        report(Some("DS5-01"), "sony/dualshock4-v2"),
+    ];
+    let update = add_units(&mut inventory, &reports);
+    assert_eq!(
+        update,
+        InventoryUpdate {
+            added: vec![
+                unit("DS5-02", "sony/dualsense"),
+                unit("XSX-01", "microsoft/xbox-series")
+            ],
+            conflicts: vec![(
+                Code::new("DS5-01").unwrap(),
+                "sony/dualsense".into(),
+                "sony/dualshock4-v2".into()
+            )],
+        }
+    );
+    // What was there stays, notes included.
+    assert_eq!(inventory.units.len(), 3);
+    assert_eq!(inventory.units[0].notes.as_deref(), Some("White."));
+    inventory.validate(Some(Catalog::embedded())).unwrap();
 }

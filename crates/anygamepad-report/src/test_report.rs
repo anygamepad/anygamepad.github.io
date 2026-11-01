@@ -33,7 +33,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use anygamepad_db::Catalog;
-use anygamepad_db::lab::Code;
+use anygamepad_db::lab::{Code, Inventory, Unit};
 use anygamepad_model::identity::{GamepadApiId, Os};
 use anygamepad_model::raw::RawState;
 use anygamepad_model::{ControllerMode, Family, Transport};
@@ -122,13 +122,25 @@ pub struct Configuration {
 }
 
 impl Configuration {
-    /// Whether detection proposed something other than what was confirmed:
-    /// a finding (a clone, a firmware change, a catalog to correct, or a
-    /// detection to improve).
+    /// Whether detection proposed another model, mode or transport than
+    /// what was confirmed: a finding (a clone, a firmware change, a catalog
+    /// to correct, or a detection to improve). The unit does not count.
     pub fn detection_differs(&self) -> bool {
-        self.detected
-            .as_ref()
-            .is_some_and(|detected| detected != &self.confirmed)
+        // The unit is proposed, never detected: two pads of a model look
+        // the same without their serial numbers, which are never read.
+        self.detected.as_ref().is_some_and(|detected| {
+            (
+                &detected.model,
+                &detected.mode,
+                detected.kind,
+                detected.transport,
+            ) != (
+                &self.confirmed.model,
+                &self.confirmed.mode,
+                self.confirmed.kind,
+                self.confirmed.transport,
+            )
+        })
     }
 }
 
@@ -915,4 +927,51 @@ impl TestReport {
         }
         Ok(text)
     }
+}
+
+/// What test reports add to a lab inventory ([`add_units`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct InventoryUpdate {
+    /// The units the reports name that the inventory lacked, in the order
+    /// first seen; added.
+    pub added: Vec<Unit>,
+    /// Codes a report gives to another model than the inventory or an
+    /// earlier report does: the code, the model kept, the report's model.
+    /// Left out.
+    pub conflicts: Vec<(Code, String, String)>,
+}
+
+/// Adds to `inventory` each unit `reports` name that it lacks (roadmap
+/// task F4: the inventory is built from test reports), keeping what it has.
+/// A report without a unit adds nothing.
+pub fn add_units<'a>(
+    inventory: &mut Inventory,
+    reports: impl IntoIterator<Item = &'a TestReport>,
+) -> InventoryUpdate {
+    let mut update = InventoryUpdate::default();
+    for report in reports {
+        let confirmed = &report.configuration.confirmed;
+        let Some(code) = &confirmed.unit else {
+            continue;
+        };
+        match inventory.unit(code.as_str()) {
+            Some(unit) if unit.model == confirmed.model => {}
+            Some(unit) => {
+                let conflict = (code.clone(), unit.model.clone(), confirmed.model.clone());
+                if !update.conflicts.contains(&conflict) {
+                    update.conflicts.push(conflict);
+                }
+            }
+            None => {
+                let unit = Unit {
+                    code: code.clone(),
+                    model: confirmed.model.clone(),
+                    notes: None,
+                };
+                inventory.units.push(unit.clone());
+                update.added.push(unit);
+            }
+        }
+    }
+    update
 }

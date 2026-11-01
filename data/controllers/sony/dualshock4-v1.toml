@@ -4,6 +4,7 @@ schema_version = 1
 id = "sony/dualshock4-v1"
 vendor = "Sony"
 name = "DUALSHOCK 4 Wireless Controller (CUH-ZCT1)"
+short = "DS4"
 family = "dualshock4"
 notes = "PlayStation 4 controller. First revision. Share is `select`, Options `start`, PS `home`."
 

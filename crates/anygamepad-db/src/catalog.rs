@@ -57,6 +57,11 @@ pub struct Model {
     pub vendor: String,
     /// The product name, as printed on the box.
     pub name: String,
+    /// A short name for the codes of its units, as people write it (`DS5`,
+    /// `X360`): 2 to 8 uppercase letters and digits. Without one, unit codes
+    /// start with `PAD` ([`crate::lab::propose_code`]).
+    #[serde(default)]
+    pub short: Option<String>,
     /// Whether this stands for every pad of a kind the catalog does not list
     /// (`generic/xinput`), rather than a product. Generic models are
     /// detected by their family, not by identities.
@@ -349,6 +354,15 @@ impl Model {
         }
         check_text("the vendor", &self.vendor, MAX_NAME_CHARS, false)?;
         check_text("the name", &self.name, MAX_NAME_CHARS, false)?;
+        if let Some(short) = &self.short {
+            let valid = (2..=8).contains(&short.len())
+                && short
+                    .bytes()
+                    .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit());
+            if !valid {
+                return Err("`short` is not 2 to 8 uppercase letters and digits".into());
+            }
+        }
         if let Some(notes) = &self.notes {
             check_text("the notes", notes, MAX_NOTE_CHARS, true)?;
         }
@@ -559,6 +573,7 @@ mod tests {
             id: "acme/pad-2".into(),
             vendor: "Acme".into(),
             name: "Pad 2".into(),
+            short: None,
             generic: false,
             family: None,
             labels: Some(Labels::Nintendo),

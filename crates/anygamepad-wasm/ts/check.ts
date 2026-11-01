@@ -8,7 +8,9 @@ import initTesting, {
   catalogModels,
   checkChoice,
   identify,
+  isUnitCode,
   labUnits,
+  proposeUnitCode,
   startTest,
   testPlans,
   type CatalogModel,
@@ -228,10 +230,12 @@ async function testMode(gamepads: Gamepads, devices: HidDevices, device: number)
   const seen = choice.result === "differs" ? choice.seen.candidates.length : 0;
   const hidPad: TestDevice = devices.testDevice(device, Date.now());
   const hidDetection: Detection = identify(hidPad);
+  const proposed: string = proposeUnitCode(best?.model ?? "generic/hid", units.map((unit) => unit.code));
+  const unit = isUnitCode(proposed) ? proposed : units[0]?.code;
   const setup: TestSetup = {
     plan: plans[0]?.id ?? "quick",
     start: "connecting",
-    confirmed: { model: best?.model ?? "generic/hid", mode: best?.mode ?? "dinput", transport: "usb", unit: units[0]?.code },
+    confirmed: { model: best?.model ?? "generic/hid", mode: best?.mode ?? "dinput", transport: "usb", unit },
     detected: undefined,
   };
   const session: TestSession = startTest(pad, setup);

@@ -4,6 +4,7 @@ schema_version = 1
 id = "nintendo/switch-pro"
 vendor = "Nintendo"
 name = "Nintendo Switch Pro Controller"
+short = "NSP"
 family = "switch_pro"
 notes = "ZL and ZR are digital. Minus is `select`, plus `start`, Home `home`, Capture `capture`."
 

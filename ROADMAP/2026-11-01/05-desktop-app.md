@@ -31,11 +31,11 @@ gantt
     P3 done :milestone, p3, 2026-10-14, 0d
     W4 done :milestone, w4, 2026-10-14, 0d
     M2 done :milestone, m2, 2026-10-25, 0d
-    H6 done :milestone, h6, 2026-11-14, 0d
-    C4 done :milestone, c4, 2026-11-17, 0d
+    H6 done :milestone, h6, 2026-11-11, 0d
+    C4 done :milestone, c4, 2026-11-14, 0d
     C6 done :milestone, crit, c6, 2026-11-26, 0d
     C5 done :milestone, c5, 2026-12-01, 0d
-    C10 done :milestone, c10, 2027-01-01, 0d
+    C10 done :milestone, c10, 2026-12-29, 0d
     section Desktop app
     A1 App shell (UI toolkit, tray, settings) :active, a1, after f3 m2 h6, 2d
     A4 Virtual pad abstraction and emulated profiles :done, a4, 2026-10-30, 1d
@@ -54,15 +54,15 @@ gantt
 
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
-| A1 | App shell (UI toolkit, tray, settings) | 2 (of 15) | F3, M2, H6 | A2 | 2026-11-14 | 2026-11-16 | 28 |
+| A1 | App shell (UI toolkit, tray, settings) | 2 (of 15) | F3, M2, H6 | A2 | 2026-11-11 | 2026-11-13 | 31 |
 | A4 | Virtual pad abstraction and emulated profiles | 10 | C1, M2 | A5, A7, A8 | 2026-10-30 | 2026-10-30 | done |
-| A5 | Linux virtual output (uinput + UHID) | 3 (of 20) | A4, C4 | A6 | 2026-11-17 | 2026-11-20 | 16 |
+| A5 | Linux virtual output (uinput + UHID) | 3 (of 20) | A4, C4 | A6 | 2026-11-14 | 2026-11-17 | 19 |
 | A7 | Windows virtual output via ViGEmBus (X360, DS4) | 15 | A4, C5 | A9 | 2026-12-01 | 2026-12-16 | 5 |
 | A8 | **macOS virtual output (IOHIDUserDevice)** | 25 | A4, C6 | A9 | 2026-11-26 | 2026-12-21 | 0 |
-| A2 | Device list and live view | 2 (of 15) | A1, C4 | A3, A11 | 2026-11-17 | 2026-11-19 | 27 |
-| A3 | Collection mode | 5 (of 15) | A2, W4, P1, P3 | P6, A9 | 2026-11-19 | 2026-11-24 | 27 |
+| A2 | Device list and live view | 2 (of 15) | A1, C4 | A3, A11 | 2026-11-14 | 2026-11-16 | 30 |
+| A3 | Collection mode | 5 (of 15) | A2, W4, P1, P3 | P6, A9 | 2026-11-16 | 2026-11-21 | 30 |
 | A6 | Physical device hiding (grab/HidHide/seize) | 15 | A5, C5, C6 | A9 | 2026-12-01 | 2026-12-16 | 5 |
-| A11 | Always-on-top input widget (overlay) | 3 (of 10) | A2 | A9 | 2026-11-19 | 2026-11-22 | 29 |
+| A11 | Always-on-top input widget (overlay) | 3 (of 10) | A2 | A9 | 2026-11-16 | 2026-11-19 | 32 |
 | A9 | **Packaging and code signing** | 15 | A3, A6, A7, A8, A11 | A10 | 2026-12-21 | 2027-01-05 | 0 |
 | A10 | **Desktop app 0.1.0 release** | 5 | A9, C10 | M4 | 2027-01-05 | 2027-01-10 | 0 |
 

@@ -4,6 +4,7 @@ schema_version = 1
 id = "microsoft/xbox-360-wireless"
 vendor = "Microsoft"
 name = "Xbox 360 Wireless Controller"
+short = "X360"
 family = "xbox"
 notes = "Through the Xbox 360 Wireless Receiver; its USB cable only charges it. Back is `select`, Start `start`, Guide `home`."
 

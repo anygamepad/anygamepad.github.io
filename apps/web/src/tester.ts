@@ -308,6 +308,7 @@ export class Tester {
     testPickCandidate: (index: number): void => this.testMode?.pickCandidate(index),
     testSetTransport: (transport: Transport): void => this.testMode?.setTransport(transport),
     testSetUnit: (code: string): void => this.testMode?.setUnit(code),
+    testNewUnit: (): void => this.testMode?.newUnit(),
     testConfirm: (): void => this.testMode?.confirm(),
     testChooseAnother: (): void => this.testMode?.chooseAnother(),
     testStart: (plan: string): void => this.testMode?.start(plan),
