@@ -55,11 +55,11 @@ use anygamepad_model::{Axis, AxisSet, Button, ButtonSet};
 use crate::mapping::Target;
 
 /// A button counts as pressed for detection from this value on.
-const PRESS: f32 = 0.5;
+pub(crate) const PRESS: f32 = 0.5;
 /// Every button is below this value when the pad is released.
-const RELEASED: f32 = 0.3;
+pub(crate) const RELEASED: f32 = 0.3;
 /// An axis counts as moved this far from its rest, in half-ranges.
-const MOVE: f32 = 0.5;
+pub(crate) const MOVE: f32 = 0.5;
 /// Changes below this (in half-ranges for axes) are noise.
 const NOISE: f32 = 0.02;
 /// How long the pad must be still to learn where its axes rest, in

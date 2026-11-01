@@ -1,0 +1,30 @@
+#:schema ../schema.json
+
+schema_version = 1
+id = "generic/xinput"
+vendor = "Generic"
+name = "XInput controller"
+generic = true
+family = "xbox"
+notes = "Pads that imitate an Xbox 360 controller to the system (`045e:028e` and others)."
+
+[controls]
+buttons = [
+    "south", "east", "west", "north",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "left_shoulder", "right_shoulder", "left_trigger", "right_trigger",
+    "left_stick", "right_stick", "select", "start", "home",
+]
+axes = ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y", "left_trigger", "right_trigger"]
+outputs = ["rumble"]
+
+[[modes]]
+id = "xinput"
+name = "XInput"
+kind = "xinput"
+
+[[modes.connections]]
+transport = "usb"
+
+[[modes.connections]]
+transport = "dongle"

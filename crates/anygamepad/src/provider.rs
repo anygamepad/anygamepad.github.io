@@ -170,6 +170,12 @@ pub trait Provider {
 
     /// Drives an output of an open device.
     fn send(&mut self, device: DeviceId, command: OutputCommand) -> Result<(), ProviderError>;
+
+    /// Devices the provider sees but cannot open (missing permissions,
+    /// usually), so an app can explain why they do not appear.
+    fn inaccessible(&self) -> usize {
+        0
+    }
 }
 
 #[cfg(test)]

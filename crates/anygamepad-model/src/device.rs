@@ -55,3 +55,34 @@ named_enum! {
         Dongle = "dongle",
     }
 }
+
+named_enum! {
+    /// A mode a controller can be switched to, as printed on mode switches
+    /// or told in manuals. Device reports carry the mode the person says a
+    /// controller is in; the controller catalog lists the modes of each
+    /// model.
+    pub enum ControllerMode: "controller mode" {
+        /// XInput ("X"): an Xbox 360 controller to Windows.
+        Xinput = "xinput",
+        /// DirectInput ("D"): a generic HID game controller.
+        Dinput = "dinput",
+        /// Nintendo Switch ("S"): a Switch Pro Controller.
+        Switch = "switch",
+        /// PlayStation 3: a DualShock 3.
+        Ps3 = "ps3",
+        /// PlayStation 4: a DualShock 4.
+        Ps4 = "ps4",
+        /// PlayStation 5: a DualSense.
+        Ps5 = "ps5",
+        /// Xbox One or Series controller (GIP), not XInput emulation.
+        Xbox = "xbox",
+        /// Android ("A").
+        Android = "android",
+        /// iOS, iPadOS or macOS (MFi).
+        Apple = "apple",
+        /// Keyboard and mouse emulation.
+        KeyboardMouse = "keyboard_mouse",
+        /// Another mode.
+        Other = "other",
+    }
+}

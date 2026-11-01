@@ -34,6 +34,26 @@ a main window and an always-on-top transparent widget showing one live pad.
 | Input-to-pixel latency | ≤ 1 frame beyond the input poll |
 | Widget | always on top, transparent, click-through where the platform allows; Wayland behaviour documented |
 
+## Measurements
+
+**2026-10-30, Linux X11** (A1 shell: main window, no widget yet; Xvfb with
+Mesa's software renderer llvmpipe, release build, glow renderer):
+
+| Metric | Result |
+|--------|--------|
+| Idle CPU, 10 s without input | 0 ticks (0 %) |
+| Resident memory | 112-117 MB, of which about 70 MB are mapped libraries of the software renderer (`libLLVM`, `libgallium`) and 36 MB the app's own memory |
+| Input-to-pixel latency | not measured |
+
+Software rendering inflates memory; the figures with a GPU driver, on
+Wayland, Windows and macOS, and with the widget (A11) are still needed
+before this ADR is accepted.
+
+**Renderer (2026-10-30):** eframe's `glow` (OpenGL) renderer instead of
+`wgpu`. Reason: smaller binary, faster builds and less memory; it supports
+transparent and undecorated windows like `wgpu`. `wgpu` stays an option
+if a platform's OpenGL is a problem.
+
 ## Alternatives
 
 - iced: similar performance, less mature multi-window support.

@@ -25,6 +25,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium, firefox, webkit } from "playwright-core";
 import { preview } from "vite";
+import { fakeGamepads, fakeHid } from "./fakes.mjs";
 
 const BROWSERS = {
   chromium: { type: chromium, engine: "blink" },
@@ -43,171 +44,6 @@ if (browserName === "chromium" && !executablePath) {
   process.exit(2);
 }
 
-// Runs in the page before its scripts: `window.__setGamepads(list)` puts
-// fake gamepads in the first slots of `navigator.getGamepads()`. They are
-// real Gamepad objects as far as `instanceof` goes, with own properties.
-// A gamepad with `rumble: true` gets a vibration actuator that records its
-// calls in `window.__haptics`.
-const fakeGamepads = () => {
-  window.__haptics = [];
-  const button = (value) =>
-    Object.defineProperties(Object.create(GamepadButton.prototype), {
-      pressed: { value: value > 0.5 },
-      touched: { value: value > 0 },
-      value: { value },
-    });
-  const actuator = (index) => ({
-    type: "dual-rumble",
-    effects: ["dual-rumble", "trigger-rumble"],
-    playEffect: (type, params) => {
-      window.__haptics.push({ index, call: "playEffect", type, ...params });
-      return Promise.resolve("complete");
-    },
-    reset: () => {
-      window.__haptics.push({ index, call: "reset" });
-      return Promise.resolve("complete");
-    },
-  });
-  const gamepad = (index, { id, mapping, buttons, axes, rumble }) =>
-    Object.defineProperties(Object.create(Gamepad.prototype), {
-      id: { value: id },
-      index: { value: index },
-      connected: { value: true },
-      mapping: { value: mapping },
-      // Fresh data on every read, so the update rate is the sampler's.
-      timestamp: { get: () => performance.now() },
-      axes: { value: axes },
-      buttons: { value: buttons.map(button) },
-      vibrationActuator: { value: rumble ? actuator(index) : null },
-    });
-  let slots = [null, null, null, null];
-  window.__setGamepads = (list) => {
-    slots = [0, 1, 2, 3].map((i) => (list[i] ? gamepad(i, list[i]) : null));
-  };
-  Navigator.prototype.getGamepads = () => slots;
-};
-
-// Runs in the page before its scripts: a `navigator.hid` whose chooser picks
-// one Bluetooth DualSense. The pad streams its current report every 5 ms
-// while open: the reduced report until a feature report is read, then the
-// full one (`0x31`, with its CRC-32), as real pads do. `window.__hid` drives
-// it: `state` (buttons, touch, battery), `features` (the feature reports
-// read), `disconnect()`.
-const fakeHid = () => {
-  const crcTable = Array.from({ length: 256 }, (_, n) => {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    return c >>> 0;
-  });
-  const crc32 = (bytes) => {
-    let crc = 0xffffffff;
-    for (const byte of bytes) crc = (crc >>> 8) ^ crcTable[(crc ^ byte) & 0xff];
-    return (crc ^ 0xffffffff) >>> 0;
-  };
-  const items = (bytes) => [{ reportSize: 8, reportCount: bytes, usages: [], isAbsolute: true }];
-  const collections = [
-    {
-      usagePage: 0x01,
-      usage: 0x05,
-      type: 1,
-      children: [],
-      inputReports: [
-        { reportId: 0x01, items: items(9) },
-        { reportId: 0x31, items: items(77) },
-      ],
-      outputReports: [],
-      featureReports: [{ reportId: 0x05, items: items(40) }],
-    },
-  ];
-  const state = { buttons: [0x08, 0, 0], l2: 0, r2: 0, touch: null, battery: 0x15 };
-  const report = (full) => {
-    if (!full) {
-      return [0x01, new Uint8Array([128, 128, 128, 128, ...state.buttons, state.l2, state.r2])];
-    }
-    const data = new Uint8Array(77);
-    data[0] = 0x01;
-    const d = data.subarray(1);
-    d.set([128, 128, 128, 128, state.l2, state.r2], 0);
-    d.set(state.buttons, 7);
-    d.set([0x9c, 0xff], 15); // gyro x = -100
-    d.set([0x00, 0x20], 21); // accel x = 8192
-    d.set(state.touch ?? [0x80, 0, 0, 0], 32);
-    d[36] = 0x80;
-    d[52] = state.battery;
-    const crc = crc32([0xa1, 0x31, ...data.subarray(0, 73)]);
-    data.set([crc & 0xff, (crc >>> 8) & 0xff, (crc >>> 16) & 0xff, crc >>> 24], 73);
-    return [0x31, data];
-  };
-
-  class FakeDevice extends EventTarget {
-    vendorId = 0x054c;
-    productId = 0x0ce6;
-    productName = "DualSense Wireless Controller";
-    collections = collections;
-    opened = false;
-    full = false;
-    timer = undefined;
-    open() {
-      this.opened = true;
-      this.timer = setInterval(() => {
-        const [reportId, data] = report(this.full);
-        const event = new Event("inputreport");
-        Object.defineProperties(event, {
-          reportId: { value: reportId },
-          data: { value: new DataView(data.buffer) },
-        });
-        this.dispatchEvent(event);
-      }, 5);
-      return Promise.resolve();
-    }
-    close() {
-      this.opened = false;
-      clearInterval(this.timer);
-      return Promise.resolve();
-    }
-    receiveFeatureReport(reportId) {
-      window.__hid.features.push(reportId);
-      this.full = true;
-      return Promise.resolve(new DataView(new ArrayBuffer(41)));
-    }
-    sendReport() {
-      return Promise.reject(new Error("unexpected output report"));
-    }
-    sendFeatureReport() {
-      return Promise.reject(new Error("unexpected feature report"));
-    }
-  }
-
-  class FakeHid extends EventTarget {
-    granted = [];
-    getDevices() {
-      return Promise.resolve([...this.granted]);
-    }
-    requestDevice(options) {
-      window.__hid.requests.push(options.filters);
-      const device = new FakeDevice();
-      this.granted.push(device);
-      return Promise.resolve([device]);
-    }
-  }
-
-  const hid = new FakeHid();
-  window.__hid = {
-    state,
-    features: [],
-    requests: [],
-    disconnect() {
-      const device = hid.granted.pop();
-      device.close();
-      const event = new Event("disconnect");
-      Object.defineProperty(event, "device", { value: device });
-      hid.dispatchEvent(event);
-    },
-  };
-  Object.defineProperty(Navigator.prototype, "hid", { get: () => hid, configurable: true });
-};
-
-// Runs in the page: what the selected pad's detail shows.
 const readDetail = () => {
   const detail = document.querySelector(".detail");
   if (!detail) return null;
@@ -626,14 +462,13 @@ try {
   pad = await until("the next press", detail, (d) => d.buttons[1]?.pressed && !d.buttons[0].pressed);
   assert.deepEqual(pad.diagram.on, ["east"]);
 
-  // The Xbox illustration for all three: Xbox labels on the Xbox pad, which
-  // has no back buttons and C and Z dimmed; the generic pads have back
-  // buttons, no labels, and C and Z dimmed unless the pad reports them.
+  // The Xbox illustration for all three: Xbox labels and C and Z dimmed on
+  // the Xbox pad; no labels on the generic pads, and C and Z dimmed unless
+  // the pad reports them. No back buttons on any.
   const xboxControls = [
     "left_shoulder", "right_shoulder", "home", "select", "start", "share", "left_stick", "right_stick",
     "dpad_up", "dpad_left", "dpad_right", "dpad_down", "north", "west", "east", "south",
   ];
-  const paddles = ["left_paddle_1", "left_paddle_2", "right_paddle_2", "right_paddle_1"];
   await setGamepads([XBOX, FLYDIGI, SN30]);
   await until("the Xbox pad", detail, (d) => d?.ready && d.diagram?.label === "Xbox controller, canonical positions");
   pad = await detail();
@@ -644,11 +479,11 @@ try {
   pad = await until("the generic pad", detail, (d) => d.ready && d.diagram?.label === "Controller, canonical positions");
   assert.deepEqual(pad.diagram.on, ["extra_0"]);
   assert.deepEqual(pad.diagram.labels, []);
-  assert.deepEqual(pad.diagram.controls, [...paddles, ...xboxControls, "extra_0", "extra_1"]);
+  assert.deepEqual(pad.diagram.controls, [...xboxControls, "extra_0", "extra_1"]);
   assert.deepEqual(pad.diagram.absent, []);
   await select("8BitDo SN30 Pro");
   pad = await until("the pad without C and Z", detail, (d) => d.ready && d.name === "8BitDo SN30 Pro" && d.diagram);
-  assert.deepEqual(pad.diagram.controls, [...paddles, ...xboxControls]);
+  assert.deepEqual(pad.diagram.controls, [...xboxControls]);
   assert.deepEqual(pad.diagram.absent, ["extra_0", "extra_1"]);
 
   // The DualShock 3 illustration.
@@ -720,7 +555,9 @@ try {
   assert.equal(downloadedReport.format, "anygamepad-device-report");
   assert.equal(downloadedReport.schema_version, 1);
   assert.equal(downloadedReport.source.app, "web");
-  assert.equal(downloadedReport.source.app_version, "0.0.3");
+  // The web app's version is the workspace's (scripts/version.mjs).
+  const { version: appVersion } = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  assert.equal(downloadedReport.source.app_version, appVersion);
   assert.ok(downloadedReport.views.length >= 1);
   assert.match(downloadedReport.views[0].fingerprint, /^[a-f0-9]{16}$/);
   // Confirmed wizard results should be present in the saved report
@@ -816,8 +653,42 @@ try {
   assert.deepEqual(await page.evaluate(() => window.__hid.features), [0x05]);
   assert.equal(pad.switchShown, false);
   assert.equal(pad.touch, "#5 0.50, 0.50");
-  assert.deepEqual(pad.motion, ["-100", "0", "0", "8192", "0", "0"]);
+  // In °/s and m/s²: the fake calibration report is empty, so the nominal
+  // scales apply (16 counts per °/s, 8192 per g).
+  assert.deepEqual(pad.motion, ["-6", "0", "0", "9.81", "0.00", "0.00"]);
   assert.equal(pad.battery, "55% · charging");
+
+  // Outputs: the library writes the DualSense's Bluetooth output report
+  // (0x31, numbered, with the light bar and player LED flags), sending
+  // nothing until asked.
+  assert.deepEqual(await page.evaluate(() => window.__hid.outputs), []);
+  assert.deepEqual(pad.vibration, [
+    "Strong motor",
+    "Weak motor",
+    "Both",
+    "Blue",
+    "Red",
+    "Green",
+    "White",
+    "Player 1",
+    "Player 2",
+    "Player 3",
+    "Player 4",
+    "LEDs off",
+  ]);
+  await page.getByRole("button", { name: "Blue", exact: true }).click();
+  await page.getByRole("button", { name: "Player 2", exact: true }).click();
+  const outputs = await until(
+    "two output reports",
+    () => page.evaluate(() => window.__hid.outputs),
+    (sent) => sent.length === 2,
+  );
+  const [blue, player] = outputs;
+  assert.equal(blue.length, 78);
+  assert.deepEqual(blue.slice(0, 5), [0x31, 0x00, 0x10, 0x00, 0x04]);
+  assert.deepEqual(blue.slice(47, 50), [0, 0, 255]);
+  assert.deepEqual(player.slice(0, 5), [0x31, 0x10, 0x10, 0x00, 0x14]);
+  assert.equal(player[46], 0x0a);
 
   // Recording: two seconds of reports, downloaded as JSON.
   await page.locator(".raw-report summary").click();

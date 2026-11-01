@@ -27,3 +27,4 @@ One file per decision: `NNNN-title.md` (four-digit number, kebab-case title).
 | [0005](0005-web-stack.md) | Web stack | accepted |
 | [0006](0006-server-stack.md) | Server stack | accepted; timing changed by 0007 |
 | [0007](0007-local-first-device-reports.md) | Local-first device reports | proposed |
+| [0008](0008-test-mode-and-test-reports.md) | Test mode and test reports | proposed |

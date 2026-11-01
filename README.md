@@ -1,10 +1,12 @@
 # anygamepad
 
+![AnyGamepad](docs/brand/logo.png)
+
 Gamepad input normalization: one canonical gamepad model for every controller,
 mode, transport and operating system.
 
 - Web app: <https://anygamepad.github.io> (not live yet)
-- Plan: [ROADMAP/2026-10-14/](ROADMAP/2026-10-14/README.md)
+- Plan: [ROADMAP/2026-11-01/](ROADMAP/2026-11-01/README.md)
 - Privacy: <https://anygamepad.github.io/privacy/> (maintainer side:
   [docs/privacy/](docs/privacy/README.md))
 - Contributor and agent rules: [AGENTS.md](AGENTS.md)
@@ -22,7 +24,11 @@ mode, transport and operating system.
 | `crates/anygamepad-wasm` | `wasm-bindgen` bindings used by the web app |
 | `apps/` | Web app, desktop app and ingestion server |
 | `data/profiles/` | Curated device profiles |
+| `data/controllers/` | Controller catalog: models, modes and how to connect them |
+| `data/lab/` | Lab inventory format (units and machines of the test lab) |
 | `data/reports/` | Device report format, schema and example |
+| `data/test-plans/` | Test plans the apps' test modes run (Quick, Full) |
+| `data/test-reports/` | Test report format, schema and example; the test reports the lab keeps |
 | `docs/adr/` | Architecture decision records |
 | `docs/privacy/` | Consent texts, retention and the handling of shared reports |
 
@@ -56,8 +62,9 @@ commands; see [apps/web/README.md](apps/web/README.md).
   Release, Run workflow on `main`, then pick `patch`, `minor` or `major`. It
   runs `build.yml` with the new version; once that passes it commits
   `Release vX.Y.Z`, tags `vX.Y.Z` and publishes a GitHub release with
-  `anygamepad-web-vX.Y.Z.zip`, `anygamepad-wasm-vX.Y.Z.zip` and
-  `SHA256SUMS`. A failed release pushes nothing.
+  `anygamepad-web-vX.Y.Z.zip`, `anygamepad-wasm-vX.Y.Z.zip` (the tester's
+  WebAssembly bindings), `anygamepad-wasm-testing-vX.Y.Z.zip` (the test
+  mode's) and `SHA256SUMS`. A failed release pushes nothing.
 
 The version lives in `Cargo.toml`, `Cargo.lock` and `apps/web/package*.json`;
 `node scripts/version.mjs` reads, checks and sets it in all of them.

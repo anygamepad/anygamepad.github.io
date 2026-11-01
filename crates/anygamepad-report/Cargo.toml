@@ -27,12 +27,23 @@ anygamepad-db.workspace = true
 anygamepad-model = { workspace = true, features = ["serde"] }
 schemars = { workspace = true, optional = true }
 serde.workspace = true
-serde_json = { workspace = true, optional = true }
+# `float_roundtrip`: a report read back holds exactly the numbers written.
+serde_json = { workspace = true, optional = true, features = ["float_roundtrip"] }
 
 [dev-dependencies]
+# The inventory example reads and writes inventory files.
+anygamepad-db = { workspace = true, features = ["toml"] }
 jsonschema = { version = "0.58.6", default-features = false }
 serde_json.workspace = true
 
+[[example]]
+name = "inventory"
+required-features = ["json"]
+
 [[test]]
 name = "schema"
+required-features = ["json", "schemars"]
+
+[[test]]
+name = "test_report"
 required-features = ["json", "schemars"]

@@ -19,6 +19,8 @@ workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+# The test mode's runner is a module of its own (anygamepad-wasm-testing,
+# W9): this one hands it the devices.
 anygamepad.workspace = true
 anygamepad-report.workspace = true
 # Same crate as `anygamepad::model`, with the TypeScript declarations.
@@ -28,10 +30,11 @@ serde.workspace = true
 serde-wasm-bindgen.workspace = true
 tsify.workspace = true
 wasm-bindgen.workspace = true
+# Feature reports the protocol drivers read through WebHID.
+wasm-bindgen-futures.workspace = true
 
 [dev-dependencies]
 anygamepad-report = { workspace = true, features = ["json"] }
-wasm-bindgen-futures.workspace = true
 wasm-bindgen-test.workspace = true
 
 # The web app runs wasm-opt itself, from the binaryen version pinned in

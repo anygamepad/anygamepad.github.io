@@ -6,6 +6,7 @@
   --border: #dcdce6;
   --accent: #4f46e5;
   --error: #b42318;
+  --brand-muted: #6b7489;
   color-scheme: light dark;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   line-height: 1.5;
@@ -27,6 +28,7 @@
     --border: #33334a;
     --accent: #8b85ff;
     --error: #ff8a80;
+    --brand-muted: #aab3c4;
   }
 }
 
@@ -38,6 +40,7 @@
   --border: #33334a;
   --accent: #8b85ff;
   --error: #ff8a80;
+  --brand-muted: #aab3c4;
   color-scheme: dark;
 }
 
@@ -105,6 +108,30 @@ body {
   margin: 0;
   color: var(--accent);
   font-size: 1.75rem;
+}
+
+/* The logo (docs/brand/): the mark, then "Any" and "Gamepad" in two tones. */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  color: var(--fg);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.top h1.brand {
+  color: var(--fg);
+}
+
+.brand img {
+  width: 1.7em;
+  height: 1.7em;
+}
+
+.brand-gamepad {
+  color: var(--brand-muted);
 }
 
 .tagline,
@@ -1141,4 +1168,265 @@ a {
   font-size: 0.78125rem;
   color: var(--muted);
   margin: 0;
+}
+
+/* Mode switch: the tester or the test mode (H4). */
+.modes {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.mode-tab {
+  padding: 0.4rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.mode-tab.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Test mode (H4). */
+.test-search {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+.test-search input,
+.test-unit select,
+.test-unit input,
+.test-notes textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+}
+
+.test-list h2,
+.test-detail h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+.test-unit,
+.test-notes {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.test-unit label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.test-unit .action {
+  justify-self: start;
+}
+
+.cards {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--accent);
+}
+
+.card-title {
+  font-weight: 600;
+}
+
+.card-text {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.badge {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.badge.tested {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.test-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.test-actions .action.on,
+.test-candidates .action.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.test-candidates,
+.test-transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.test-candidates p,
+.test-transport p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.test-choice {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+/* A <progress>: the page's CSP forbids inline styles. */
+.test-meter {
+  display: block;
+  width: 100%;
+  height: 0.375rem;
+  margin: 0.5rem 0 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  background: var(--border);
+  accent-color: var(--accent);
+  appearance: none;
+}
+
+.test-meter::-webkit-progress-bar {
+  border-radius: 0.25rem;
+  background: var(--border);
+}
+
+.test-meter::-webkit-progress-value {
+  border-radius: 0.25rem;
+  background: var(--accent);
+}
+
+.test-meter::-moz-progress-bar {
+  border-radius: 0.25rem;
+  background: var(--accent);
+}
+
+.test-prompt {
+  margin: 1rem 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.test-corners {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.test-corners span {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--muted);
+}
+
+.test-corners span.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.test-results {
+  display: grid;
+  gap: 0.25rem;
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.test-results .result {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) 7rem 2fr;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-left: 3px solid var(--border);
+}
+
+.test-results .result.pass {
+  border-left-color: var(--accent);
+}
+
+.test-results .result.fail,
+.test-results .result.error {
+  border-left-color: var(--error);
+}
+
+.result-step {
+  font-family: ui-monospace, monospace;
+  overflow-wrap: anywhere;
+}
+
+.result-detail {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.test-review {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.test-review li.flagged {
+  color: var(--error);
+  font-weight: 600;
+}
+
+@media (max-width: 40rem) {
+  .test-results .result {
+    grid-template-columns: 1fr;
+  }
 }

@@ -1,6 +1,8 @@
 <header class="top">
   <div class="title">
-    <h1>anygamepad</h1>
+    <h1 class="brand">
+      <img src="/favicon.svg" alt="" width="40" height="40" /><span>Any<span class="brand-gamepad">Gamepad</span></span>
+    </h1>
     <p class="tagline">Gamepad tester, running the anygamepad library {{ version }} in WebAssembly</p>
   </div>
   <div class="theme" role="group" aria-label="Theme">
@@ -26,7 +28,25 @@
   </div>
 </header>
 
-<main class="tester">
+<nav class="modes" aria-label="Mode">
+  <button
+    type="button"
+    class="mode-tab"
+    :class.on="mode === 'tester'"
+    :aria-pressed="mode === 'tester' ? 'true' : 'false'"
+    @click="setMode('tester')"
+  >Tester</button>
+  <button
+    type="button"
+    class="mode-tab"
+    :class.on="mode === 'test'"
+    :aria-pressed="mode === 'test' ? 'true' : 'false'"
+    title="Tests a controller step by step and writes an anonymous test report"
+    @click="setMode('test')"
+  >Test mode</button>
+</nav>
+
+<main :if="mode === 'tester'" class="tester">
   <aside class="side">
     <p :if="error" class="message error">{{ error }}</p>
     <div :if="pads.length === 0" class="empty">
@@ -139,7 +159,7 @@
 
     <div class="live" :data-key="current.key"></div>
 
-    <footer :if="current.source === 'gamepad' && !wizardOpen" class="vibration">
+    <footer :if="!wizardOpen" class="vibration">
       <span class="label">Vibration test</span>
       <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'strong')">Strong motor</button>
       <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'weak')">Weak motor</button>
@@ -147,10 +167,258 @@
       <button type="button" :if="current.triggerRumble" @click="rumble(current.key, 'triggers')">Triggers</button>
       <small :if="!current.rumble" class="note">This browser cannot vibrate this gamepad.</small>
     </footer>
+    <footer :if="(current.lightbar || current.playerLeds) && !wizardOpen" class="vibration">
+      <span class="label">Lights</span>
+      <button type="button" :if="current.lightbar" @click="light(current.key, 'blue')">Blue</button>
+      <button type="button" :if="current.lightbar" @click="light(current.key, 'red')">Red</button>
+      <button type="button" :if="current.lightbar" @click="light(current.key, 'green')">Green</button>
+      <button type="button" :if="current.lightbar" @click="light(current.key, 'white')">White</button>
+      <button type="button" :if="current.playerLeds" @click="player(current.key, 1)">Player 1</button>
+      <button type="button" :if="current.playerLeds" @click="player(current.key, 2)">Player 2</button>
+      <button type="button" :if="current.playerLeds" @click="player(current.key, 3)">Player 3</button>
+      <button type="button" :if="current.playerLeds" @click="player(current.key, 4)">Player 4</button>
+      <button type="button" :if="current.playerLeds" @click="player(current.key, 0)">LEDs off</button>
+    </footer>
   </section>
   <section :else class="placeholder">
     <div class="placeholder-art" aria-hidden="true"></div>
     <p>The selected gamepad shows here, drawn live as you use it.</p>
+  </section>
+</main>
+
+<main :else class="tester test-mode">
+  <aside class="side">
+    <p :if="error" class="message error">{{ error }}</p>
+    <label class="test-search">
+      <span>Controllers</span>
+      <input
+        type="search"
+        placeholder="Search: DualSense, 8BitDo, xbox…"
+        :value="test.search"
+        @input="(event) => testSearch(event.target.value)"
+      />
+    </label>
+    <section :if="test.units.length > 0" class="test-list">
+      <h2>Your controllers</h2>
+      <ul class="pads">
+        <li :each="unit in test.units" :key="unit.code">
+          <button type="button" class="pad" @click="testPickModel(unit.model, unit.code)">
+            <span class="pad-name">{{ unit.title }}</span>
+            <span :if="unit.notes" class="pad-facts">{{ unit.notes }}</span>
+          </button>
+        </li>
+      </ul>
+    </section>
+    <section class="test-list">
+      <h2>Catalog</h2>
+      <ul class="pads">
+        <li :each="model in test.models" :key="model.id">
+          <button
+            type="button"
+            class="pad"
+            :class.selected="test.model && test.model.id === model.id"
+            :data-model="model.id"
+            @click="testPickModel(model.id)"
+          >
+            <span class="pad-name">{{ model.title }}</span>
+            <span :if="model.candidate" class="pad-facts">Detected as possibly this</span>
+            <span :elseif="model.units" class="pad-facts">Yours: {{ model.units }}</span>
+            <span :elseif="model.generic" class="pad-facts">For pads not in the catalog</span>
+          </button>
+        </li>
+      </ul>
+    </section>
+  </aside>
+
+  <section class="detail test-detail" :data-stage="test.stage">
+    <p :if="test.error" class="message error">{{ test.error }}</p>
+
+    <div :if="test.stage === 'loading'" class="test-intro">
+      <h2>Test mode</h2>
+      <p>Loading the test mode…</p>
+    </div>
+
+    <div :elseif="test.stage === 'list'" class="test-intro">
+      <h2>Test mode</h2>
+      <p>Pick a controller from the list to see the ways to connect it, or connect one now and press one of its buttons: it is detected.</p>
+      <p class="note">
+        Each session tests one controller in one mode and one connection, step by step, and writes an anonymous test report:
+        no serial numbers, addresses or names, the day but not the time. It stays in this browser until you download it.
+      </p>
+    </div>
+
+    <div :elseif="test.stage === 'connect'" class="test-connect">
+      <h2>{{ test.model?.title }}</h2>
+      <p :if="test.model?.notes" class="facts">{{ test.model?.notes }}</p>
+      <div class="test-unit">
+        <label>
+          <span>Which one</span>
+          <input
+            type="text"
+            maxlength="16"
+            list="test-unit-codes"
+            placeholder="No code"
+            data-unit
+            :value="test.unit ?? ''"
+            @change="(event) => testSetUnit(event.target.value)"
+          />
+        </label>
+        <datalist id="test-unit-codes">
+          <option :each="code in test.unitOptions" :key="code" :value="code"></option>
+        </datalist>
+        <button :if="test.unitProposal && test.unit !== test.unitProposal" type="button" class="action" data-new-unit @click="testNewUnit()">New unit: {{ test.unitProposal }}</button>
+        <p :if="test.unitError" class="message error">{{ test.unitError }}</p>
+        <p class="note">A code to tell your pads apart, to write on a label: the report keeps it, never a name. Leave it empty for none.</p>
+      </div>
+      <p>Pick how to connect it:</p>
+      <ul class="cards">
+        <li :each="card in test.cards" :key="card.key">
+          <button type="button" class="card" :data-card="card.key" @click="testPickCard(card.key)">
+            <span class="card-title">{{ card.modeName }} · {{ card.transportName }}</span>
+            <span :if="card.modeHowTo" class="card-text">{{ card.modeHowTo }}</span>
+            <span :if="card.howTo" class="card-text">{{ card.howTo }}</span>
+            <span class="card-badges">
+              <span :if="card.tested" class="badge tested">Tested here</span>
+              <span :else class="badge">Untested here</span>
+              <span :if="!card.known" class="badge">Identity not known yet</span>
+            </span>
+          </button>
+        </li>
+      </ul>
+      <button type="button" class="action" @click="testBack()">Back to the list</button>
+    </div>
+
+    <div :elseif="test.stage === 'waiting'" class="test-waiting">
+      <h2>{{ test.choice?.title }}</h2>
+      <p>Connect it as described, then press one of its buttons.</p>
+      <button type="button" class="action" @click="testBackToCards()">Pick another way</button>
+    </div>
+
+    <div :elseif="test.stage === 'check'" class="test-check">
+      <h2>Not the controller picked?</h2>
+      <p>{{ test.check }}</p>
+      <div class="test-actions">
+        <button type="button" class="action" @click="testBackToCards()">Pick again</button>
+        <button type="button" class="action" @click="testGoOn()">Go on anyway</button>
+      </div>
+    </div>
+
+    <div :elseif="test.stage === 'detected'" class="test-detected">
+      <h2>Detected</h2>
+      <p class="test-choice" data-detected>{{ test.choice?.title }}</p>
+      <p class="facts">{{ test.padName }}</p>
+      <div :if="!test.choice?.transportKnown" class="test-transport">
+        <p>This browser does not tell how it is connected. Is it:</p>
+        <button :each="option in test.transports" :key="option.transport" type="button" class="action" @click="testSetTransport(option.transport)">{{ option.name }}</button>
+      </div>
+      <div class="test-unit">
+        <label>
+          <span>Which one</span>
+          <input
+            type="text"
+            maxlength="16"
+            list="test-unit-codes"
+            placeholder="No code"
+            data-unit
+            :value="test.unit ?? ''"
+            @change="(event) => testSetUnit(event.target.value)"
+          />
+        </label>
+        <datalist id="test-unit-codes">
+          <option :each="code in test.unitOptions" :key="code" :value="code"></option>
+        </datalist>
+        <button :if="test.unitProposal && test.unit !== test.unitProposal" type="button" class="action" data-new-unit @click="testNewUnit()">New unit: {{ test.unitProposal }}</button>
+        <p :if="test.unitError" class="message error">{{ test.unitError }}</p>
+        <p class="note">A code to tell your pads apart, to write on a label: the report keeps it, never a name. Leave it empty for none.</p>
+      </div>
+      <div class="test-actions">
+        <button type="button" class="action primary-btn" :disabled="!test.choice?.transportKnown" @click="testConfirm()">Confirm</button>
+        <button type="button" class="action" @click="testChooseAnother()">Choose another</button>
+      </div>
+      <p class="note">On the pad: south confirms, east chooses another.</p>
+      <div :if="test.candidates.length > 1" class="test-candidates">
+        <p>It could also be:</p>
+        <button :each="candidate in test.candidates" :key="candidate.index" type="button" class="action" :class.on="candidate.index === test.candidate" @click="testPickCandidate(candidate.index)">{{ candidate.title }}</button>
+      </div>
+    </div>
+
+    <div :elseif="test.stage === 'plan'" class="test-plan">
+      <h2>{{ test.choice?.title }}</h2>
+      <p :if="test.check" class="note">{{ test.check }}</p>
+      <p>Pick a plan:</p>
+      <ul class="cards">
+        <li :each="plan in test.plans" :key="plan.id">
+          <button type="button" class="card" :data-plan="plan.id" @click="testStart(plan.id)">
+            <span class="card-title">{{ plan.name }}</span>
+            <span class="card-text">{{ plan.description }}</span>
+          </button>
+        </li>
+      </ul>
+      <button type="button" class="action" @click="testBack()">Back to the list</button>
+    </div>
+
+    <div :elseif="test.stage === 'running'" class="test-running">
+      <h2>{{ test.choice?.title }}</h2>
+      <p :if="test.status" class="facts">Step {{ test.status.step + 1 }} of {{ test.status.total }} · {{ test.status.step_id }}</p>
+      <progress class="test-meter" max="100" :value="test.progress" aria-label="Progress">{{ test.progress }}%</progress>
+      <p :if="test.status" class="test-prompt" :data-prompt="test.promptKey">{{ test.status.text }}</p>
+      <div :if="test.status && test.status.prompt.kind === 'touch'" class="test-corners">
+        <span :class.on="test.status.prompt.corners[0]">Top left</span>
+        <span :class.on="test.status.prompt.corners[1]">Top right</span>
+        <span :class.on="test.status.prompt.corners[2]">Bottom left</span>
+        <span :class.on="test.status.prompt.corners[3]">Bottom right</span>
+        <span :class.on="test.status.prompt.two_fingers">Two fingers</span>
+      </div>
+      <div :if="test.status && test.status.prompt.kind === 'ask'" class="test-actions">
+        <button type="button" class="action primary-btn" data-answer="yes" @click="testAnswer('yes')">Yes</button>
+        <button type="button" class="action" data-answer="no" @click="testAnswer('no')">No</button>
+        <button type="button" class="action" data-answer="not_sure" @click="testAnswer('not_sure')">Not sure</button>
+        <button type="button" class="action" @click="testRepeat()">Again</button>
+      </div>
+      <div class="test-actions">
+        <button type="button" class="action" @click="testSkip()">Skip this step</button>
+        <button type="button" class="action" title="The pad does not have it. South and east together on the pad do the same" @click="testNotOnThisPad()">Not on this pad</button>
+        <button type="button" class="action" title="The pad has it, but the page does not react to it: the step fails" @click="testNothingHappens()">Nothing happens</button>
+        <button type="button" class="action" @click="testStop()">Stop here</button>
+      </div>
+      <ol :if="test.results.length > 0" class="test-results">
+        <li :each="result in test.results" :key="result.step" :class="'result ' + result.status.toLowerCase().replace(' ', '-')">
+          <span class="result-step">{{ result.step }}</span>
+          <span class="result-status">{{ result.status }}</span>
+          <span class="result-detail">{{ result.detail }}</span>
+        </li>
+      </ol>
+    </div>
+
+    <div :elseif="test.stage === 'summary'" class="test-summary">
+      <h2>{{ test.choice?.title }}</h2>
+      <p class="test-summary-line" data-summary>{{ test.summary }}</p>
+      <ol class="test-results">
+        <li :each="result in test.results" :key="result.step" :class="'result ' + result.status.toLowerCase().replace(' ', '-')">
+          <span class="result-step">{{ result.step }}</span>
+          <span class="result-status">{{ result.status }}</span>
+          <span class="result-detail">{{ result.detail }}</span>
+        </li>
+      </ol>
+      <label class="test-notes">
+        <span>Notes (optional: about the pad, never about a person)</span>
+        <textarea rows="3" :value="test.notes" @change="(event) => testSetNotes(event.target.value)"></textarea>
+      </label>
+      <h3>What the report holds</h3>
+      <p class="note">Every text in the report. A device name marked here is one the catalog does not know for this model: if it is a name someone gave the pad, edit it out before sharing the file.</p>
+      <ul class="test-review">
+        <li :each="item in test.review" :key="item.field" :class.flagged="item.flagged">
+          <code>{{ item.field }}</code> {{ item.text }}
+        </li>
+      </ul>
+      <div class="test-actions">
+        <button type="button" class="action primary-btn" data-save @click="testSave()">Save in this browser</button>
+        <button type="button" class="action" data-download @click="testDownload()">Download {{ test.fileName }}</button>
+        <button type="button" class="action" @click="testNext()">Test another way to connect it</button>
+        <button type="button" class="action" @click="testBack()">Back to the list</button>
+      </div>
+      <p :if="test.saved" class="note" data-saved>{{ test.saved }}</p>
+    </div>
   </section>
 </main>
 

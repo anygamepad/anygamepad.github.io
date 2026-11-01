@@ -33,7 +33,7 @@ gantt
     C10 done :milestone, c10, 2026-12-18, 0d
     section Desktop app
     A1 App shell (UI toolkit, tray, settings) :crit, a1, after f3 m2, 15d
-    A4 Virtual pad abstraction and emulated profiles :crit, a4, after c1 m2, 10d
+    A4 Virtual pad abstraction and emulated profiles :crit, done, a4, 2026-10-30, 1d
     A5 Linux virtual output (uinput + UHID) :crit, a5, after a4 c4, 20d
     A7 Windows virtual output via ViGEmBus (X360, DS4) :a7, after a4 c5, 15d
     A8 macOS virtual output (IOHIDUserDevice) :a8, after a4 c6, 25d
@@ -52,7 +52,7 @@ gantt
 | A1 | **App shell (UI toolkit, tray, settings)** | 15 | F3, M2 | A2 | 2026-11-05 | 2026-11-20 | 0 |
 | A2 | **Device list and live view** | 15 | A1, C4 | A3, A11 | 2026-11-20 | 2026-12-05 | 0 |
 | A3 | **Collection mode** | 15 | A2, W4, P1, P3 | A9, P6 | 2026-12-05 | 2026-12-20 | 0 |
-| A4 | **Virtual pad abstraction and emulated profiles** | 10 | C1, M2 | A5, A7, A8 | 2026-11-05 | 2026-11-15 | 0 |
+| A4 | **Virtual pad abstraction and emulated profiles** | 10 | C1, M2 | A5, A7, A8 | 2026-10-30 | 2026-10-30 | done |
 | A5 | **Linux virtual output (uinput + UHID)** | 20 | A4, C4 | A6 | 2026-11-15 | 2026-12-05 | 0 |
 | A6 | **Physical device hiding (grab/HidHide/seize)** | 15 | A5, C5, C6 | A9 | 2026-12-05 | 2026-12-20 | 0 |
 | A7 | Windows virtual output via ViGEmBus (X360, DS4) | 15 | A4, C5 | A9 | 2026-11-15 | 2026-11-30 | 20 |

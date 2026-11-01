@@ -89,8 +89,10 @@ jobs:
           mkdir release
           cp LICENSE-MIT LICENSE-APACHE artifacts/web/
           cp LICENSE-MIT LICENSE-APACHE artifacts/wasm-bindings/
+          cp LICENSE-MIT LICENSE-APACHE artifacts/wasm-testing-bindings/
           (cd artifacts/web && zip -qr "../../release/anygamepad-web-v$VERSION.zip" .)
           (cd artifacts/wasm-bindings && zip -qr "../../release/anygamepad-wasm-v$VERSION.zip" .)
+          (cd artifacts/wasm-testing-bindings && zip -qr "../../release/anygamepad-wasm-testing-v$VERSION.zip" .)
           (cd release && sha256sum -- * > SHA256SUMS)
           cat release/SHA256SUMS >> "$GITHUB_STEP_SUMMARY"
       - name: Publish the release

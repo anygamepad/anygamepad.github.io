@@ -4,7 +4,14 @@
 // recording button and the report structure. Built once per device; the
 // frame loop calls `update`, which only touches what changed (ADR 0005).
 
-import type { DecodedInput, HidCollection, HidDeviceInfo, HidPoll, ReportForm } from "./wasm/anygamepad_wasm.js";
+import type {
+  DecodedInput,
+  HidCollection,
+  HidDeviceInfo,
+  HidPoll,
+  MotionSample,
+  ReportForm,
+} from "./wasm/anygamepad_wasm.js";
 import { element, setText } from "./dom";
 import { ControllerDrawing } from "./drawing";
 import { layoutFor } from "./layouts";
@@ -117,9 +124,9 @@ export class HidLiveView {
       }
 
       const motion = element("section", "panel motion-panel", panels);
-      element("h3", "", motion, "Motion (raw counts)");
+      element("h3", "", motion, "Motion");
       const rows = element("ol", "axes motion", motion);
-      for (const name of ["gyro x", "gyro y", "gyro z", "accel x", "accel y", "accel z"]) {
+      for (const name of ["gyro x °/s", "gyro y °/s", "gyro z °/s", "accel x m/s²", "accel y m/s²", "accel z m/s²"]) {
         const row = element("li", "axis", rows);
         element("span", "name", row, name);
         const track = element("span", "track", row);
@@ -165,7 +172,7 @@ export class HidLiveView {
 
     if (input && this.drawing) {
       this.drawing.update(input.state, status.showValues);
-      this.panels(input);
+      this.panels(input, poll.motion);
     }
 
     setText(this.error, poll.error ?? "");
@@ -176,7 +183,7 @@ export class HidLiveView {
     }
   }
 
-  private panels(input: DecodedInput): void {
+  private panels(input: DecodedInput, sample: MotionSample | undefined): void {
     const touches = input.state.touches;
     if (this.touchText) {
       const area = this.fingers[0]?.ownerSVGElement?.viewBox.baseVal;
@@ -192,12 +199,18 @@ export class HidLiveView {
       setText(this.touchText, input.imu ? down.join(" · ") || "No finger" : "Needs the full report");
     }
 
-    const imu = input.imu;
-    const values = imu ? [...imu.gyro, ...imu.accel] : [];
+    // In SI units from the library, shown in °/s and m/s²; bars span
+    // ±2000 °/s and ±4 g, the pads' ranges.
+    const values: number[] = [];
+    if (input.imu && sample?.gyro && sample.accel) {
+      const { gyro, accel } = sample;
+      values.push(...[gyro.x, gyro.y, gyro.z].map((rad) => (rad * 180) / Math.PI), accel.x, accel.y, accel.z);
+    }
     this.motion.forEach(({ bar, value }, index) => {
-      const count = values[index];
-      bar.style.setProperty("--value", count === undefined ? "0" : (count / 32768).toFixed(3));
-      setText(value, count === undefined ? "–" : String(count));
+      const reading = values[index];
+      const range = index < 3 ? 2000 : 4 * 9.80665;
+      bar.style.setProperty("--value", reading === undefined ? "0" : (reading / range).toFixed(3));
+      setText(value, reading === undefined ? "–" : reading.toFixed(index < 3 ? 0 : 2));
     });
 
     const power = input.state.power;

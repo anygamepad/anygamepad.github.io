@@ -22,6 +22,7 @@ import {
   type WizardStatus,
   type ScrubResult,
   type Redaction,
+  type Transport,
 } from "./wasm/anygamepad_wasm.js";
 import { deleteReport, listReports, markReportShared, saveReport, type StoredReport } from "./storage";
 import { ActivityLog } from "./activity";
@@ -30,6 +31,7 @@ import { HidLiveView } from "./hid-live";
 import { layoutFor } from "./layouts";
 import { LiveView } from "./live";
 import { CountMeter, RateMeter } from "./rate";
+import { emptyTestView, loadTesting, TestMode, type TestHost, type TestPad, type TestView } from "./test-mode";
 import { rawNames, WizardView } from "./wizard";
 
 /** One connected pad, as the page lists it. */
@@ -46,6 +48,10 @@ export interface PadRow {
   detail: string;
   rumble: boolean;
   triggerRumble: boolean;
+  /** Whether the page can set its light bar colour. */
+  lightbar: boolean;
+  /** Whether the page can set its player LEDs. */
+  playerLeds: boolean;
   /** Whether the guided wizard can identify its buttons. */
   wizard: boolean;
 }
@@ -63,6 +69,9 @@ export interface ActiveShare {
 
 /** The data the page renders. */
 export interface TesterView {
+  /** The tester, or the test mode (H4). */
+  mode: "tester" | "test";
+  test: TestView;
   environment: Environment | null;
   pads: PadRow[];
   /** Key of the pad shown large. */
@@ -89,6 +98,8 @@ export interface TesterView {
 }
 
 export const emptyView = (): TesterView => ({
+  mode: "tester",
+  test: emptyTestView(),
   environment: null,
   pads: [],
   selected: null,
@@ -153,6 +164,9 @@ export const gamepadRow = (id: number, info: DeviceInfo): PadRow => {
     detail: info.identity.web?.id ?? "",
     rumble: info.outputs.includes("rumble"),
     triggerRumble: info.outputs.includes("trigger_rumble"),
+    // The Gamepad API drives no lights.
+    lightbar: false,
+    playerLeds: false,
     wizard: true,
   };
 };
@@ -169,8 +183,11 @@ export const hidRow = (id: number, info: HidDeviceInfo): PadRow => {
     ids,
     facts: facts.filter(Boolean).join(" · "),
     detail: info.identity.product_name ?? "",
-    rumble: false,
+    // The library drives the outputs of the pads it decodes.
+    rumble: info.outputs.includes("rumble"),
     triggerRumble: false,
+    lightbar: info.outputs.includes("lightbar"),
+    playerLeds: info.outputs.includes("player_leds"),
     // The library checks its decoding of the pads it decodes; raw devices
     // need a HID report parser first.
     wizard: info.decoded,
@@ -188,6 +205,16 @@ const rumbleCommand = (kind: RumbleKind, strength: number): OutputCommand => {
     case "triggers":
       return { trigger_rumble: { left: strength, right: strength } };
   }
+};
+
+/** Light bar colours the light test offers. */
+export type LightColour = "blue" | "red" | "green" | "white";
+
+const COLOURS: Record<LightColour, { r: number; g: number; b: number }> = {
+  blue: { r: 0, g: 0, b: 255 },
+  red: { r: 255, g: 0, b: 0 },
+  green: { r: 0, g: 255, b: 0 },
+  white: { r: 255, g: 255, b: 255 },
 };
 
 /** A run of the guided wizard on a pad, kept until the pad goes. */
@@ -222,6 +249,7 @@ interface HidPad {
   open: boolean;
   switching: boolean;
   recording: Recording | undefined;
+  rumbleTimer: number | undefined;
   run: WizardRun | undefined;
 }
 
@@ -258,6 +286,43 @@ export class Tester {
   private frame = 0;
   private readonly log = new ActivityLog();
   private lastRateLog = 0;
+  private testMode: TestMode | undefined;
+  /** Whether the test mode's module is loading. */
+  private testLoading = false;
+  /** Each pad's canonical state at the last frame, for the test mode. */
+  private readonly states = new Map<string, GamepadState | undefined>();
+
+  /** The test mode's actions, for App.html; they wait for `start()`. */
+  readonly testActions = {
+    setMode: (mode: "tester" | "test"): void => {
+      this.view.mode = mode;
+      this.log.event("mode", { mode });
+      if (mode === "test") this.openTestMode();
+    },
+    testSearch: (text: string): void => this.testMode?.search(text),
+    testPickModel: (id: string, unit?: string): void => this.testMode?.pickModel(id, unit),
+    testPickCard: (key: string): void => this.testMode?.pickCard(key),
+    testBack: (): void => this.testMode?.back(),
+    testBackToCards: (): void => this.testMode?.backToCards(),
+    testGoOn: (): void => this.testMode?.goOn(),
+    testPickCandidate: (index: number): void => this.testMode?.pickCandidate(index),
+    testSetTransport: (transport: Transport): void => this.testMode?.setTransport(transport),
+    testSetUnit: (code: string): void => this.testMode?.setUnit(code),
+    testNewUnit: (): void => this.testMode?.newUnit(),
+    testConfirm: (): void => this.testMode?.confirm(),
+    testChooseAnother: (): void => this.testMode?.chooseAnother(),
+    testStart: (plan: string): void => this.testMode?.start(plan),
+    testAnswer: (answer: "yes" | "no" | "not_sure"): void => this.testMode?.answer(answer),
+    testSkip: (): void => this.testMode?.skip(),
+    testNotOnThisPad: (): void => this.testMode?.notOnThisPad(),
+    testNothingHappens: (): void => this.testMode?.nothingHappens(),
+    testRepeat: (): void => this.testMode?.repeat(),
+    testStop: (): void => this.testMode?.stop(),
+    testSetNotes: (text: string): void => this.testMode?.setNotes(text),
+    testSave: (): void => void this.testMode?.save(),
+    testDownload: (): void => this.testMode?.download(),
+    testNext: (): void => this.testMode?.next(),
+  };
 
   /** Starts reading gamepads into `view` (a component's reactive data). */
   start(view: TesterView): void {
@@ -467,40 +532,66 @@ export class Tester {
       await navigator.clipboard.writeText(share.scrubbedReport);
       share.copied = true;
       share.copyError = false;
+      // Before the storage writes: browsers block pop-ups opened too long
+      // after the click.
+      window.open(issueUrl, "_blank", "noopener,noreferrer");
+      this.log.event("report_shared_issue", { id: share.id });
       await markReportShared(share.id);
       this.view.savedReports = await listReports();
-      this.log.event("report_shared_issue", { id: share.id });
-      window.open(issueUrl, "_blank", "noopener,noreferrer");
     } catch {
       share.copyError = true;
     }
   };
 
-  /** Runs a short vibration test on a Gamepad API pad. */
+  /** Runs a short vibration test. */
   readonly rumble = (key: string, kind: RumbleKind): void => {
     const pad = this.pads.get(key);
-    if (!this.gamepads || pad?.source !== "gamepad") return;
+    if (!pad) return;
     this.log.event("vibration_test", { pad: key, kind });
-    try {
-      this.gamepads.send(pad.id, rumbleCommand(kind, 1));
-    } catch (error) {
-      this.fail(`Vibration failed (${String(error)}).`);
-      return;
-    }
+    if (!this.output(pad, rumbleCommand(kind, 1), "Vibration")) return;
     // One timer stops every motor, including those of a test it cut short.
     window.clearTimeout(pad.rumbleTimer);
     pad.rumbleTimer = window.setTimeout(() => {
       pad.rumbleTimer = undefined;
-      try {
-        this.gamepads?.send(pad.id, rumbleCommand("both", 0));
-        if (pad.info.outputs.includes("trigger_rumble")) {
-          this.gamepads?.send(pad.id, rumbleCommand("triggers", 0));
-        }
-      } catch {
-        // The gamepad went away; its rumble stopped with it.
-      }
+      // The pad may have gone away; its rumble stopped with it.
+      this.output(pad, rumbleCommand("both", 0));
+      if (pad.row.triggerRumble) this.output(pad, rumbleCommand("triggers", 0));
     }, RUMBLE_MS);
   };
+
+  /** Sets the light bar of a pad the library drives through WebHID. */
+  readonly light = (key: string, colour: LightColour): void => {
+    const pad = this.pads.get(key);
+    if (!pad) return;
+    this.log.event("light_test", { pad: key, colour });
+    this.output(pad, { lightbar: COLOURS[colour] }, "Setting the light bar");
+  };
+
+  /** Shows a player number on a pad's LEDs; 0 turns them off. */
+  readonly player = (key: string, player: number): void => {
+    const pad = this.pads.get(key);
+    if (!pad) return;
+    this.log.event("player_leds_test", { pad: key, player });
+    this.output(pad, { player_number: player }, "Setting the player LEDs");
+  };
+
+  /**
+   * Sends a command to a pad; failures show as "`what` failed", or pass
+   * silently without `what`. Returns whether the command went out.
+   */
+  private output(pad: Pad, command: OutputCommand, what?: string): boolean {
+    const failed = (error: unknown): void => {
+      if (what) this.fail(`${what} failed (${String(error)}).`);
+    };
+    try {
+      if (pad.source === "gamepad") this.gamepads?.send(pad.id, command);
+      else this.hids?.send(pad.id, command).catch(failed);
+    } catch (error) {
+      failed(error);
+      return false;
+    }
+    return true;
+  }
 
   /** Stops both loops and releases the devices. */
   stop(): void {
@@ -508,7 +599,7 @@ export class Tester {
     window.clearInterval(this.sampler);
     cancelAnimationFrame(this.frame);
     for (const pad of this.pads.values()) {
-      if (pad.source === "gamepad") window.clearTimeout(pad.rumbleTimer);
+      window.clearTimeout(pad.rumbleTimer);
       pad.run?.wizard.free();
     }
     this.gamepads?.free();
@@ -541,18 +632,37 @@ export class Tester {
     if (!gamepads) return;
     try {
       let changed = false;
+      const added: string[] = [];
+      const removed: string[] = [];
       for (const event of gamepads.update()) {
         changed = true;
-        if (event.type === "added") this.addGamepad(gamepads, event.device);
-        else this.remove(`gamepad:${event.device}`);
+        const key = `gamepad:${event.device}`;
+        if (event.type === "added") {
+          this.addGamepad(gamepads, event.device);
+          added.push(key);
+        } else {
+          this.remove(key);
+          removed.push(key);
+        }
       }
       for (const event of this.hids?.update() ?? []) {
         changed = true;
-        if (event.type === "added") this.addHid(event.device);
-        else this.remove(`webhid:${event.device}`);
+        const key = `webhid:${event.device}`;
+        if (event.type === "added") {
+          this.addHid(event.device);
+          added.push(key);
+        } else {
+          this.remove(key);
+          removed.push(key);
+        }
       }
       if (changed) this.refresh();
       const now = performance.now();
+      for (const key of removed) this.testMode?.removed(key, now);
+      for (const key of added) {
+        const pad = this.testPads().find((p) => p.key === key);
+        if (pad) this.testMode?.added(pad, now);
+      }
       for (const pad of this.pads.values()) {
         if (pad.source !== "gamepad") continue;
         const timestamp = gamepads.timestamp(pad.id);
@@ -606,6 +716,7 @@ export class Tester {
       open: false,
       switching: false,
       recording: undefined,
+      rumbleTimer: undefined,
       run: undefined,
     };
     this.pads.set(row.key, pad);
@@ -630,9 +741,55 @@ export class Tester {
     );
   }
 
+  /** What the test mode needs from the tester. */
+  /** Loads the test mode's module the first time its tab opens (W9). */
+  private openTestMode(): void {
+    if (this.testMode || this.testLoading || !this.gamepads) return;
+    this.testLoading = true;
+    loadTesting()
+      .then((testing) => {
+        this.testMode = new TestMode(testing, this.testHost(), this.view.test);
+      })
+      .catch((error: unknown) => {
+        this.view.test.error = `The test mode did not load (${String(error)}).`;
+        this.log.event("error", { message: `test mode: ${String(error)}` });
+      })
+      .finally(() => {
+        this.testLoading = false;
+      });
+  }
+
+  private testHost(): TestHost {
+    return {
+      gamepads: () => this.gamepads,
+      hids: () => this.hids,
+      environment: () => this.view.environment,
+      pads: () => this.testPads(),
+    };
+  }
+
+  /** The pads the page lists, for the test mode. */
+  private testPads(): TestPad[] {
+    return this.view.pads.flatMap((row) => {
+      const pad = this.pads.get(row.key);
+      if (!pad) return [];
+      return [
+        {
+          key: row.key,
+          source: pad.source,
+          id: pad.id,
+          name: row.name,
+          open: pad.source === "gamepad" || pad.open,
+          state: this.states.get(row.key),
+        },
+      ];
+    });
+  }
+
   private remove(key: string): void {
+    this.states.delete(key);
     const pad = this.pads.get(key);
-    if (pad?.source === "gamepad") window.clearTimeout(pad.rumbleTimer);
+    window.clearTimeout(pad?.rumbleTimer);
     pad?.run?.wizard.free();
     if (key === this.view.selected) this.view.wizardOpen = false;
     this.pads.delete(key);
@@ -709,6 +866,7 @@ export class Tester {
       this.drainHid(now);
       const reads = this.readGamepads();
       this.drawSelected(now, reads);
+      this.testMode?.frame(now);
       this.logRates(now);
     } catch (error) {
       this.fail(`Drawing the gamepads failed (${String(error)}).`);
@@ -727,6 +885,7 @@ export class Tester {
       const snapshot = gamepads.snapshot(pad.id);
       if (snapshot === undefined) continue;
       const state = pad.info.canonical ? gamepads.state(pad.id) : undefined;
+      this.states.set(pad.row.key, state);
       this.log.gamepad(pad.row.key, snapshot, state);
       reads.set(pad.row.key, { snapshot, state });
     }
@@ -748,6 +907,8 @@ export class Tester {
     if (!hids) return;
     for (const pad of this.pads.values()) {
       if (pad.source !== "webhid" || !pad.open) continue;
+      // Under test, the test mode reads it (its reports are evidence).
+      if (this.testMode?.owns(pad.row.key)) continue;
       const recording = pad.recording;
       let poll;
       try {
@@ -759,6 +920,7 @@ export class Tester {
         continue;
       }
       pad.rate.add(poll.received, now);
+      this.states.set(pad.row.key, poll.input?.state);
       this.log.hid(pad.row.key, poll);
       if (recording) {
         for (const report of poll.reports) {
