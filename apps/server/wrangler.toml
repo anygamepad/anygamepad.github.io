@@ -1,0 +1,40 @@
+# The anygamepad sync server (roadmap P2, ADR 0009): a Worker in Rust,
+# built by worker-build, storing in D1. Setup and deployment: README.md.
+
+name = "anygamepad-sync"
+main = "build/index.js"
+compatibility_date = "2026-10-15"
+
+[build]
+command = "cargo install -q worker-build@0.8.7 --locked && worker-build --release"
+
+# No request logs: the server rules keep addresses, user agents and
+# contents out of every log (docs/privacy/README.md#server-rules).
+[observability]
+enabled = false
+
+[vars]
+# Origins browsers may send from; `.dev.vars` adds local ones for `wrangler dev`.
+ALLOWED_ORIGINS = "https://anygamepad.github.io"
+# Activity logs older than this are deleted every day (the cron below).
+ACTIVITY_LOG_RETENTION_DAYS = "180"
+
+# Created with `npx wrangler d1 create anygamepad-sync --jurisdiction eu`;
+# the id below is the one it prints. Tables: migrations/.
+[[d1_databases]]
+binding = "DB"
+database_name = "anygamepad-sync"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Uploads and withdrawals per client per minute, keyed by an HMAC of the
+# address with the secret RATE_LIMIT_KEY (`npx wrangler secret put
+# RATE_LIMIT_KEY`): the page sends a part of its log every 30 seconds.
+[[ratelimits]]
+name = "UPLOADS"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
+
+# The daily deletion of old activity logs, at 03:17 UTC.
+[triggers]
+crons = ["17 3 * * *"]

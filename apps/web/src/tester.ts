@@ -31,6 +31,7 @@ import { HidLiveView } from "./hid-live";
 import { layoutFor } from "./layouts";
 import { LiveView } from "./live";
 import { CountMeter, RateMeter } from "./rate";
+import { emptySettings, Sync, syncEndpoint, type SettingsView } from "./sync";
 import { emptyTestView, loadTesting, TestMode, type TestHost, type TestPad, type TestView } from "./test-mode";
 import { rawNames, WizardView } from "./wizard";
 
@@ -69,9 +70,10 @@ export interface ActiveShare {
 
 /** The data the page renders. */
 export interface TesterView {
-  /** The tester, or the test mode (H4). */
+  /** The page: the tester at `/`, or the test mode (H4) at `/test/`. */
   mode: "tester" | "test";
   test: TestView;
+  settings: SettingsView;
   environment: Environment | null;
   pads: PadRow[];
   /** Key of the pad shown large. */
@@ -100,6 +102,7 @@ export interface TesterView {
 export const emptyView = (): TesterView => ({
   mode: "tester",
   test: emptyTestView(),
+  settings: emptySettings(),
   environment: null,
   pads: [],
   selected: null,
@@ -292,13 +295,22 @@ export class Tester {
   /** Each pad's canonical state at the last frame, for the test mode. */
   private readonly states = new Map<string, GamepadState | undefined>();
 
+  private sync: Sync | undefined;
+
+  /** The settings' actions, for App.html. */
+  readonly settingsActions = {
+    openSettings: (): void => {
+      this.view.settings.open = true;
+    },
+    closeSettings: (): void => {
+      this.view.settings.open = false;
+    },
+    setSending: (on: boolean): void => this.sync?.setSending(on),
+    withdrawSent: (): void => void this.sync?.withdrawAll(),
+  };
+
   /** The test mode's actions, for App.html; they wait for `start()`. */
   readonly testActions = {
-    setMode: (mode: "tester" | "test"): void => {
-      this.view.mode = mode;
-      this.log.event("mode", { mode });
-      if (mode === "test") this.openTestMode();
-    },
     testSearch: (text: string): void => this.testMode?.search(text),
     testPickModel: (id: string, unit?: string): void => this.testMode?.pickModel(id, unit),
     testPickCard: (key: string): void => this.testMode?.pickCard(key),
@@ -331,6 +343,17 @@ export class Tester {
     window.addEventListener("unhandledrejection", (event) =>
       this.log.event("page_error", { message: String(event.reason) }),
     );
+    window.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if (view.settings.open) view.settings.open = false;
+      else if (view.activeShare) this.closeShare();
+    });
+    this.sync = new Sync(
+      syncEndpoint(),
+      this.log,
+      { library: version(), page: view.mode, environment: () => this.view.environment },
+      view.settings,
+    );
     try {
       this.gamepads = new Gamepads();
     } catch (error) {
@@ -349,6 +372,7 @@ export class Tester {
     }
     this.log.event("session", {
       library: version(),
+      page: view.mode,
       environment: view.environment,
       webhid: view.webhid,
       hint: view.hint,
@@ -363,6 +387,7 @@ export class Tester {
         // Storage unavailable or blocked
       });
     this.frame = requestAnimationFrame(this.draw);
+    if (view.mode === "test") this.openTestMode();
   }
 
   /** Shows a pad large. */
@@ -741,8 +766,7 @@ export class Tester {
     );
   }
 
-  /** What the test mode needs from the tester. */
-  /** Loads the test mode's module the first time its tab opens (W9). */
+  /** Loads the test mode's module, on the test mode's page only (W9). */
   private openTestMode(): void {
     if (this.testMode || this.testLoading || !this.gamepads) return;
     this.testLoading = true;
@@ -765,6 +789,7 @@ export class Tester {
       hids: () => this.hids,
       environment: () => this.view.environment,
       pads: () => this.testPads(),
+      sendTestReport: (report) => this.sync?.sendTestReport(report) ?? Promise.resolve(false),
     };
   }
 

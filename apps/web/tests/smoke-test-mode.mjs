@@ -1,7 +1,11 @@
 // Smoke test of the test mode (roadmap task H4) on the built site (dist/):
 //
-// - The test mode's WebAssembly module (W9) is fetched only once its tab
-//   opens.
+// - The test mode is its own page, /test/, linked from the tester's footer;
+//   its WebAssembly module (W9) is fetched there only.
+// - Sending (the settings), to a fake database named by the page's
+//   `anygamepad-sync` tag, as a build with ANYGAMEPAD_SYNC_URL names it:
+//   once turned on, the activity log goes in parts and the saved test
+//   report as downloaded; the choice survives a reload.
 // - Gamepad API: a wired Xbox 360 controller connected without picking it is
 //   detected; the Full plan runs with a person simulated from the prompts
 //   (every button, sticks, triggers, rate, vibration answered yes, the
@@ -10,9 +14,9 @@
 //   saving in the browser, the "Tested here" mark, the unit's code (proposed
 //   for a pad this browser does not know, checked, kept), and the downloaded report
 //   (format, configuration, results, evidence).
-// - WebHID (Chromium only): a Bluetooth DualSense picked in the chooser and
-//   while the tester shows is detected, and the Quick plan runs on
-//   its decoded reports, which the report keeps as evidence.
+// - WebHID (Chromium only): a Bluetooth DualSense, already in its full
+//   report, picked in the test mode's chooser is detected, and the Quick
+//   plan runs on its decoded reports, which the report keeps as evidence.
 //
 // BROWSER and CHROME_PATH as in smoke.mjs.
 
@@ -79,6 +83,33 @@ try {
   page.on("request", (request) => fetched.push(request.url()));
   await page.addInitScript(fakeGamepads);
   await page.addInitScript(fakeHid);
+  // The fake database: the test mode's page names it, as a build with
+  // ANYGAMEPAD_SYNC_URL would, and it stores what it gets.
+  const uploads = [];
+  await page.route(`${url}test/`, async (route) => {
+    const response = await route.fetch();
+    const html = (await response.text()).replace("<head>", '<head><meta name="anygamepad-sync" content="/__sync/">');
+    await route.fulfill({ response, body: html });
+  });
+  await page.route(`${url}__sync/**`, async (route) => {
+    const request = route.request();
+    const upload = {
+      method: request.method(),
+      path: new URL(request.url()).pathname,
+      body: request.method() === "POST" ? request.postDataJSON() : null,
+      headers: await request.allHeaders(),
+    };
+    uploads.push(upload);
+    const tests = upload.path === "/__sync/v1/test-reports" && upload.method === "POST";
+    await route.fulfill(
+      upload.method === "DELETE"
+        ? { status: 204 }
+        : { status: 201, contentType: "application/json", body: JSON.stringify(tests ? { id: 7 } : {}) },
+    );
+  });
+  const uploaded = (path) =>
+    uploads.filter((upload) => upload.method === "POST" && upload.path === `/__sync/v1/${path}`);
+  const bearer = (upload) => upload.headers.authorization?.match(/^Bearer ([0-9a-f]{32})$/)?.[1];
   await page.goto(url, { waitUntil: "networkidle" });
 
   const setPad = (pad) => page.evaluate((p) => window.__setGamepads(p ? [p] : []), pad);
@@ -96,10 +127,43 @@ try {
 
   const testingModule = () => fetched.filter((u) => /anygamepad_wasm_testing.*\.wasm/.test(u));
   assert.ok(fetched.some((u) => /anygamepad_wasm_bg.*\.wasm/.test(u)), "the tester's module loads");
-  assert.deepEqual(testingModule(), [], "the test mode's module waits for its tab");
-  await page.click(".mode-tab >> text=Test mode");
+  assert.deepEqual(testingModule(), [], "the tester does not load the test mode's module");
+  // The tester's footer links the test mode's page.
+  await page.click(".site >> text=Test mode");
+  await page.waitForURL(/\/test\/$/, { waitUntil: "networkidle" });
+  assert.equal(await page.title(), "anygamepad: test mode");
   await until("the list", stage, (s) => s === "list");
-  assert.equal(testingModule().length, 1, "the test mode's module loads with its tab");
+  assert.equal(testingModule().length, 1, "the test mode's page loads its module");
+  assert.equal(await page.getAttribute(".site >> text=Tester", "href"), "/");
+
+  // Sending, turned on in the settings: the log so far goes at once.
+  assert.deepEqual(uploads, [], "nothing is sent before the person turns it on");
+  await page.click(".settings-btn");
+  assert.equal(await page.isEnabled("[data-sending]"), true);
+  await page.check("[data-sending]");
+  const firstPart = (await until("the first part of the log", () => uploaded("activity-logs"), (u) => u.length > 0))[0];
+  assert.equal(firstPart.body.format, "anygamepad-activity-log-v1");
+  assert.equal(firstPart.body.page, "test");
+  assert.equal(firstPart.body.part, 0);
+  assert.match(firstPart.body.day, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(firstPart.body.session, /^[0-9a-f]{32}$/);
+  assert.equal(firstPart.body.started_at, undefined, "no time of day");
+  assert.deepEqual(
+    firstPart.body.events.map((event) => event.type),
+    ["session", "page_visible", "sending"],
+  );
+  assert.equal(firstPart.headers.cookie, undefined);
+  assert.ok(bearer(firstPart), "a deletion token");
+  assert.equal(firstPart.headers.referer, undefined);
+  await until(
+    "the count of parts sent",
+    async () => (await page.textContent("[data-sent]")).replace(/\s+/g, " ").trim(),
+    (text) => text === "Sent since this page loaded: 1 part of the activity log, 0 test reports.",
+  );
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".settings-modal", { state: "detached" });
+  assert.equal(await page.getAttribute(".settings-btn", "class"), "icon-btn settings-btn on");
+
   assert.ok((await page.locator(".test-list [data-model]").count()) >= 13);
   // The search filters the catalog.
   await page.fill(".test-search input", "dualshock");
@@ -198,8 +262,11 @@ try {
   const flagged = await page.locator(".test-review li.flagged").allTextContents();
   assert.deepEqual(flagged, []);
 
+  // Sending is on: saving sends the report too.
+  assert.equal((await page.textContent("[data-save]")).trim(), "Save and send");
   await page.click("[data-save]");
-  await until("the saved note", () => page.textContent("[data-saved]").catch(() => ""), (t) => /^Saved in this browser/.test(t));
+  const saved = await until("the saved note", () => page.textContent("[data-saved]").catch(() => ""), (t) => /Sent/.test(t));
+  assert.match(saved, /^Saved in this browser as \S+\.json\. Sent to the anygamepad database\.$/);
   const [download] = await Promise.all([page.waitForEvent("download"), page.click("[data-download]")]);
   assert.match(download.suggestedFilename(), /^x360-01-xinput-usb-\w+-web-gamepad_api-\d{4}-\d{2}-\d{2}-1\.json$/);
   const report = JSON.parse(await readFile(await download.path(), "utf8"));
@@ -221,6 +288,13 @@ try {
   const circle = report.results.find((result) => result.step === "sticks.left.circle");
   assert.ok(circle.measurements.reach_up > 0.9, JSON.stringify(circle.measurements));
   assert.ok(!/\d{2}:\d{2}:\d{2}/.test(JSON.stringify(report)), "no time of day");
+  // What was sent is what was downloaded.
+  assert.equal(uploaded("test-reports").length, 1);
+  assert.deepEqual(uploaded("test-reports")[0].body, report);
+  // Its own token; every part of the log shares the log's.
+  const reportToken = bearer(uploaded("test-reports")[0]);
+  assert.ok(reportToken && reportToken !== bearer(firstPart));
+  assert.ok(uploaded("activity-logs").every((upload) => bearer(upload) === bearer(firstPart)));
 
   // The same model's ways to connect: this one is now tested here.
   await page.click("text=Test another way to connect it");
@@ -232,19 +306,57 @@ try {
   await page.click(".test-connect >> text=Back to the list");
   await setPad(null);
 
+  // The choice stays for the next visit: a new page load sends its own log
+  // (another ID). Going away, the page sends what is left of its log as
+  // the next part (Firefox and WebKit send it on reload, Chromium not
+  // always, so the test leaves the page itself first).
+  const before = uploaded("activity-logs").length;
+  await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+  await until("the last part", () => uploaded("activity-logs").length, (n) => n > before);
+  await page.reload({ waitUntil: "networkidle" });
+  await until("the list", stage, (s) => s === "list");
+  const next = await until(
+    "a part of the new page's log",
+    () => uploaded("activity-logs").filter((upload) => upload.body.session !== firstPart.body.session),
+    (u) => u.length > 0,
+  );
+  const old = uploaded("activity-logs").filter((upload) => upload.body.session === firstPart.body.session);
+  assert.ok(old.length > before, "the last part of the old log");
+  assert.ok(
+    old.every((upload, n) => upload.body.part === n && bearer(upload) === bearer(firstPart)),
+    JSON.stringify(old.map((upload) => upload.body.part)),
+  );
+  assert.equal(next[0].body.part, 0);
+  assert.notEqual(next[0].body.session, firstPart.body.session);
+  assert.notEqual(bearer(next[0]), bearer(firstPart));
+  assert.equal(next[0].body.events[0].type, "session");
+
+  // Withdrawing: this browser kept a token for each log and the report.
+  await page.click(".settings-btn");
+  await page.click("[data-withdraw]");
+  await until("the withdrawal", () => page.textContent("[data-withdrawn]").catch(() => ""), (t) => /3 of 3/.test(t));
+  const deletes = uploads.filter((upload) => upload.method === "DELETE");
+  assert.deepEqual(
+    deletes.map((upload) => [upload.path, bearer(upload)]).sort(),
+    [
+      [`/__sync/v1/activity-logs/${firstPart.body.session}`, bearer(firstPart)],
+      [`/__sync/v1/activity-logs/${next[0].body.session}`, bearer(next[0])],
+      ["/__sync/v1/test-reports/7", reportToken],
+    ].sort(),
+  );
+  assert.equal(await page.isDisabled("[data-withdraw]"), true);
+  await page.keyboard.press("Escape");
+
   // WebHID (Chromium): a DualSense picked in the chooser runs the Quick plan
   // on its decoded reports.
   if (browserName === "chromium") {
-    await page.click(".mode-tab >> text=Tester");
-    await page.click("text=Connect a pad with WebHID");
-    await until("the WebHID pad", () => page.locator(".pad .pad-name").allTextContents(), (names) => names.length === 1);
     // On Bluetooth, the reduced report lacks the mute button (and the
-    // touchpad, motion and battery): switch to the full report first.
-    await page.getByRole("button", { name: "Switch to the full report" }).click();
-    await until("the full report", () => page.evaluate(() => window.__hid.features), (f) => f.includes(0x05));
-    await sleep(200);
-    // Connected while the tester showed, it is detected all the same.
-    await page.click(".mode-tab >> text=Test mode");
+    // touchpad, motion and battery): this one was switched to its full
+    // report before (in the tester, or by macOS).
+    await page.evaluate(() => {
+      window.__hid.fullReport = true;
+    });
+    await page.click(".test-mode >> text=Connect a pad with WebHID");
     await until("detection", stage, (s) => s === "detected");
     const setButtons = (name, on) =>
       page.evaluate(

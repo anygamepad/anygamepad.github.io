@@ -42,6 +42,8 @@ data.
 |------|-------|------|-------------|
 | Controller input (Gamepad API, WebHID) | The page's memory | Until the page closes | The person; never sent |
 | Theme choice | `localStorage`, key `anygamepad.theme`, only for Light or Dark | Until Auto is picked or storage is cleared | The person |
+| Sending choice (settings) | `localStorage`, key `anygamepad.sync`, only while sending is on | Until the person turns it off or storage is cleared | The person |
+| Deletion tokens of what was sent | `localStorage`, key `anygamepad.sync.sent`: kind, ID and token of each upload, 1,000 at most | Until the person withdraws the uploads or clears storage | The person |
 | WebHID permissions | The browser | Until revoked in the site's settings | The person and the browser |
 | Activity log, "Record 2 seconds" | The tab's memory; files when downloaded | Until the tab closes; files until deleted | The person |
 | Saved reports (W6) | IndexedDB `anygamepad`, store `reports`, with local metadata (when saved, whether copied to share) | Until the person deletes them or the browser drops the storage | The person |
@@ -50,6 +52,7 @@ data.
 | Visitor IP addresses | GitHub Pages logs, for security | GitHub's retention | GitHub, under its Privacy Statement; the project has no access |
 | Curated data (profiles, test fixtures) | This repository | Indefinitely | The maintainers; no personal data |
 | Uploaded reports (P6, later) | The sync server (P2, P5) | See [Server rules](#server-rules) | The maintainers |
+| Sent activity logs and test reports | The sync server: a Cloudflare Worker with D1 in the EU ([ADR 0009](../adr/0009-sync-server-on-cloudflare-workers.md)), once the person turns sending on | See [Retention](#retention) | The maintainers; Cloudflare as processor |
 
 Legal bases (GDPR Art. 6): consent (6(1)(a)) for shared reports, given by
 the issue form's required checkbox and withdrawn by asking for the issue's
@@ -140,9 +143,51 @@ when you want to." Buttons: **Start collecting**, **Open the folder**.
 
 ### Sync (P6)
 
-Not written yet. P6 writes them under the [server rules](#server-rules), and
-the policy page says what the server stores before it accepts its first
-report.
+Device reports: not written yet. P6 writes them under the
+[server rules](#server-rules), and the policy page says what the server
+stores before it accepts its first report.
+
+Activity log and test reports (web, owner request of 2026-11-02). The
+settings dialog, opened from the sliders icon in the header, titled
+**Settings**:
+
+- Switch, off by default: **Send the activity and the test reports to the
+  anygamepad database**
+- Under it: "While this is on, the page sends its activity log as it goes
+  (the pads it detects, their inputs, reports and errors: what the
+  downloaded log holds) and each test report when you save it, to improve
+  how controllers are detected. Neither holds serial numbers, Bluetooth
+  addresses or anything about you. It stays on in this browser until you
+  turn it off."
+- While the build names no database: "Not available yet: the database is
+  not running. Until it is, nothing leaves this browser." (the switch
+  cannot be turned on).
+- While it is on: "Sent since this page loaded: {n} parts of the activity
+  log, {m} test reports."
+- Once this browser sent something: "This browser keeps a key for each of
+  the {n} uploads it sent, to delete them from the database whenever you
+  want. Sending stays as set above." Button: **Delete what this browser
+  sent**; then "Deleted from the database: {deleted} of {n}.", and "Some
+  could not be deleted now: try again later." when some failed.
+- A link to the privacy policy.
+- In the test mode, the save button reads **Save and send** while sending
+  is on, and the note after saving adds "Sent to the anygamepad database."
+  or "Not sent to the anygamepad database ({error}): save it again to try
+  again."
+
+What is sent (`apps/web/src/sync.ts`): the activity log's events in parts,
+each with the page, the environment (browser engine and version, OS), a
+random ID of the page load that joins its parts (never stored by the
+page), the part's number and the day (UTC), never the start time; and
+the test report exactly as the test mode downloads it. Each request
+carries a deletion token made by the page (one per page load's log, one
+per test report). No cookies, no referrer.
+
+The policy page says what the server stores ("Sending to the anygamepad
+database", 2026-11-02). The production build names the server once the
+owner sets the repository variable `ANYGAMEPAD_SYNC_URL` after deploying
+it ([`apps/server/README.md`](../../apps/server/README.md)); until then the
+switch cannot be turned on.
 
 ## Retention
 
@@ -152,6 +197,9 @@ report.
 | Shared report, not curated yet | Curated (P4) | On request, or when it holds personal data |
 | Shared report, curated | Kept, closed, as the public source of the data | On request, or when it holds personal data |
 | Profiles and fixtures made from reports | Indefinitely | They hold no personal data and cite issues by number only |
+| Sent activity logs (sync server) | 180 days after they arrived (`ACTIVITY_LOG_RETENTION_DAYS`) | Every day by the server; earlier when the person withdraws them |
+| Sent test reports (sync server) | The person withdraws them | With the deletion token, from the settings |
+| Database restore points (D1 Time Travel) | 30 days (7 on Cloudflare's free plan) | By Cloudflare |
 | Copies outside the project (GitHub's backups and emails, other people's copies of a public CC0 report) | Out of the project's reach | The policy says so |
 
 Requests are answered within one month (GDPR Art. 12(3)).
@@ -195,24 +243,28 @@ Requests are answered within one month (GDPR Art. 12(3)).
 
 ## Server rules
 
-For the sync server (P2, P5, P6). The policy page changes before the server
-accepts its first report.
+For the sync server (P2, P5, P6; `apps/server`,
+[ADR 0009](../adr/0009-sync-server-on-cloudflare-workers.md)). The policy
+page changes before the server accepts anything new.
 
-- It receives only the reports a person chooses to upload, validated with
-  `anygamepad-report`, and stores the re-serialized report with the day it
-  arrived. No accounts, no cookies.
-- IP addresses are never stored, logged or passed on. Rate limiting keeps a
-  keyed hash of the address (HMAC, key in memory and replaced every day) in
-  memory only, and drops it when its window ends, after 24 hours at most.
-- Access and error logs hold no IP addresses, user agents or report
-  contents, and are kept 30 days.
-- Each upload returns a deletion token that the app keeps next to the
-  report; with it the person withdraws the upload. The server stores only a
-  hash of the token.
-- Backups are encrypted and kept 30 days, so a withdrawn report is gone
-  from them within 30 days.
-- The hosting provider (P5) signs a data processing agreement (GDPR
-  Art. 28), and the policy names it.
+- It receives only what a person chooses to send, validated with
+  `anygamepad-report` (test reports) or checked and scrubbed by the server
+  (activity logs, `apps/server/src/activity.rs`), and stores the
+  re-serialized document with the day it arrived. No accounts, no cookies.
+- IP addresses are never stored, logged or passed on. Rate limiting gives
+  Cloudflare's rate limiter an HMAC of the address and the day with a
+  secret (`RATE_LIMIT_KEY`), which counts in memory for a minute.
+- No request logs: Workers observability is off, and the Worker logs no
+  addresses, user agents or contents.
+- Each upload carries a deletion token that the app makes and keeps; with
+  it the person withdraws the upload. The server stores only a hash of the
+  token.
+- Backups are D1's restore points (Time Travel): 30 days on the Workers
+  Paid plan, 7 on the free one, so a withdrawn upload is gone from them
+  within 30 days.
+- Cloudflare processes the data under its Data Processing Addendum (GDPR
+  Art. 28), and the policy names it; the database is created in the EU
+  jurisdiction.
 - Published dumps of the dataset hold the reports only, under CC0 1.0.
 
 ## Data license

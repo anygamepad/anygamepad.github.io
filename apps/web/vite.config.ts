@@ -3,6 +3,22 @@ import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import { jq79 } from "jq79/vite";
 
+// The database the settings send the activity log and test reports to
+// (roadmap P2, P6), when the person turns sending on: none until it runs. A
+// build with ANYGAMEPAD_SYNC_URL names it to the page in a <meta> tag
+// (src/sync.ts reads it) and lets the page connect to its origin.
+const syncUrl = (): URL | null => {
+  const value = process.env.ANYGAMEPAD_SYNC_URL;
+  if (!value) return null;
+  const url = new URL(value.endsWith("/") ? value : `${value}/`);
+  const local = url.hostname === "127.0.0.1" || url.hostname === "localhost";
+  if (url.protocol !== "https:" && !(local && url.protocol === "http:")) {
+    throw new Error(`ANYGAMEPAD_SYNC_URL must be an https URL, not ${value}`);
+  }
+  return url;
+};
+const SYNC_URL = syncUrl();
+
 // GitHub Pages cannot send headers, so the policy travels as a <meta> tag
 // (ADR 0005). WebAssembly needs 'wasm-unsafe-eval'; jq79's safeEval mode
 // removes the need for 'unsafe-eval' and inline styles. Production builds
@@ -12,7 +28,7 @@ const CONTENT_SECURITY_POLICY = [
   "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self'",
   "img-src 'self'",
-  "connect-src 'self'",
+  SYNC_URL ? `connect-src 'self' ${SYNC_URL.origin}` : "connect-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -28,6 +44,12 @@ const contentSecurityPolicy = (): Plugin => ({
       injectTo: "head-prepend",
     },
   ],
+});
+
+const syncEndpoint = (): Plugin => ({
+  name: "anygamepad:sync-endpoint",
+  transformIndexHtml: () =>
+    SYNC_URL ? [{ tag: "meta", attrs: { name: "anygamepad-sync", content: SYNC_URL.href }, injectTo: "head" }] : [],
 });
 
 // The JSON Schemas of device profiles (roadmap D1), device reports (P1),
@@ -76,12 +98,14 @@ const minifiedArt = (): Plugin => ({
 });
 
 export default defineConfig({
-  plugins: [jq79({ safeEval: true }), contentSecurityPolicy(), schemas(), minifiedArt()],
+  plugins: [jq79({ safeEval: true }), contentSecurityPolicy(), syncEndpoint(), schemas(), minifiedArt()],
   build: {
-    // The tester, and the privacy policy (roadmap P3) at /privacy/.
+    // The tester, the test mode (H4) at /test/, and the privacy policy
+    // (roadmap P3) at /privacy/.
     rolldownOptions: {
       input: {
         main: fileURLToPath(new URL("index.html", import.meta.url)),
+        test: fileURLToPath(new URL("test/index.html", import.meta.url)),
         privacy: fileURLToPath(new URL("privacy/index.html", import.meta.url)),
       },
     },

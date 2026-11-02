@@ -67,11 +67,22 @@ interface HidTrack {
   errors: Map<string, number>;
 }
 
+/** Where the sent part of the log ends (sync.ts). */
+export interface LogCursor {
+  /** Device events: an index (they are never dropped). */
+  events: number;
+  /** Input events since the page loaded, the dropped ones included. */
+  inputs: number;
+}
+
 export class ActivityLog {
   private readonly startedAt = new Date().toISOString();
   private readonly events: LogEvent[] = [];
   private readonly inputs: LogEvent[] = [];
   private dropped = 0;
+  /** Where the sent part of the log ends (sync.ts): an index in `events`,
+   * and a count of input events from the page load (dropped ones too). */
+  private sent: LogCursor = { events: 0, inputs: 0 };
   private readonly gamepads = new Map<string, GamepadTrack>();
   private readonly hids = new Map<string, HidTrack>();
 
@@ -187,10 +198,42 @@ export class ActivityLog {
   /** The log as a JSON document: device and input events in time order. */
   toJSON(library: string, environment: Environment | null): object {
     for (const pad of this.hids.keys()) this.flushErrors(pad);
+    const { events } = this.merge(0, 0, Infinity);
+    return {
+      format: LOG_FORMAT,
+      library,
+      environment,
+      started_at: this.startedAt,
+      duration_ms: this.now(),
+      dropped_input_events: this.dropped,
+      events,
+    };
+  }
+
+  /**
+   * The events not sent yet, `limit` at most, in time order; `next` marks
+   * them sent (`markSent`) once they are. `dropped` counts the input
+   * events dropped before they could be sent.
+   */
+  unsent(limit: number): { events: LogEvent[]; dropped: number; next: LogCursor } {
+    const from = Math.max(0, this.sent.inputs - this.dropped);
+    const { events, i, j } = this.merge(this.sent.events, from, limit);
+    return {
+      events,
+      dropped: Math.max(0, this.dropped - this.sent.inputs),
+      next: { events: i, inputs: this.dropped + j },
+    };
+  }
+
+  /** Marks the events of an `unsent()` part as sent. */
+  markSent(next: LogCursor): void {
+    this.sent = next;
+  }
+
+  /** Device and input events from the given indices, in time order. */
+  private merge(i: number, j: number, limit: number): { events: LogEvent[]; i: number; j: number } {
     const events: LogEvent[] = [];
-    let i = 0;
-    let j = 0;
-    while (i < this.events.length || j < this.inputs.length) {
+    while (events.length < limit && (i < this.events.length || j < this.inputs.length)) {
       const a = this.events[i];
       const b = this.inputs[j];
       if (b === undefined || (a !== undefined && a.t <= b.t)) {
@@ -201,15 +244,7 @@ export class ActivityLog {
         j++;
       }
     }
-    return {
-      format: LOG_FORMAT,
-      library,
-      environment,
-      started_at: this.startedAt,
-      duration_ms: this.now(),
-      dropped_input_events: this.dropped,
-      events,
-    };
+    return { events, i, j };
   }
 
   /** Logs how often each decode error repeated after its first time. */

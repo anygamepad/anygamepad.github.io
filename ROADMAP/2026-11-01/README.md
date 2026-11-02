@@ -28,6 +28,19 @@ Status: **active**. Supersedes [ROADMAP/2026-10-31/](../2026-10-31/README.md).
 - **Status update (2026-11-01, in place):** W9 is done (grey): the tester's
   `.wasm` is back within 160 KiB, and the test mode's module (160.7 KiB)
   loads once its tab opens (RECORD of W9). It had slack: no date moves.
+- **Status update (2026-11-02, in place):** owner requests on the web
+  app, no date moves: the test mode is its own page at `/test/`, linked
+  from the footer (W9's status); the theme switch is icons beside the
+  title; a settings dialog holds the switch that sends the activity log
+  and test reports to the database, ahead of P6 and inert until the
+  server (P2) runs (RECORD of 2026-11-02).
+- **Status update (2026-11-02, in place):** owner decision: the sync
+  server is a Cloudflare Worker in Rust with D1
+  ([ADR 0009](../../docs/adr/0009-sync-server-on-cloudflare-workers.md),
+  replacing ADR 0006's `axum` and PostgreSQL). P2's code is in
+  `apps/server` for the web app's test reports and activity logs; P5 is
+  the owner's deployment. The Gantt keeps P2's estimate until the next
+  version re-plans it.
 - **Done in the 2026-10-31 version** (grey): H1, H2, H3, H10 (the test
   report format, the catalog and inventory formats, the runner and plans,
   automatic detection), H4 and H5 (the test modes in the web and desktop

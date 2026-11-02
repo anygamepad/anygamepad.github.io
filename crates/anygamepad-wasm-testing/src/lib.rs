@@ -1,6 +1,6 @@
 //! WebAssembly bindings of the web app's test mode (roadmap tasks H4 and
-//! W9, ADR 0008), a module of its own that the page loads when the Test
-//! mode tab first opens: the controller catalog, the lab inventory and the
+//! W9, ADR 0008), a module of its own that only the test mode's page
+//! (`/test/`) loads: the controller catalog, the lab inventory and the
 //! test plans for the page's lists, automatic detection ([`identify`],
 //! [`check_choice`]), and [`TestSession`], the library's test runner
 //! (`anygamepad::testing`).

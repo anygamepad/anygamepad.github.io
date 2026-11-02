@@ -127,7 +127,9 @@ jobs:
       - run: cargo +1.85 check -p anygamepad-db --all-features --locked
       - run: cargo +1.85 check -p anygamepad-report --all-features --locked
       - run: cargo +1.85 check -p anygamepad --features testing --locked
-      - run: cargo +1.85 check --workspace --exclude anygamepad-virtual --exclude anygamepad-desktop --target wasm32-unknown-unknown --locked
+      # The sync server's Worker runtime (workers-rs) needs Rust 1.91; its
+      # request handling is checked natively above.
+      - run: cargo +1.85 check --workspace --exclude anygamepad-virtual --exclude anygamepad-desktop --exclude anygamepad-server --target wasm32-unknown-unknown --locked
 
   # The web app and its WebAssembly bindings: the build artifacts.
   web:
@@ -155,8 +157,12 @@ jobs:
       # Bindings of both modules (wasm-pack, then wasm-opt from the pinned
       # binaryen).
       - run: npm run wasm
-      # Type-check, then build into dist/.
+      # Type-check, then build into dist/. The repository variable
+      # ANYGAMEPAD_SYNC_URL names the sync server (apps/server, ADR 0009)
+      # once the owner deployed it; unset, sending cannot be turned on.
       - run: npm run build
+        env:
+          ANYGAMEPAD_SYNC_URL: ${{ vars.ANYGAMEPAD_SYNC_URL }}
       - run: npm run size
       - name: Smoke test in Chrome
         run: CHROME_PATH="$(command -v google-chrome)" npm run test:smoke
@@ -219,11 +225,55 @@ jobs:
       - run: npx playwright-core install --with-deps "$BROWSER"
       - run: npm run test:smoke
 
+  # The sync server (apps/server): its Worker on the Workers runtime with a
+  # local D1 (wrangler dev), and the web app sending to it in Chrome
+  # (tests/smoke-sync.mjs). Its request handling is tested natively with the
+  # workspace.
+  server:
+    needs: web
+    runs-on: ubuntu-latest
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+      - name: Apply the release version
+        if: inputs.version
+        run: node scripts/version.mjs set "$VERSION"
+        working-directory: .
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: worker-build@0.8.7
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            apps/server/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: apps/server
+      - uses: actions/download-artifact@v4
+        with:
+          name: wasm-bindings
+          path: apps/web/src/wasm
+      - uses: actions/download-artifact@v4
+        with:
+          name: wasm-testing-bindings
+          path: apps/web/src/wasm-testing
+      - name: Sending to the Worker, in Chrome
+        run: CHROME_PATH="$(command -v google-chrome)" npm run test:sync
+
   # Publishes only the built site, never the repository contents, once every
   # job passed. Needs the repository's Pages source set to "GitHub Actions".
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [fmt, native, wasm, msrv, web, web-smoke]
+    needs: [fmt, native, wasm, msrv, web, web-smoke, server]
     runs-on: ubuntu-latest
     permissions:
       pages: write

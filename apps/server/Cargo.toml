@@ -1,0 +1,37 @@
+[package]
+name = "anygamepad-server"
+description = "The anygamepad sync server: a Cloudflare Worker that stores the web app's activity logs and test reports in D1."
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[lib]
+# `cdylib` for the Worker (worker-build), `rlib` for the tests.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anygamepad-model = { workspace = true, features = ["serde"] }
+# Test reports are read and validated by the same code as in the apps.
+anygamepad-report = { workspace = true, features = ["json"] }
+# Rate limiting keys (an HMAC of the client's address, never stored).
+hmac = "0.12.1"
+serde.workspace = true
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+# Content hashes (deduplication) and deletion token hashes.
+sha2 = "0.10.9"
+
+# The Workers runtime: only the WebAssembly build talks to it, so native
+# builds and tests run the request handling without it (ADR 0009). It needs
+# Rust 1.91, above the workspace's 1.85: the Worker is built by the project
+# with stable Rust, and the MSRV job checks the rest of this crate natively.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+worker = { version = "0.8.7", features = ["d1"] }

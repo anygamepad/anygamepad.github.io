@@ -19,15 +19,15 @@
         <div class="title">
           <p class="home"><a class="brand" href="/"><img src="/favicon.svg" alt="" width="24" height="24" /><span>Any<span class="brand-gamepad">Gamepad</span></span></a></p>
           <h1>Privacy</h1>
-          <p class="tagline">Last changed on <time datetime="2026-10-14">14 October 2026</time>.</p>
+          <p class="tagline">Last changed on <time datetime="2026-11-02">2 November 2026</time>.</p>
         </div>
       </header>
 
       <main class="policy">
         <p class="summary">
-          The tester runs in your browser and sends nothing about you or your controllers anywhere. A device
-          report leaves your device only when you share it, and sharing means posting it yourself as a public
-          GitHub issue.
+          The tester runs in your browser and sends nothing about you or your controllers anywhere, unless you
+          turn sending on in its settings. A device report leaves your device only when you share it, and sharing
+          means posting it yourself as a public GitHub issue.
         </p>
 
         <h2 id="who">Who is responsible</h2>
@@ -56,13 +56,15 @@
             no analytics, no ads, no fonts or scripts from elsewhere, and no cookies.
           </li>
           <li>
-            <strong>Your theme.</strong> If you pick Light or Dark, this browser remembers it in its local storage
-            (<code>anygamepad.theme</code>); Auto removes it.
+            <strong>Your theme and settings.</strong> If you pick Light or Dark, this browser remembers it in its
+            local storage (<code>anygamepad.theme</code>); Auto removes it. While sending is on, it remembers that
+            too (<code>anygamepad.sync</code>), and the keys that delete what it sent
+            (<code>anygamepad.sync.sent</code>, see <a href="#sending">below</a>).
           </li>
           <li>
             <strong>Activity log and recordings.</strong> The activity log stays in the tab, and is gone when you
-            close it unless you download it. "Record 2 seconds" saves a file on your device. The project receives
-            neither unless you send it yourself.
+            close it unless you download it, or unless you turned sending on. "Record 2 seconds" saves a file on
+            your device. The project receives neither unless you send it yourself.
           </li>
           <li>
             <strong>Saved reports.</strong> When you save a report, this browser keeps it (in IndexedDB), with when
@@ -148,12 +150,47 @@
           logs; the project has no access to them.
         </p>
 
-        <h2 id="server">No server yet</h2>
+        <h2 id="sending">Sending to the anygamepad database</h2>
         <p>
-          There is no anygamepad server: nothing is uploaded anywhere. A server to synchronize reports may come
-          later. Before it does, this page will say what it stores, and the apps will ask you before uploading
-          any report. It will not store IP addresses.
+          Off unless you turn it on, in the settings (the sliders icon at the top of the tester or the test mode).
+          It stays on in that browser until you turn it off. While it is on:
         </p>
+        <ul>
+          <li>
+            <strong>What is sent.</strong> The activity log, in parts as the page runs (the pads it detects, their
+            inputs, reports and errors: what a downloaded log holds), and each test report when you save it. The
+            log also says which page sent it, your browser's engine and major version, your operating system, the
+            day (UTC), and a random number that joins the parts of one visit; the next visit gets another one.
+            Neither holds serial numbers, Bluetooth addresses, your name, your IP address or the time of day, and
+            the server replaces texts that look like identifiers with <code>[redacted]</code> before it stores
+            anything.
+          </li>
+          <li>
+            <strong>Where.</strong> The anygamepad server, which runs on Cloudflare Workers and stores in a
+            Cloudflare D1 database in the European Union. Cloudflare processes the requests for the project, and
+            sees your IP address while it does, under its
+            <a href="https://www.cloudflare.com/cloudflare-customer-dpa/">Data Processing Addendum</a>. The server
+            never stores or logs IP addresses: to limit how often one visitor can send, it gives Cloudflare's rate
+            limiter a key made from your address and the day with a secret, which cannot be turned back into the
+            address, and the limiter counts with it for a minute.
+          </li>
+          <li>
+            <strong>Why.</strong> To find out how controllers behave in each browser and system, and to improve
+            how they are detected. The legal basis is your consent, which you give by turning sending on and
+            withdraw by turning it off.
+          </li>
+          <li>
+            <strong>How long.</strong> Activity logs: 180 days, then they are deleted. Test reports: until you
+            withdraw them. Restore points of the database keep deleted data for up to 30 days more. Controller
+            profiles made from what was sent hold no personal data and stay in the repository.
+          </li>
+          <li>
+            <strong>Withdrawing.</strong> This browser keeps a random key for each thing it sent; "Delete what this
+            browser sent", in the settings, deletes all of it from the database. The server keeps only a hash of
+            each key, so without the keys nobody can tell which uploads were yours, the project included: clearing
+            the browser's storage leaves them anonymous until their time runs out.
+          </li>
+        </ul>
 
         <h2 id="rights">Your rights</h2>
         <p>
@@ -161,7 +198,8 @@
           deletion, or to restrict its use; you can object to that use, and take the data with you. The only
           personal data the project handles is the GitHub account on the issues you posted, so the usual request
           is to delete such an issue: ask on the issue itself, or in a new issue that links it, from the same
-          account. This also withdraws your consent, which does not affect what was done before. Requests are
+          account. What you sent to the database you delete yourself, from the settings. Withdrawing your
+          consent does not affect what was done before. Requests are
           answered within a month. You can also complain to the data protection authority of your country.
         </p>
 

@@ -1,50 +1,52 @@
 <header class="top">
   <div class="title">
     <h1 class="brand">
-      <img src="/favicon.svg" alt="" width="40" height="40" /><span>Any<span class="brand-gamepad">Gamepad</span></span>
+      <a href="/" title="The gamepad tester"><img src="/favicon.svg" alt="" width="40" height="40" /><span>Any<span class="brand-gamepad">Gamepad</span></span></a>
     </h1>
-    <p class="tagline">Gamepad tester, running the anygamepad library {{ version }} in WebAssembly</p>
   </div>
-  <div class="theme" role="group" aria-label="Theme">
+  <div class="tools">
+    <div class="theme" role="group" aria-label="Theme">
+      <button
+        type="button"
+        class="icon-btn"
+        :class.on="theme === 'auto'"
+        :aria-pressed="theme === 'auto' ? 'true' : 'false'"
+        aria-label="Auto"
+        title="Theme: follow the system"
+        @click="setTheme('auto')"
+      ><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path class="solid" d="M12 4a8 8 0 0 1 0 16z" /></svg></button>
+      <button
+        type="button"
+        class="icon-btn"
+        :class.on="theme === 'light'"
+        :aria-pressed="theme === 'light' ? 'true' : 'false'"
+        aria-label="Light"
+        title="Theme: light"
+        @click="setTheme('light')"
+      ><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></svg></button>
+      <button
+        type="button"
+        class="icon-btn"
+        :class.on="theme === 'dark'"
+        :aria-pressed="theme === 'dark' ? 'true' : 'false'"
+        aria-label="Dark"
+        title="Theme: dark"
+        @click="setTheme('dark')"
+      ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" /></svg></button>
+    </div>
     <button
       type="button"
-      :class.on="theme === 'auto'"
-      :aria-pressed="theme === 'auto' ? 'true' : 'false'"
-      title="Follow the system"
-      @click="setTheme('auto')"
-    >Auto</button>
-    <button
-      type="button"
-      :class.on="theme === 'light'"
-      :aria-pressed="theme === 'light' ? 'true' : 'false'"
-      @click="setTheme('light')"
-    >Light</button>
-    <button
-      type="button"
-      :class.on="theme === 'dark'"
-      :aria-pressed="theme === 'dark' ? 'true' : 'false'"
-      @click="setTheme('dark')"
-    >Dark</button>
+      class="icon-btn settings-btn"
+      :class.on="settings.sending"
+      aria-label="Settings"
+      title="Settings"
+      aria-haspopup="dialog"
+      @click="openSettings()"
+    ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" /></svg></button>
   </div>
+  <p :if="mode === 'test'" class="tagline">Test mode, running the anygamepad library {{ version }} in WebAssembly</p>
+  <p :else class="tagline">Gamepad tester, running the anygamepad library {{ version }} in WebAssembly</p>
 </header>
-
-<nav class="modes" aria-label="Mode">
-  <button
-    type="button"
-    class="mode-tab"
-    :class.on="mode === 'tester'"
-    :aria-pressed="mode === 'tester' ? 'true' : 'false'"
-    @click="setMode('tester')"
-  >Tester</button>
-  <button
-    type="button"
-    class="mode-tab"
-    :class.on="mode === 'test'"
-    :aria-pressed="mode === 'test' ? 'true' : 'false'"
-    title="Tests a controller step by step and writes an anonymous test report"
-    @click="setMode('test')"
-  >Test mode</button>
-</nav>
 
 <main :if="mode === 'tester'" class="tester">
   <aside class="side">
@@ -227,6 +229,15 @@
           </button>
         </li>
       </ul>
+    </section>
+    <section :if="webhid" class="webhid">
+      <h2>WebHID</h2>
+      <p>
+        Tests a pad on its raw reports. PlayStation pads are decoded, touchpad, motion and battery included; over
+        Bluetooth, switch one to its full report in the <a href="/">tester</a> first, or those steps do not apply.
+      </p>
+      <button type="button" class="action" @click="connectHid()">Connect a pad with WebHID</button>
+      <p :if="hidMessage" class="note">{{ hidMessage }}</p>
     </section>
   </aside>
 
@@ -412,7 +423,7 @@
         </li>
       </ul>
       <div class="test-actions">
-        <button type="button" class="action primary-btn" data-save @click="testSave()">Save in this browser</button>
+        <button type="button" class="action primary-btn" data-save @click="testSave()">{{ settings.sending ? 'Save and send' : 'Save in this browser' }}</button>
         <button type="button" class="action" data-download @click="testDownload()">Download {{ test.fileName }}</button>
         <button type="button" class="action" @click="testNext()">Test another way to connect it</button>
         <button type="button" class="action" @click="testBack()">Back to the list</button>
@@ -471,9 +482,62 @@
   </div>
 </div>
 
+<div :if="settings.open" class="modal-backdrop" @click="closeSettings()">
+  <div class="share-modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" @click="(event) => event.stopPropagation()">
+    <header class="share-modal-head">
+      <h2 id="settings-title">Settings</h2>
+      <button type="button" class="close-btn" aria-label="Close" @click="closeSettings()">✕</button>
+    </header>
+    <div class="share-modal-body">
+      <section class="setting">
+        <label class="switch">
+          <input
+            type="checkbox"
+            role="switch"
+            data-sending
+            :checked="settings.sending"
+            :disabled="!settings.available"
+            @change="(event) => setSending(event.target.checked)"
+          />
+          <span class="switch-label">Send the activity and the test reports to the anygamepad database</span>
+        </label>
+        <p class="note">
+          While this is on, the page sends its activity log as it goes (the pads it detects, their inputs, reports
+          and errors: what the downloaded log holds) and each test report when you save it, to improve how
+          controllers are detected. Neither holds serial numbers, Bluetooth addresses or anything about you. It
+          stays on in this browser until you turn it off.
+        </p>
+        <p :if="!settings.available" class="message hint" data-sending-unavailable>
+          Not available yet: the database is not running. Until it is, nothing leaves this browser.
+        </p>
+        <p :if="settings.available && settings.sending" class="note" data-sent>
+          Sent since this page loaded: {{ settings.sent.logs }} {{ settings.sent.logs === 1 ? 'part' : 'parts' }} of the activity
+          log, {{ settings.sent.tests }} {{ settings.sent.tests === 1 ? 'test report' : 'test reports' }}.
+        </p>
+        <p :if="settings.error" class="message error">{{ settings.error }}</p>
+      </section>
+      <section :if="settings.available && (settings.kept > 0 || settings.withdrawn)" class="setting">
+        <p class="note">
+          This browser keeps a key for each of the {{ settings.kept }} uploads it sent, to delete them from the database
+          whenever you want. Sending stays as set above.
+        </p>
+        <button type="button" class="action" data-withdraw :disabled="settings.kept === 0" @click="withdrawSent()">Delete what this browser sent</button>
+        <p :if="settings.withdrawn" class="note" data-withdrawn>{{ settings.withdrawn }}</p>
+      </section>
+      <p class="privacy-link-p">
+        <a href="/privacy/" target="_blank" rel="noopener">Privacy policy</a>
+      </p>
+    </div>
+  </div>
+</div>
+
 <footer class="site">
   <span :if="environment" class="environment">
     {{ environment.browser.engine }} {{ environment.browser.major_version }} on {{ environment.os }}
   </span>
-  <a href="/privacy/">Privacy</a>
+  <nav class="site-links" aria-label="Pages">
+    <a :if="mode === 'test'" href="/">Tester</a>
+    <a :else href="/test/">Test mode</a>
+    <a href="/privacy/">Privacy</a>
+  </nav>
 </footer>
