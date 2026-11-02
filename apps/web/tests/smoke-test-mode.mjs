@@ -307,15 +307,24 @@ try {
   await setPad(null);
 
   // The choice stays for the next visit: a new page load sends its own log
-  // (another ID), and the parts of this one joined each other.
-  const before = uploaded("activity-logs");
-  assert.ok(before.every((upload, n) => upload.body.session === firstPart.body.session && upload.body.part === n));
+  // (another ID). Going away, the page sends what is left of its log as
+  // the next part (Firefox and WebKit send it on reload, Chromium not
+  // always, so the test leaves the page itself first).
+  const before = uploaded("activity-logs").length;
+  await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+  await until("the last part", () => uploaded("activity-logs").length, (n) => n > before);
   await page.reload({ waitUntil: "networkidle" });
   await until("the list", stage, (s) => s === "list");
   const next = await until(
     "a part of the new page's log",
-    () => uploaded("activity-logs").slice(before.length),
+    () => uploaded("activity-logs").filter((upload) => upload.body.session !== firstPart.body.session),
     (u) => u.length > 0,
+  );
+  const old = uploaded("activity-logs").filter((upload) => upload.body.session === firstPart.body.session);
+  assert.ok(old.length > before, "the last part of the old log");
+  assert.ok(
+    old.every((upload, n) => upload.body.part === n && bearer(upload) === bearer(firstPart)),
+    JSON.stringify(old.map((upload) => upload.body.part)),
   );
   assert.equal(next[0].body.part, 0);
   assert.notEqual(next[0].body.session, firstPart.body.session);
