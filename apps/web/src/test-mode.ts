@@ -67,6 +67,9 @@ export interface TestHost {
   environment(): Environment | null;
   /** The pads the page lists (a decoded WebHID pad hides its Gamepad API twin). */
   pads(): TestPad[];
+  /** Sends a saved test report to the database, when the person turned
+   * sending on: whether it was sent; rejects when sending failed. */
+  sendTestReport(report: unknown): Promise<boolean>;
 }
 
 type Stage = "loading" | "list" | "connect" | "waiting" | "check" | "detected" | "plan" | "running" | "summary";
@@ -463,6 +466,7 @@ export class TestMode {
     const report = outcome.report as {
       device?: { host?: { os?: string; browser?: { engine?: string } }; views?: { identity?: { backend?: string } }[] };
     };
+    let note: string;
     try {
       const saved = await saveTestReport({
         report: JSON.stringify(outcome.report),
@@ -481,10 +485,18 @@ export class TestMode {
       });
       this.reports.unshift(saved);
       this.savedName = saved.fileName;
-      this.view.saved = `Saved in this browser as ${saved.fileName}.`;
+      note = `Saved in this browser as ${saved.fileName}.`;
     } catch (error) {
-      this.view.saved = `This browser did not save the report (${String(error)}): download it instead.`;
+      note = `This browser did not save the report (${String(error)}): download it instead.`;
     }
+    this.view.saved = note;
+    // With the person's consent (the settings): the same report, sent.
+    try {
+      if (await this.host.sendTestReport(outcome.report)) note += " Sent to the anygamepad database.";
+    } catch (error) {
+      note += ` Not sent to the anygamepad database (${String(error)}): save it again to try again.`;
+    }
+    this.view.saved = note;
   };
 
   readonly download = (): void => {

@@ -42,6 +42,7 @@ data.
 |------|-------|------|-------------|
 | Controller input (Gamepad API, WebHID) | The page's memory | Until the page closes | The person; never sent |
 | Theme choice | `localStorage`, key `anygamepad.theme`, only for Light or Dark | Until Auto is picked or storage is cleared | The person |
+| Sending choice (settings) | `localStorage`, key `anygamepad.sync`, only while sending is on | Until the person turns it off or storage is cleared | The person |
 | WebHID permissions | The browser | Until revoked in the site's settings | The person and the browser |
 | Activity log, "Record 2 seconds" | The tab's memory; files when downloaded | Until the tab closes; files until deleted | The person |
 | Saved reports (W6) | IndexedDB `anygamepad`, store `reports`, with local metadata (when saved, whether copied to share) | Until the person deletes them or the browser drops the storage | The person |
@@ -50,6 +51,7 @@ data.
 | Visitor IP addresses | GitHub Pages logs, for security | GitHub's retention | GitHub, under its Privacy Statement; the project has no access |
 | Curated data (profiles, test fixtures) | This repository | Indefinitely | The maintainers; no personal data |
 | Uploaded reports (P6, later) | The sync server (P2, P5) | See [Server rules](#server-rules) | The maintainers |
+| Sent activity logs and test reports (later) | The sync server (P2, P5), once the person turns sending on | See [Server rules](#server-rules) | The maintainers |
 
 Legal bases (GDPR Art. 6): consent (6(1)(a)) for shared reports, given by
 the issue form's required checkbox and withdrawn by asking for the issue's
@@ -140,9 +142,44 @@ when you want to." Buttons: **Start collecting**, **Open the folder**.
 
 ### Sync (P6)
 
-Not written yet. P6 writes them under the [server rules](#server-rules), and
-the policy page says what the server stores before it accepts its first
-report.
+Device reports: not written yet. P6 writes them under the
+[server rules](#server-rules), and the policy page says what the server
+stores before it accepts its first report.
+
+Activity log and test reports (web, owner request of 2026-11-02; draft
+until the server runs). The settings dialog, opened from the sliders icon
+in the header, titled **Settings**:
+
+- Switch, off by default: **Send the activity and the test reports to the
+  anygamepad database**
+- Under it: "While this is on, the page sends its activity log as it goes
+  (the pads it detects, their inputs, reports and errors: what the
+  downloaded log holds) and each test report when you save it, to improve
+  how controllers are detected. Neither holds serial numbers, Bluetooth
+  addresses or anything about you. It stays on in this browser until you
+  turn it off."
+- While the build names no database: "Not available yet: the database is
+  not running. Until it is, nothing leaves this browser." (the switch
+  cannot be turned on).
+- While it is on: "Sent since this page loaded: {n} parts of the activity
+  log, {m} test reports."
+- A link to the privacy policy.
+- In the test mode, the save button reads **Save and send** while sending
+  is on, and the note after saving adds "Sent to the anygamepad database."
+  or "Not sent to the anygamepad database ({error}): save it again to try
+  again."
+
+What is sent (`apps/web/src/sync.ts`): the activity log's events in parts,
+each with the page, the environment (browser engine and version, OS), a
+random ID of the page load that joins its parts (never stored by the
+page), the part's number and the day (UTC), never the start time; and
+the test report exactly as the test mode downloads it. No cookies, no
+referrer.
+
+Before a production build names a database (`ANYGAMEPAD_SYNC_URL`): the
+server rules below cover activity logs and test reports (retention,
+withdrawal), and the policy page says what the server stores; changing
+the policy announces it in the tester, as [below](#changing-the-policy).
 
 ## Retention
 

@@ -11,6 +11,9 @@
 //   twin, is decoded (reduced report, then the full one after the switch),
 //   shows its touchpad, motion and battery, records its reports to a file,
 //   and goes away on disconnection.
+// - The header: the theme switch (icons) and the settings stay on the
+//   title's right, also on a phone; the settings cannot send (this build
+//   names no database).
 // - The privacy page: linked under the tester, under the same policy, in the
 //   theme the viewer picked.
 //
@@ -780,13 +783,32 @@ try {
       background: getComputedStyle(document.body).backgroundColor,
       pressed: [...document.querySelectorAll(".theme button")]
         .filter((button) => button.getAttribute("aria-pressed") === "true")
-        .map((button) => button.textContent.trim()),
+        .map((button) => button.getAttribute("aria-label")),
     }));
   const LIGHT = "rgb(247, 247, 251)";
   const DARK = "rgb(20, 20, 28)";
   const expect = (want) => until(JSON.stringify(want), theme, (have) => JSON.stringify(have) === JSON.stringify(want));
   const pick = (name) => themePage.getByRole("button", { name, exact: true }).click();
   await expect({ attribute: null, background: LIGHT, pressed: ["Auto"] });
+  // Icons only, on the title's right at every width.
+  assert.deepEqual(await themePage.locator(".theme button").allTextContents(), ["", "", ""]);
+  for (const width of [1280, 360, 320]) {
+    await themePage.setViewportSize({ width, height: 800 });
+    const [title, brand, tools] = await Promise.all(
+      [".title", ".brand a > span", ".tools"].map((s) => themePage.locator(s).boundingBox()),
+    );
+    assert.ok(tools.x >= title.x + title.width && tools.y < title.y + title.height, `${width}px: ${JSON.stringify({ title, tools })}`);
+    assert.ok(brand.x + brand.width <= tools.x, `${width}px: the title fits (${JSON.stringify({ brand, tools })})`);
+    const overflow = await themePage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    assert.equal(overflow, 0, `${width}px: no horizontal scroll`);
+  }
+  // The settings: sending cannot be turned on without a database.
+  await themePage.getByRole("button", { name: "Settings", exact: true }).click();
+  assert.equal(await themePage.isDisabled("[data-sending]"), true);
+  assert.equal(await themePage.isChecked("[data-sending]"), false);
+  await themePage.waitForSelector("[data-sending-unavailable]");
+  await themePage.click(".settings-modal .close-btn");
+  await themePage.waitForSelector(".settings-modal", { state: "detached" });
   await pick("Dark");
   await expect({ attribute: "dark", background: DARK, pressed: ["Dark"] });
   await themePage.reload({ waitUntil: "networkidle" });

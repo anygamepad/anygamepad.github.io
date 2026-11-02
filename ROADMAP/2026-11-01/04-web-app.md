@@ -280,3 +280,8 @@ Status (2026-11-01): done
 `anygamepad-wasm-testing`, `testDevice()` and `testInput()` in the
 tester's module. The tester's `.wasm` is 155.5 KiB (160 budget), the test
 mode's 160.7 KiB (176 budget), loaded once the tab opens.
+
+Status (2026-11-02, owner request): the test mode is no longer a tab but
+its own page, <https://anygamepad.github.io/test/>, linked from the
+tester's footer; its module loads with that page only
+([`RECORD/2026-11-02.web-test-page-theme-icons-and-sending.completed.md`](../../RECORD/2026-11-02.web-test-page-theme-icons-and-sending.completed.md)).

@@ -12,6 +12,9 @@ applyTheme(theme, false);
 
 await init();
 
+// The tester at `/`, the test mode at `/test/` (test/index.html).
+const mode = document.body.dataset.page === "test" ? "test" : "tester";
+
 const tester = new Tester();
 App.mount("#app", {
   version: version(),
@@ -21,6 +24,7 @@ App.mount("#app", {
     (App.data as unknown as { theme: Theme }).theme = next;
   },
   ...emptyView(),
+  mode,
   select: tester.select,
   toggleValues: tester.toggleValues,
   startWizard: tester.startWizard,
@@ -35,6 +39,7 @@ App.mount("#app", {
   openShare: tester.openShare,
   closeShare: tester.closeShare,
   copyAndOpenIssue: tester.copyAndOpenIssue,
+  ...tester.settingsActions,
   ...tester.testActions,
 });
 tester.start(App.data as unknown as TesterView);

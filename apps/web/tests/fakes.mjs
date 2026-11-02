@@ -105,7 +105,9 @@ export const fakeHid = () => {
     productName = "DualSense Wireless Controller";
     collections = collections;
     opened = false;
-    full = false;
+    // Already in its full report (as macOS, or an earlier page, left it)
+    // when the page sets `__hid.fullReport` before picking it.
+    full = window.__hid.fullReport;
     timer = undefined;
     open() {
       this.opened = true;
@@ -155,6 +157,7 @@ export const fakeHid = () => {
   const hid = new FakeHid();
   window.__hid = {
     state,
+    fullReport: false,
     features: [],
     outputs: [],
     requests: [],

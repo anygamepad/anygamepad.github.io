@@ -117,3 +117,12 @@ app (report files, A3) upload the reports the person chooses to the sync API,
 remember which ones were uploaded, and keep working offline. Consent and
 texts follow P3. Reaching milestone M5 (reports synchronized) closes the loop
 that issues bridge until then.
+
+Status (2026-11-02, owner request): the web app's settings have a switch
+that sends the activity log (in parts) and the saved test reports to the
+database, off by default and inert until a build names the server
+(`ANYGAMEPAD_SYNC_URL`); `apps/web/src/sync.ts` defines the two endpoints
+P2 implements. Device reports, deletion tokens and the desktop app are
+still to do. Where the server runs (this file's P2 and P5, ADR 0006) waits
+on an owner decision
+([`RECORD/2026-11-02.web-test-page-theme-icons-and-sending.completed.md`](../../RECORD/2026-11-02.web-test-page-theme-icons-and-sending.completed.md)).
