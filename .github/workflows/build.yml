@@ -200,6 +200,12 @@ jobs:
         working-directory: apps/web
     steps:
       - uses: actions/checkout@v5
+      # The smoke test compares the built site's version with package.json,
+      # so the tree must hold the version the `web` job built.
+      - name: Apply the release version
+        if: inputs.version
+        run: node scripts/version.mjs set "$VERSION"
+        working-directory: .
       - uses: actions/setup-node@v5
         with:
           node-version: 22
