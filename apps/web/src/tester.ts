@@ -306,6 +306,7 @@ export class Tester {
       this.view.settings.open = false;
     },
     setSending: (on: boolean): void => this.sync?.setSending(on),
+    withdrawSent: (): void => void this.sync?.withdrawAll(),
   };
 
   /** The test mode's actions, for App.html; they wait for `start()`. */

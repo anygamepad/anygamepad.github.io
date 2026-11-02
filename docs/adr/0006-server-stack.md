@@ -6,6 +6,9 @@
 - Timing changed by [ADR 0007](0007-local-first-device-reports.md)
   (2026-10-14): reports are stored locally first, and this server becomes
   a sync target after the web launch (M2). The stack below is unchanged.
+- Framework, storage and hosting superseded by
+  [ADR 0009](0009-sync-server-on-cloudflare-workers.md) (2026-11-02): a
+  Cloudflare Worker in Rust with D1, instead of `axum` and PostgreSQL.
 
 ## Context
 

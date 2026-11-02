@@ -12,8 +12,8 @@
 //   shows its touchpad, motion and battery, records its reports to a file,
 //   and goes away on disconnection.
 // - The header: the theme switch (icons) and the settings stay on the
-//   title's right, also on a phone; the settings cannot send (this build
-//   names no database).
+//   title's right, also on a phone; sending is off, and cannot be turned on
+//   unless the build names a database.
 // - The privacy page: linked under the tester, under the same policy, in the
 //   theme the viewer picked.
 //
@@ -802,11 +802,13 @@ try {
     const overflow = await themePage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     assert.equal(overflow, 0, `${width}px: no horizontal scroll`);
   }
-  // The settings: sending cannot be turned on without a database.
+  // The settings: sending is off, and cannot be turned on unless the build
+  // names a database (ANYGAMEPAD_SYNC_URL).
+  const database = await themePage.locator('meta[name="anygamepad-sync"]').count();
   await themePage.getByRole("button", { name: "Settings", exact: true }).click();
-  assert.equal(await themePage.isDisabled("[data-sending]"), true);
+  assert.equal(await themePage.isDisabled("[data-sending]"), database === 0);
   assert.equal(await themePage.isChecked("[data-sending]"), false);
-  await themePage.waitForSelector("[data-sending-unavailable]");
+  if (database === 0) await themePage.waitForSelector("[data-sending-unavailable]");
   await themePage.click(".settings-modal .close-btn");
   await themePage.waitForSelector(".settings-modal", { state: "detached" });
   await pick("Dark");

@@ -93,14 +93,23 @@ try {
   });
   await page.route(`${url}__sync/**`, async (route) => {
     const request = route.request();
-    uploads.push({
+    const upload = {
+      method: request.method(),
       path: new URL(request.url()).pathname,
-      body: request.postDataJSON(),
+      body: request.method() === "POST" ? request.postDataJSON() : null,
       headers: await request.allHeaders(),
-    });
-    await route.fulfill({ status: 201, body: "" });
+    };
+    uploads.push(upload);
+    const tests = upload.path === "/__sync/v1/test-reports" && upload.method === "POST";
+    await route.fulfill(
+      upload.method === "DELETE"
+        ? { status: 204 }
+        : { status: 201, contentType: "application/json", body: JSON.stringify(tests ? { id: 7 } : {}) },
+    );
   });
-  const uploaded = (path) => uploads.filter((upload) => upload.path === `/__sync/v1/${path}`);
+  const uploaded = (path) =>
+    uploads.filter((upload) => upload.method === "POST" && upload.path === `/__sync/v1/${path}`);
+  const bearer = (upload) => upload.headers.authorization?.match(/^Bearer ([0-9a-f]{32})$/)?.[1];
   await page.goto(url, { waitUntil: "networkidle" });
 
   const setPad = (pad) => page.evaluate((p) => window.__setGamepads(p ? [p] : []), pad);
@@ -144,8 +153,13 @@ try {
     ["session", "page_visible", "sending"],
   );
   assert.equal(firstPart.headers.cookie, undefined);
+  assert.ok(bearer(firstPart), "a deletion token");
   assert.equal(firstPart.headers.referer, undefined);
-  assert.match((await page.textContent("[data-sent]")).replace(/\s+/g, " ").trim(), /^Sent since this page loaded: 1 part of the activity log, 0 test reports\.$/);
+  await until(
+    "the count of parts sent",
+    async () => (await page.textContent("[data-sent]")).replace(/\s+/g, " ").trim(),
+    (text) => text === "Sent since this page loaded: 1 part of the activity log, 0 test reports.",
+  );
   await page.keyboard.press("Escape");
   await page.waitForSelector(".settings-modal", { state: "detached" });
   assert.equal(await page.getAttribute(".settings-btn", "class"), "icon-btn settings-btn on");
@@ -277,6 +291,10 @@ try {
   // What was sent is what was downloaded.
   assert.equal(uploaded("test-reports").length, 1);
   assert.deepEqual(uploaded("test-reports")[0].body, report);
+  // Its own token; every part of the log shares the log's.
+  const reportToken = bearer(uploaded("test-reports")[0]);
+  assert.ok(reportToken && reportToken !== bearer(firstPart));
+  assert.ok(uploaded("activity-logs").every((upload) => bearer(upload) === bearer(firstPart)));
 
   // The same model's ways to connect: this one is now tested here.
   await page.click("text=Test another way to connect it");
@@ -301,7 +319,24 @@ try {
   );
   assert.equal(next[0].body.part, 0);
   assert.notEqual(next[0].body.session, firstPart.body.session);
+  assert.notEqual(bearer(next[0]), bearer(firstPart));
   assert.equal(next[0].body.events[0].type, "session");
+
+  // Withdrawing: this browser kept a token for each log and the report.
+  await page.click(".settings-btn");
+  await page.click("[data-withdraw]");
+  await until("the withdrawal", () => page.textContent("[data-withdrawn]").catch(() => ""), (t) => /3 of 3/.test(t));
+  const deletes = uploads.filter((upload) => upload.method === "DELETE");
+  assert.deepEqual(
+    deletes.map((upload) => [upload.path, bearer(upload)]).sort(),
+    [
+      [`/__sync/v1/activity-logs/${firstPart.body.session}`, bearer(firstPart)],
+      [`/__sync/v1/activity-logs/${next[0].body.session}`, bearer(next[0])],
+      ["/__sync/v1/test-reports/7", reportToken],
+    ].sort(),
+  );
+  assert.equal(await page.isDisabled("[data-withdraw]"), true);
+  await page.keyboard.press("Escape");
 
   // WebHID (Chromium): a DualSense picked in the chooser runs the Quick plan
   // on its decoded reports.

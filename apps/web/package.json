@@ -18,7 +18,8 @@
     "build": "npm run check && vite build",
     "size": "node scripts/check-size.mjs",
     "preview": "vite preview",
-    "test:smoke": "node tests/smoke.mjs && node tests/smoke-test-mode.mjs"
+    "test:smoke": "node tests/smoke.mjs && node tests/smoke-test-mode.mjs",
+    "test:sync": "node tests/smoke-sync.mjs"
   },
   "dependencies": {
     "jq79": "0.7.4"

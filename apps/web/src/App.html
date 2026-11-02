@@ -516,6 +516,14 @@
         </p>
         <p :if="settings.error" class="message error">{{ settings.error }}</p>
       </section>
+      <section :if="settings.available && (settings.kept > 0 || settings.withdrawn)" class="setting">
+        <p class="note">
+          This browser keeps a key for each of the {{ settings.kept }} uploads it sent, to delete them from the database
+          whenever you want. Sending stays as set above.
+        </p>
+        <button type="button" class="action" data-withdraw :disabled="settings.kept === 0" @click="withdrawSent()">Delete what this browser sent</button>
+        <p :if="settings.withdrawn" class="note" data-withdrawn>{{ settings.withdrawn }}</p>
+      </section>
       <p class="privacy-link-p">
         <a href="/privacy/" target="_blank" rel="noopener">Privacy policy</a>
       </p>

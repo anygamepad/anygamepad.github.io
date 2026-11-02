@@ -201,7 +201,10 @@ pub(crate) fn text_findings(text: &str, max_chars: usize) -> Vec<Finding> {
 /// Cleans a text field in place: control characters become spaces,
 /// identifiers become [`REDACTED`], surrounding spaces go, and the text is
 /// cut at `max_chars` characters. Returns what was found.
-pub(crate) fn scrub_text(text: &mut String, max_chars: usize) -> Vec<Finding> {
+///
+/// [`Report::scrub`] runs it on every text of a report; readers of other
+/// documents (the sync server's activity logs) run it on theirs.
+pub fn scrub_text(text: &mut String, max_chars: usize) -> Vec<Finding> {
     let mut findings = Vec::new();
     if has_control(text) {
         *text = text

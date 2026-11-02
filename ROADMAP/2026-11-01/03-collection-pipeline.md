@@ -74,6 +74,17 @@ web launch, not a blocker of it. Rust `axum` service, PostgreSQL storage
 crate as the clients, storage of the re-serialized report, deduplication by a
 hash of its compact JSON, rate limiting, and an anonymous submission token.
 
+Status (2026-11-02, owner decision): built as a Cloudflare Worker in Rust
+with D1 instead of `axum` and PostgreSQL
+([ADR 0009](../../docs/adr/0009-sync-server-on-cloudflare-workers.md)), in
+`apps/server`: test reports and activity logs from the web app, validated
+and stored re-serialized, deduplicated by SHA-256, withdrawn with the
+deletion token the app makes, rate limited by an HMAC of the address,
+activity logs deleted after 180 days. Tested natively and end-to-end
+against a local D1 (`apps/web/tests/smoke-sync.mjs`, CI job `server`).
+Left: device reports (with P6), and the deployment (P5)
+([`RECORD/2026-11-02.sync-server-on-cloudflare-workers.completed.md`](../../RECORD/2026-11-02.sync-server-on-cloudflare-workers.completed.md)).
+
 ### P3 — Privacy, consent, data retention
 
 Privacy policy, explicit consent screen text, retention periods, GDPR data
@@ -110,6 +121,13 @@ Deployment target for the sync API and PostgreSQL (the web frontend is
 static and lives on GitHub Pages, see W7), automated backups, uptime and error
 monitoring. CORS allows the `https://anygamepad.github.io` origin.
 
+Status (2026-11-02): ADR 0009 shrinks it to the owner's account setup and
+deployment, written down in
+[`apps/server/README.md`](../../apps/server/README.md#deployment-p5): D1 in
+the EU, the rate limiter's secret, the migrations, `wrangler deploy`, the
+data processing addendum, and the repository variable
+`ANYGAMEPAD_SYNC_URL` that turns sending on in the published site.
+
 ### P6 — Report sync in the web and desktop apps
 
 Added on 2026-10-14 (ADR 0007). The web app (IndexedDB, W6) and the desktop
@@ -122,7 +140,9 @@ Status (2026-11-02, owner request): the web app's settings have a switch
 that sends the activity log (in parts) and the saved test reports to the
 database, off by default and inert until a build names the server
 (`ANYGAMEPAD_SYNC_URL`); `apps/web/src/sync.ts` defines the two endpoints
-P2 implements. Device reports, deletion tokens and the desktop app are
-still to do. Where the server runs (this file's P2 and P5, ADR 0006) waits
-on an owner decision
+P2 implements
 ([`RECORD/2026-11-02.web-test-page-theme-icons-and-sending.completed.md`](../../RECORD/2026-11-02.web-test-page-theme-icons-and-sending.completed.md)).
+Later the same day, with the server (ADR 0009, P2 above), each upload
+carries a deletion token the page makes, and the settings withdraw
+everything the browser sent. Device reports and the desktop app are still
+to do.

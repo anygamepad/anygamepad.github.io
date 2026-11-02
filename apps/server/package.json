@@ -1,0 +1,20 @@
+{
+  "name": "anygamepad-server",
+  "private": true,
+  "description": "Wrangler, to build, run and deploy the anygamepad sync server (a Cloudflare Worker in Rust, ADR 0009).",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "migrate:local": "wrangler d1 migrations apply anygamepad-sync --local",
+    "migrate": "wrangler d1 migrations apply anygamepad-sync --remote",
+    "deploy": "wrangler deploy",
+    "test:smoke": "node tests/smoke.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "4.153.0"
+  }
+}

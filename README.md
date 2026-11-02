@@ -22,7 +22,7 @@ mode, transport and operating system.
 | `crates/anygamepad-report` | Device report schema shared by apps and server |
 | `crates/anygamepad-virtual` | Virtual controller outputs (desktop app only) |
 | `crates/anygamepad-wasm` | `wasm-bindgen` bindings used by the web app |
-| `apps/` | Web app, desktop app and ingestion server |
+| `apps/` | Web app, desktop app and the sync server (a Cloudflare Worker, `apps/server`) |
 | `data/profiles/` | Curated device profiles |
 | `data/controllers/` | Controller catalog: models, modes and how to connect them |
 | `data/lab/` | Lab inventory format (units and machines of the test lab) |

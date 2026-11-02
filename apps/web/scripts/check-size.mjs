@@ -18,7 +18,9 @@ const BUDGETS = {
   // runner, catalog, plans and report format, and its own copy of the
   // standard library, serde and the model (about 160 KiB, measured).
   "testing.wasm": 176 * KIB,
-  ".js": 80 * KIB,
+  // 80 KiB until sending to the database (settings, src/sync.ts) took it to
+  // 80.8 (RECORD/2026-11-02.sync-server-on-cloudflare-workers).
+  ".js": 88 * KIB,
   ".css": 16 * KIB,
 };
 

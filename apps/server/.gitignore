@@ -1,0 +1,5 @@
+# worker-build output, wrangler's local state and secrets for `wrangler dev`.
+build/
+node_modules/
+.wrangler/
+.dev.vars

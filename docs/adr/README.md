@@ -25,6 +25,7 @@ One file per decision: `NNNN-title.md` (four-digit number, kebab-case title).
 | [0003](0003-device-profile-format.md) | Device profile file format and schema tooling | accepted |
 | [0004](0004-desktop-ui-toolkit.md) | Desktop UI toolkit | proposed (accepted after its prototype, before A1) |
 | [0005](0005-web-stack.md) | Web stack | accepted |
-| [0006](0006-server-stack.md) | Server stack | accepted; timing changed by 0007 |
+| [0006](0006-server-stack.md) | Server stack | accepted; timing changed by 0007; framework, storage and hosting superseded by 0009 |
 | [0007](0007-local-first-device-reports.md) | Local-first device reports | proposed |
 | [0008](0008-test-mode-and-test-reports.md) | Test mode and test reports | proposed |
+| [0009](0009-sync-server-on-cloudflare-workers.md) | Sync server on Cloudflare Workers and D1 | accepted |

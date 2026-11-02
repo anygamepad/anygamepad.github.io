@@ -47,17 +47,22 @@ WebAssembly module only that page loads (W9).
 
 The settings (the sliders icon in the header) hold a switch that sends the
 activity log, in parts as it grows, and each saved test report to the
-anygamepad database (`src/sync.ts`, which documents the API). It is off by
-default, and it cannot be turned on while the build names no database:
+anygamepad sync server ([`apps/server`](../server/README.md), a Cloudflare
+Worker; `src/sync.ts` is the client). Each upload carries a deletion token
+the page makes and keeps in `localStorage`, and "Delete what this browser
+sent" withdraws them all. Sending is off by default, and it cannot be
+turned on while the build names no server:
 
 ```sh
-ANYGAMEPAD_SYNC_URL=https://sync.example.org/ npm run build
+ANYGAMEPAD_SYNC_URL=https://anygamepad-sync.example.workers.dev/ npm run build
 ```
 
 names one in a `<meta name="anygamepad-sync">` tag and adds its origin to
-the policy's `connect-src`. The production build names none until the
-server runs (roadmap P2) and the privacy policy says what it stores
-([`docs/privacy/`](../../docs/privacy/README.md#sync-p6)).
+the policy's `connect-src`. CI builds with the repository variable of the
+same name, set once the server is deployed.
+
+`npm run test:sync` runs the web app against the real Worker on a local D1
+(see [`apps/server`](../server/README.md#development)).
 
 ## Layout
 
@@ -67,7 +72,7 @@ server runs (roadmap P2) and the privacy policy says what it stores
 | `privacy/index.html`, `src/privacy.ts` | The privacy policy at `/privacy/` (roadmap P3; its maintainer side is [`docs/privacy/`](../../docs/privacy/README.md)) |
 | `src/tester.ts` | Sampler and frame loops, device list, vibration test, WebHID actions (logic stays in TypeScript) |
 | `src/activity.ts` | Activity log: what the tester detects, downloaded as JSON to share for analysis, or sent in parts |
-| `src/sync.ts` | Sending the activity log and test reports to the database, once the person turns it on in the settings |
+| `src/sync.ts` | Sending the activity log and test reports to the sync server, once the person turns it on in the settings, and withdrawing them |
 | `src/live.ts` | Live view of a Gamepad API pad: update rate, drawing, raw buttons and axes |
 | `src/hid-live.ts` | Live view of a WebHID pad: report form, drawing, touchpad, motion, battery, raw reports |
 | `src/wizard.ts` | The guided wizard's view: asks for each control in turn (the library's `MappingWizard` decides) |
@@ -83,4 +88,5 @@ server runs (roadmap P2) and the privacy policy says what it stores
 | `scripts/check-size.mjs` | Bundle size budget |
 | `tests/smoke.mjs` | Smoke test of the built site (Chromium, Firefox, WebKit) |
 | `tests/smoke-test-mode.mjs` | Smoke test of the test mode at `/test/`: a Full session on a Gamepad API pad, a Quick one on a WebHID DualSense (Chromium), and sending to a fake database |
+| `tests/smoke-sync.mjs` | End-to-end test of sending, against the sync server's Worker on a local D1 |
 | `tests/fakes.mjs` | The fake gamepads and WebHID device both smoke tests use |
