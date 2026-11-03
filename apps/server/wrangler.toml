@@ -19,8 +19,10 @@ ALLOWED_ORIGINS = "https://anygamepad.github.io"
 # Activity logs older than this are deleted every day (the cron below).
 ACTIVITY_LOG_RETENTION_DAYS = "180"
 
-# Created with `npx wrangler d1 create anygamepad-sync --jurisdiction eu`;
-# the id below is the one it prints. Tables: migrations/.
+# In the EU jurisdiction. The deployment workflow (deploy-server.yml) finds
+# it by name and fills in its id for each run; deploying from a computer,
+# put here the id `npx wrangler d1 create anygamepad-sync --jurisdiction eu`
+# printed. Tables: migrations/.
 [[d1_databases]]
 binding = "DB"
 database_name = "anygamepad-sync"

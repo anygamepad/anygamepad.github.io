@@ -127,6 +127,9 @@ deployment, written down in
 the EU, the rate limiter's secret, the migrations, `wrangler deploy`, the
 data processing addendum, and the repository variable
 `ANYGAMEPAD_SYNC_URL` that turns sending on in the published site.
+Since 2026-11-03 the workflow "Deploy server" does the Cloudflare part
+from GitHub Actions with the owner's API token
+([`RECORD/2026-11-03.server-deploy-workflow.completed.md`](../../RECORD/2026-11-03.server-deploy-workflow.completed.md)).
 
 ### P6 — Report sync in the web and desktop apps
 
