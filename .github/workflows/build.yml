@@ -2,8 +2,8 @@ name: Build
 
 # Tests and builds, on every push and pull request. The release workflow calls
 # it with the version being released, applied to the tree before anything is
-# built; the builds of that run are the release's assets. Pushes to main also
-# deploy the web app to GitHub Pages.
+# built; the builds of that run are the release's assets. Pushes to main, and
+# runs by hand on main, also deploy the web app to GitHub Pages.
 
 on:
   push:
@@ -184,7 +184,10 @@ jobs:
           name: wasm-testing-bindings
           path: apps/web/src/wasm-testing
           retention-days: 14
-      - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      # On main: pushes, and runs by hand of this workflow (to publish the
+      # site again, after ANYGAMEPAD_SYNC_URL changes); not releases, which
+      # call it as "Release".
+      - if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.workflow == 'Build'))
         uses: actions/upload-pages-artifact@v4
         with:
           path: apps/web/dist
@@ -272,7 +275,7 @@ jobs:
   # Publishes only the built site, never the repository contents, once every
   # job passed. Needs the repository's Pages source set to "GitHub Actions".
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.workflow == 'Build'))
     needs: [fmt, native, wasm, msrv, web, web-smoke, server]
     runs-on: ubuntu-latest
     permissions:

@@ -1,0 +1,122 @@
+name: Deploy server
+
+# Deploys the sync server (apps/server, ADR 0009) to Cloudflare Workers, by
+# hand: Actions, "Deploy server", "Run workflow". The first run creates the
+# D1 database in the EU jurisdiction and the rate limiter's secret; every
+# run applies new migrations, deploys, and checks that the Worker answers.
+# Needs the repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID
+# (apps/server/README.md#deployment-p5).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_SEND_METRICS: "false"
+    defaults:
+      run:
+        shell: bash
+        working-directory: apps/server
+    steps:
+      - name: The Cloudflare secrets are set
+        working-directory: .
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Add the repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID first (apps/server/README.md#deployment-p5)."
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: worker-build@0.8.7
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/server/package-lock.json
+      - run: npm ci
+
+      # Found by name; created the first time, from an empty folder so that
+      # wrangler leaves wrangler.toml alone. Its ID goes into wrangler.toml
+      # for this run only.
+      - name: D1 database
+        run: |
+          wrangler="$PWD/node_modules/.bin/wrangler"
+          find_id() {
+            "$wrangler" d1 list --json | jq -r '.[] | select(.name == "anygamepad-sync") | .uuid'
+          }
+          id="$(find_id)"
+          if [ -z "$id" ]; then
+            (cd "$RUNNER_TEMP" && "$wrangler" d1 create anygamepad-sync --jurisdiction eu)
+            id="$(find_id)"
+          fi
+          if [ -z "$id" ]; then
+            echo "::error::The D1 database anygamepad-sync was not found or created."
+            exit 1
+          fi
+          sed -i "s/^database_id = .*/database_id = \"$id\"/" wrangler.toml
+          echo "D1 database anygamepad-sync: $id"
+
+      - name: Migrations
+        run: npx wrangler d1 migrations apply anygamepad-sync --remote
+
+      # Builds with worker-build (wrangler.toml's [build]) and deploys.
+      - name: Deploy
+        id: deploy
+        run: |
+          set -o pipefail
+          npx wrangler deploy 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          url="$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -n 1)"
+          if [ -z "$url" ]; then
+            echo "::error::wrangler printed no workers.dev URL."
+            exit 1
+          fi
+          echo "url=$url/" >> "$GITHUB_OUTPUT"
+
+      # The rate limiter's key: made once, at random, and never shown.
+      # Replacing it only restarts the counters.
+      - name: Rate limiter secret
+        run: |
+          if ! npx wrangler secret list | jq -e '.[] | select(.name == "RATE_LIMIT_KEY")' > /dev/null; then
+            openssl rand -hex 32 | npx wrangler secret put RATE_LIMIT_KEY
+          fi
+
+      - name: The Worker answers
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+          SYNC_URL: ${{ vars.ANYGAMEPAD_SYNC_URL }}
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS "$URL" | jq -e '.service == "anygamepad-sync"'; then
+              break
+            fi
+            if [ "$attempt" = 6 ]; then
+              echo "::error::$URL does not answer as the sync server."
+              exit 1
+            fi
+            sleep 10
+          done
+          {
+            echo "### Sync server deployed"
+            echo
+            echo "URL: $URL"
+            echo
+            if [ "$SYNC_URL" = "$URL" ]; then
+              echo "The site sends to it already (repository variable \`ANYGAMEPAD_SYNC_URL\`)."
+            else
+              echo "Next: set the repository variable \`ANYGAMEPAD_SYNC_URL\` to \`$URL\` (Settings, Secrets and variables, Actions, Variables). The next build of main publishes the site with sending available."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
