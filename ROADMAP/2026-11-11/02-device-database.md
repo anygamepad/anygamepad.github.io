@@ -30,7 +30,7 @@ gantt
 |----|------|-----:|------------|--------|-------|-----|------:|
 | D1 | Device profile format and JSON Schema | 10 | C2 | C3, D2, D3, D4, P1, P4, H2 | 2026-10-14 | 2026-10-14 | done |
 | D2 | SDL GameControllerDB importer | 7 | D1 | W5 | 2026-10-14 | 2026-10-14 | done |
-| D3 | Initial curated profiles (top devices) | 20 | D1, C4, F4, H6 | C8 | 2026-11-24 | 2026-12-14 | 7 |
+| D3 | Initial curated profiles (top devices) | 20 | D1, C4, F4, H6 | C8 | 2026-11-24 | 2026-12-14 | 2 |
 | D4 | Profile embedding and runtime overrides | 7 | D1, C3 | C10, W5, M1 | 2026-10-25 | 2026-10-25 | done |
 
 ### D1 — Device profile format and JSON Schema

@@ -57,7 +57,7 @@ gantt
 | W1 | Web app scaffolding and WASM build pipeline | 7 | F1, F3 | W2 | 2026-10-13 | 2026-10-14 | done |
 | W2 | Live tester on the core web backend | 15 | W1, C11 | W8, W3, W4, W5 | 2026-10-13 | 2026-10-14 | done |
 | W8 | Tester layout and device drawings | 7 | W2 | W3 | 2026-10-14 | 2026-10-14 | done |
-| W3 | WebHID mode with PlayStation decoding | 2 (of 15) | W2, C15, W8, H6 | - | 2026-11-23 | 2026-11-25 | 56 |
+| W3 | WebHID mode with PlayStation decoding | 2 (of 15) | W2, C15, W8, H6 | - | 2026-11-23 | 2026-11-25 | 51 |
 | W4 | Guided mapping wizard (shared with desktop) | 15 | W2 | W6, A3, H3 | 2026-10-14 | 2026-10-14 | done |
 | W5 | Normalized view (mapping engine + profiles) | 10 | W2, C3, D2, D4 | W7 | 2026-10-21 | 2026-10-25 | done |
 | W6 | Local report store, sharing and consent flow | 10 | W4, P1, P3 | P6, W7 | 2026-10-14 | 2026-10-25 | done |

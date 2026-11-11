@@ -35,11 +35,11 @@ gantt
 | ID | Task | Days | Blocked by | Blocks | Start | End | Slack |
 |----|------|-----:|------------|--------|-------|-----|------:|
 | P1 | Device report schema (shared crate) | 7 | C2, D1 | P2, P3, P4, W6, A3, H1 | 2026-10-14 | 2026-10-14 | done |
-| P2 | Sync API and storage (Cloudflare Worker, D1) | 3 (of 20) | P1 | P6 | 2026-11-11 | 2026-11-14 | 57 |
+| P2 | Sync API and storage (Cloudflare Worker, D1) | 3 (of 20) | P1 | P6 | 2026-11-11 | 2026-11-14 | 52 |
 | P3 | Privacy, consent, data retention policy | 10 | P1 | W6, A3 | 2026-10-14 | 2026-10-14 | done |
-| P4 | Curation tooling (reports to profile PRs) | 20 | P1, D1, H1 | - | 2026-11-11 | 2026-12-01 | 50 |
-| P5 | Hosting, backups, monitoring | 1 (of 10) | - | M5 | 2026-11-11 | 2026-11-12 | 69 |
-| P6 | Report sync in the web and desktop apps | 10 | P2, W6, A3 | M5 | 2026-12-01 | 2026-12-11 | 40 |
+| P4 | Curation tooling (reports to profile PRs) | 20 | P1, D1, H1 | - | 2026-11-11 | 2026-12-01 | 45 |
+| P5 | Hosting, backups, monitoring | 1 (of 10) | - | M5 | 2026-11-11 | 2026-11-12 | 64 |
+| P6 | Report sync in the web and desktop apps | 10 | P2, W6, A3 | M5 | 2026-12-01 | 2026-12-11 | 35 |
 
 ### P1 — Device report schema
 

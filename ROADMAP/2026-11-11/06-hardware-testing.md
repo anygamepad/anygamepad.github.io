@@ -233,10 +233,10 @@ gantt
 | H3 | Test runner and test plans (sans-IO) | 15 | H1, H2, C3, W4 | H4, H5, H7 | 2026-10-31 | 2026-10-31 | done |
 | H4 | Test mode in the web app | 10 | H3, H10 | F4, W9, H6 | 2026-11-01 | 2026-11-01 | done |
 | H5 | Test mode in the desktop app | 10 | H3, H10 | F4, H6 | 2026-11-01 | 2026-11-01 | done |
-| H6 | First test campaign (closes the implemented tasks) | 10 | H4, H5, F4 | C4, C15, D3, W3, A1, H9, M6 | 2026-11-11 | 2026-11-21 | 7 |
-| H7 | Replay tests from test reports | 7 | H3 | - | 2026-11-11 | 2026-11-18 | 63 |
-| H8 | Coverage matrix and compatibility page | 7 | H1, F4 | - | 2026-11-11 | 2026-11-18 | 63 |
-| H9 | Collection campaign (every pad, mode, transport and OS) | 20 | H6 | C8 | 2026-11-21 | 2026-12-11 | 10 |
+| H6 | First test campaign (closes the implemented tasks) | 10 | H4, H5, F4 | C4, C15, D3, W3, A1, H9, M6 | 2026-11-11 | 2026-11-21 | 2 |
+| H7 | Replay tests from test reports | 7 | H3 | - | 2026-11-11 | 2026-11-18 | 58 |
+| H8 | Coverage matrix and compatibility page | 7 | H1, F4 | - | 2026-11-11 | 2026-11-18 | 58 |
+| H9 | Collection campaign (every pad, mode, transport and OS) | 20 | H6 | C8 | 2026-11-21 | 2026-12-11 | 5 |
 | H10 | Automatic detection of the pad, model, mode and transport | 5 | H2 | H4, H5 | 2026-10-31 | 2026-10-31 | done |
 
 ### H1 — Test report format

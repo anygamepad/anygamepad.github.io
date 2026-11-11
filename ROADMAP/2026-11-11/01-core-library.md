@@ -29,8 +29,8 @@ gantt
     C1 Canonical gamepad model :done, c1, 2026-10-10, 3d
     C2 Device identity, fingerprint and provider trait :done, c2, 2026-10-10, 3d
     C4 Linux input backend (evdev + hidraw) :active, c4, after c1 c2 h6, 3d
-    C5 Windows input backend (HID + XInput) :c5, after c1 c2 t0, 30d
-    C6 macOS input backend (IOKit HID + GameController) :crit, c6, after c1 c2 t0, 25d
+    C5 Windows input backend (HID + XInput) :crit, c5, after c1 c2 t0, 30d
+    C6 macOS input backend (IOKit HID + GameController) :active, c6, after c1 c2 t0, 5d
     C11 Web backend (Gamepad API + WebHID) and JS bindings :done, c11, 2026-10-13, 1d
     C13 SDL3 provider (incl. SDL HIDAPI drivers) :c13, after c1 c2 t0, 15d
     C14 gilrs provider (pure-Rust fallback) :c14, after c1 c2 t0, 10d
@@ -49,19 +49,19 @@ gantt
 |----|------|-----:|------------|--------|-------|-----|------:|
 | C1 | Canonical gamepad model | 10 | F1, F3 | C4, C5, C6, C11, C13, C14, C3, C15, A4 | 2026-10-10 | 2026-10-13 | done |
 | C2 | Device identity, fingerprint and provider trait | 10 | F3 | C4, C5, C6, C11, C13, C14, C15, D1, P1 | 2026-10-10 | 2026-10-13 | done |
-| C4 | Linux input backend (evdev + hidraw) | 3 (of 20) | C1, C2, H6 | C7, C12, C8, D3, A5, A2 | 2026-11-21 | 2026-11-24 | 7 |
-| C5 | Windows input backend (HID + XInput) | 30 | C1, C2 | C10, A7, A6 | 2026-11-11 | 2026-12-11 | 5 |
-| C6 | **macOS input backend (IOKit HID + GameController)** | 25 | C1, C2 | C10, A8, A6 | 2026-11-11 | 2026-12-06 | 0 |
+| C4 | Linux input backend (evdev + hidraw) | 3 (of 20) | C1, C2, H6 | C7, C12, C8, D3, A5, A2 | 2026-11-21 | 2026-11-24 | 2 |
+| C5 | **Windows input backend (HID + XInput)** | 30 | C1, C2 | C10, A7, A6 | 2026-11-11 | 2026-12-11 | 0 |
+| C6 | macOS input backend (IOKit HID + GameController) | 5 (of 25) | C1, C2 | C10, A8, A6 | 2026-11-11 | 2026-11-16 | 15 |
 | C11 | Web backend (Gamepad API + WebHID) and JS bindings | 20 | C1, C2 | C10, W2, M1 | 2026-10-13 | 2026-10-14 | done |
-| C13 | SDL3 provider (incl. SDL HIDAPI drivers) | 15 | C1, C2 | C12 | 2026-11-11 | 2026-11-26 | 30 |
-| C14 | gilrs provider (pure-Rust fallback) | 10 | C1, C2 | C10 | 2026-11-11 | 2026-11-21 | 50 |
+| C13 | SDL3 provider (incl. SDL HIDAPI drivers) | 15 | C1, C2 | C12 | 2026-11-11 | 2026-11-26 | 25 |
+| C14 | gilrs provider (pure-Rust fallback) | 10 | C1, C2 | C10 | 2026-11-11 | 2026-11-21 | 45 |
 | C3 | Mapping engine | 20 | C1, D1 | C9, C8, D4, W5, H3, M1 | 2026-10-14 | 2026-10-14 | done |
-| C15 | PlayStation input decoder (sans-IO) | 2 (of 10) | C1, C2, H6 | C7, W3 | 2026-11-21 | 2026-11-23 | 41 |
-| C7 | Native protocol drivers (PlayStation outputs and IMU, Switch Pro) | 7 (of 20) | C4, C15 | C10 | 2026-11-24 | 2026-12-01 | 40 |
-| C12 | Multi-provider arbitration (dedup, priority) | 15 | C4, C13 | C10 | 2026-11-26 | 2026-12-11 | 30 |
-| C9 | Public API, docs and examples | 15 | C3 | C10 | 2026-11-11 | 2026-11-26 | 45 |
-| C8 | Mode and clone detection heuristics | 20 | C3, C4, D3, H9 | C10 | 2026-12-14 | 2027-01-03 | 7 |
-| C10 | Library 0.1.0 release | 5 | C5, C6, C7, C8, C9, C11, C12, C14, D4 | A10, M3 | 2027-01-03 | 2027-01-08 | 7 |
+| C15 | PlayStation input decoder (sans-IO) | 2 (of 10) | C1, C2, H6 | C7, W3 | 2026-11-21 | 2026-11-23 | 36 |
+| C7 | Native protocol drivers (PlayStation outputs and IMU, Switch Pro) | 7 (of 20) | C4, C15 | C10 | 2026-11-24 | 2026-12-01 | 35 |
+| C12 | Multi-provider arbitration (dedup, priority) | 15 | C4, C13 | C10 | 2026-11-26 | 2026-12-11 | 25 |
+| C9 | Public API, docs and examples | 15 | C3 | C10 | 2026-11-11 | 2026-11-26 | 40 |
+| C8 | Mode and clone detection heuristics | 20 | C3, C4, D3, H9 | C10 | 2026-12-14 | 2027-01-03 | 2 |
+| C10 | Library 0.1.0 release | 5 | C5, C6, C7, C8, C9, C11, C12, C14, D4 | A10, M3 | 2027-01-03 | 2027-01-08 | 2 |
 
 ### C1 — Canonical gamepad model
 
@@ -138,6 +138,22 @@ extended report, and IOKit then gets no input
 ([research note 06](../../docs/research/06-browser-gamepad-api.md#dualsense-in-chrome-on-macos-added-2026-10-14)).
 A working reference on a real DualSense: `germadev/motorust`,
 `src/gamepads/apple.rs` (`objc2-game-controller`).
+
+Status (2026-11-11): implemented
+(`RECORD/2026-11-11.c6-macos-native-provider.WIP.md`):
+`native::macos::IoHidProvider` (IOHIDManager on a private run loop mode,
+raw input reports, feature and output reports, seize for exclusive
+access; generic pads through `anygamepad-hid`, the PlayStation and Switch
+Pro pads through their C7 drivers when asked) and
+`native::macos::GameControllerProvider` (extended gamepad, DualSense and
+DualShock 4 touchpads, Xbox paddles and share button, motion, battery,
+light bar, player index). By default the IOKit provider leaves the pads
+GameController drives to it. The parts that need no Mac (`native::hid`,
+`native::iokit`, `native::game_controller`) are tested on Linux; the
+macOS code builds for both Mac targets, and CI's macOS runners start both
+providers. Left (5 days): the owner's check on a Mac with real pads
+(`examples/macos_pads.rs`), rumble through Core Haptics, and the fixes
+the check brings. Wiring the providers into the desktop app is A2's.
 
 ### C7 — Native protocol drivers
 

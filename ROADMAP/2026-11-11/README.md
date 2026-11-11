@@ -23,6 +23,19 @@ Status: **active**. Supersedes [ROADMAP/2026-11-01/](../2026-11-01/README.md).
   addendum are the owner's
   ([03-collection-pipeline.md](03-collection-pipeline.md#p5--hosting-backups-monitoring)).
   P2's device reports go out with one more run of the workflow.
+- **Status update (2026-11-11, in place, same day):** C6 is in progress
+  (blue), 5 days left of 25: the IOKit HID and GameController providers
+  are written and build for macOS, the parts that need no Mac are tested
+  on Linux, and CI's macOS runners start both providers; left are the
+  owner's check on a Mac with real pads, rumble through Core Haptics and
+  the fixes the check brings
+  ([01-core-library.md](01-core-library.md#c6--macos-native-provider)).
+  The critical path moves to the Windows backend and its virtual pads
+  (t0 -> C5 -> A6/A7 -> A9 -> A10 -> M4): M4 on 2027-01-15 (2027-01-20
+  above), M3 unchanged on 2027-01-08. The test lab and library chain now
+  has 2 days of slack, the macOS chain (C6 -> A8) 15. In the same edit,
+  05-desktop-app.md's upstream milestone for C6 gets the date its table
+  gives (it kept 2026-11-26 from the 2026-11-01 version).
 - **H7**: the HID report descriptor parser (`anygamepad-hid`) was merged
   (PR #16), so generic HID pads replay through it.
 - The owner directions of 2026-10-14, 2026-10-31 and 2026-11-01 still
@@ -78,9 +91,9 @@ Cross-cutting groundwork lives in [00-foundations.md](00-foundations.md).
    name the units (F4), so H6 can start now.
 2. **Library 0.1.0** (M3): the Windows and macOS backends (C5, C6), SDL3
    and gilrs (C13, C14), arbitration (C12), and the profiles and mode
-   detection built on test reports (D3, C8). C6 is on the critical path
-   and needs nothing from H6: it is the next task that is not the
-   owner's.
+   detection built on test reports (D3, C8). C6 is written and waits
+   for the owner's Mac; C5 (Windows) is now on the critical path and
+   needs nothing from H6: it is the next task that is not the owner's.
 3. **Desktop app** (M4): its own tasks have slack; its release waits for
    the library (C10) and the Windows and macOS backends.
 4. The **web app** is live (M2) with its test mode at `/test/`; the
@@ -156,7 +169,7 @@ controls passed (ADR 0008).
   their estimates), but the dependency graph (what blocks what) stays
   valid. Use the graph, not the dates, to decide what to pick up next.
 - The critical path ends at milestone M4 (desktop 0.1.0). Projected end:
-  **2027-01-20** (2027-01-10 at the end of the 2026-11-01 version).
+  **2027-01-15** (2027-01-10 at the end of the 2026-11-01 version).
 - Slack is measured against M4 for every task, as in earlier versions.
 
 ## Master schedule
@@ -181,8 +194,8 @@ gantt
     C1 Canonical gamepad model :done, c1, 2026-10-10, 3d
     C2 Device identity, fingerprint and provider trait :done, c2, 2026-10-10, 3d
     C4 Linux input backend (evdev + hidraw) :active, c4, after c1 c2 h6, 3d
-    C5 Windows input backend (HID + XInput) :c5, after c1 c2 t0, 30d
-    C6 macOS input backend (IOKit HID + GameController) :crit, c6, after c1 c2 t0, 25d
+    C5 Windows input backend (HID + XInput) :crit, c5, after c1 c2 t0, 30d
+    C6 macOS input backend (IOKit HID + GameController) :active, c6, after c1 c2 t0, 5d
     C11 Web backend (Gamepad API + WebHID) and JS bindings :done, c11, 2026-10-13, 1d
     C13 SDL3 provider (incl. SDL HIDAPI drivers) :c13, after c1 c2 t0, 15d
     C14 gilrs provider (pure-Rust fallback) :c14, after c1 c2 t0, 10d
@@ -232,11 +245,11 @@ gantt
     A1 App shell (UI toolkit, tray, settings) :active, a1, after f3 m2 h6, 2d
     A4 Virtual pad abstraction and emulated profiles :done, a4, 2026-10-30, 1d
     A5 Linux virtual output (uinput + UHID) :active, a5, after a4 c4, 3d
-    A7 Windows virtual output via ViGEmBus (X360, DS4) :a7, after a4 c5, 15d
-    A8 macOS virtual output (IOHIDUserDevice) :crit, a8, after a4 c6, 25d
+    A7 Windows virtual output via ViGEmBus (X360, DS4) :crit, a7, after a4 c5, 15d
+    A8 macOS virtual output (IOHIDUserDevice) :a8, after a4 c6, 25d
     A2 Device list and live view :active, a2, after a1 c4, 2d
     A3 Collection mode :active, a3, after a2 w4 p1 p3, 5d
-    A6 Physical device hiding (grab/HidHide/seize) :a6, after a5 c5 c6, 15d
+    A6 Physical device hiding (grab/HidHide/seize) :crit, a6, after a5 c5 c6, 15d
     A11 Always-on-top input widget (overlay) :active, a11, after a2, 3d
     A9 Packaging and code signing :crit, a9, after a3 a6 a7 a8 a11, 15d
     A10 Desktop app 0.1.0 release :crit, a10, after a9 c10, 5d
@@ -250,13 +263,15 @@ gantt
 
 The zero-slack chain from the baseline to the desktop release (M4):
 
-1. t0 -> C6 -> A8 -> A9 -> A10 -> M4
+1. t0 -> C5 -> A6 -> A9 -> A10 -> M4
+2. t0 -> C5 -> A7 -> A9 -> A10 -> M4
 
-The macOS backend (C6) and the macOS virtual pads (A8) set the desktop
-release. The test lab and the library
-(H6 -> C4 -> D3 -> C8 -> C10) have 7 days of slack, the Windows chain
-(C5 -> A7) 5, H9 10. Everything else has slack (see the `Slack` column in
-each detailed file).
+The Windows backend (C5), the Windows virtual pads (A7) and the hiding of
+physical devices (A6, which waits for C5) set the desktop release since
+C6 was written (status update of 2026-11-11). The test lab and the
+library (H6 -> C4 -> D3 -> C8 -> C10) have 2 days of slack, the macOS
+chain (C6 -> A8) 15, H9 5. Everything else has slack (see the `Slack`
+column in each detailed file).
 
 ## Dependency graph (who blocks whom)
 
@@ -486,8 +501,8 @@ flowchart LR
     classDef crit fill:#fdd,stroke:#c00,stroke-width:2px
     classDef active fill:#def,stroke:#36c,stroke-width:2px
     classDef done fill:#eee,stroke:#999,color:#666
-    class c6,a8,a9,a10,m4 crit
-    class c4,c15,c7,p2,p5,w3,a1,a5,a2,a3,a11 active
+    class c5,a7,a6,a9,a10,m4 crit
+    class c4,c6,c15,c7,p2,p5,w3,a1,a5,a2,a3,a11 active
     class f1,f2,f3,f4,c1,c2,c11,c3,d1,d2,d4,p1,p3,w1,w2,w8,w4,w5,w6,w7,w9,a4,h1,h2,h3,h4,h5,h10,m1,m2 done
 ```
 
@@ -500,7 +515,7 @@ flowchart LR
 | M6 Test lab running (test modes in the web and desktop apps, first campaign done) | H6 | 2026-11-21 |
 | M5 Reports synchronized with the sync server | P5, P6 | 2026-12-11 |
 | M3 Library 0.1.0 | C10 | 2027-01-08 |
-| M4 Desktop app 0.1.0 | A10 | 2027-01-20 |
+| M4 Desktop app 0.1.0 | A10 | 2027-01-15 |
 
 ## Top risks
 
