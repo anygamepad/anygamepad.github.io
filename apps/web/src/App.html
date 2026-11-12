@@ -4,53 +4,17 @@
       <a href="/" title="The gamepad tester"><img src="/favicon.svg" alt="" width="40" height="40" /><span>Any<span class="brand-gamepad">Gamepad</span></span></a>
     </h1>
   </div>
-  <div class="tools">
-    <div class="theme" role="group" aria-label="Theme">
-      <button
-        type="button"
-        class="icon-btn"
-        :class.on="theme === 'auto'"
-        :aria-pressed="theme === 'auto' ? 'true' : 'false'"
-        aria-label="Auto"
-        title="Theme: follow the system"
-        @click="setTheme('auto')"
-      ><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path class="solid" d="M12 4a8 8 0 0 1 0 16z" /></svg></button>
-      <button
-        type="button"
-        class="icon-btn"
-        :class.on="theme === 'light'"
-        :aria-pressed="theme === 'light' ? 'true' : 'false'"
-        aria-label="Light"
-        title="Theme: light"
-        @click="setTheme('light')"
-      ><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></svg></button>
-      <button
-        type="button"
-        class="icon-btn"
-        :class.on="theme === 'dark'"
-        :aria-pressed="theme === 'dark' ? 'true' : 'false'"
-        aria-label="Dark"
-        title="Theme: dark"
-        @click="setTheme('dark')"
-      ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" /></svg></button>
-    </div>
-    <button
-      type="button"
-      class="icon-btn settings-btn"
-      :class.on="settings.sending"
-      aria-label="Settings"
-      title="Settings"
-      aria-haspopup="dialog"
-      @click="openSettings()"
-    ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" /></svg></button>
-  </div>
-  <p :if="mode === 'test'" class="tagline">Test mode, running the anygamepad library {{ version }} in WebAssembly</p>
-  <p :else class="tagline">Gamepad tester, running the anygamepad library {{ version }} in WebAssembly</p>
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <a href="/" role="tab" class="tab" :class.on="mode === 'tester'" :aria-selected="mode === 'tester' ? 'true' : 'false'" data-tab="tester" @click="(event) => setTab('tester', event)">Tester</a>
+    <a href="/#activity" role="tab" class="tab" :class.on="mode === 'activity'" :aria-selected="mode === 'activity' ? 'true' : 'false'" data-tab="activity" @click="(event) => setTab('activity', event)">Activity</a>
+    <a href="/test/" role="tab" class="tab" :class.on="mode === 'test'" :aria-selected="mode === 'test' ? 'true' : 'false'" data-tab="test" @click="(event) => setTab('test', event)">Test mode</a>
+  </nav>
+  <p class="tagline">Gamepad tester, running the anygamepad library {{ version }} in WebAssembly</p>
 </header>
 
 <main :if="mode === 'tester'" class="tester">
-  <aside class="side">
-    <p :if="error" class="message error">{{ error }}</p>
+  <p :if="error" class="message error">{{ error }}</p>
+  <section class="pad-strip" aria-label="Gamepads">
     <div :if="pads.length === 0" class="empty">
       <p class="message">Connect a gamepad and press one of its buttons: browsers only show a gamepad after that.</p>
       <p :if="hint" class="message hint">{{ hint }}</p>
@@ -69,61 +33,13 @@
         </button>
       </li>
     </ul>
-
     <section :if="webhid" class="webhid">
       <h2>WebHID</h2>
-      <p>
-        Reads a pad's raw reports, as the operating system receives them. PlayStation pads are decoded,
-        touchpad, motion and battery included.
-      </p>
+      <p>Reads a pad's raw reports, as the operating system receives them. PlayStation pads are decoded, touchpad, motion and battery included.</p>
       <button type="button" class="action" @click="connectHid()">Connect a pad with WebHID</button>
       <p :if="hidMessage" class="note">{{ hidMessage }}</p>
     </section>
-
-    <section class="saved-reports">
-      <h2>Saved reports</h2>
-      <p class="saved-reports-note">
-        Saved reports stay in this browser. A private window drops them when it closes, and Safari may delete them after seven days without a visit: download the ones you want to keep.
-      </p>
-      <p :if="savedReports.length === 0" class="note empty-reports">No reports saved in this browser yet.</p>
-      <ul :else class="reports">
-        <li :each="report in savedReports" :key="report.id" class="report-row">
-          <div class="report-meta">
-            <span class="report-name">{{ report.name }}</span>
-            <span class="report-facts">{{ report.fingerprint }} · {{ report.created }}</span>
-            <span :if="report.shared" class="report-shared-badge">shared</span>
-          </div>
-          <div class="report-actions">
-            <button
-              type="button"
-              class="action report-btn"
-              title="Saves the report as a JSON file on this device."
-              @click="downloadSavedReport(report.id)"
-            >Download</button>
-            <button
-              type="button"
-              class="action report-btn"
-              @click="openShare(report.id)"
-            >Share</button>
-            <button
-              type="button"
-              class="action report-btn"
-              @click="deleteSavedReport(report.id)"
-            >Delete</button>
-          </div>
-        </li>
-      </ul>
-    </section>
-
-    <section class="activity">
-      <h2>Activity log</h2>
-      <p>
-        What the tester has detected since this page loaded: pads, inputs, reports and errors. It stays in
-        this tab until you download it, to share it for analysis.
-      </p>
-      <button type="button" class="action" @click="downloadLog()">Download the activity log</button>
-    </section>
-  </aside>
+  </section>
 
   <section :if="current" class="detail">
     <header class="detail-head">
@@ -159,33 +75,158 @@
       </div>
     </header>
 
-    <div class="live" :data-key="current.key"></div>
+    <div class="detail-body">
+      <div class="live" :data-key="current.key"></div>
 
-    <footer :if="!wizardOpen" class="vibration">
-      <span class="label">Vibration test</span>
-      <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'strong')">Strong motor</button>
-      <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'weak')">Weak motor</button>
-      <button type="button" :disabled="!current.rumble" @click="rumble(current.key, 'both')">Both</button>
-      <button type="button" :if="current.triggerRumble" @click="rumble(current.key, 'triggers')">Triggers</button>
-      <small :if="!current.rumble" class="note">This browser cannot vibrate this gamepad.</small>
-    </footer>
-    <footer :if="(current.lightbar || current.playerLeds) && !wizardOpen" class="vibration">
-      <span class="label">Lights</span>
-      <button type="button" :if="current.lightbar" @click="light(current.key, 'blue')">Blue</button>
-      <button type="button" :if="current.lightbar" @click="light(current.key, 'red')">Red</button>
-      <button type="button" :if="current.lightbar" @click="light(current.key, 'green')">Green</button>
-      <button type="button" :if="current.lightbar" @click="light(current.key, 'white')">White</button>
-      <button type="button" :if="current.playerLeds" @click="player(current.key, 1)">Player 1</button>
-      <button type="button" :if="current.playerLeds" @click="player(current.key, 2)">Player 2</button>
-      <button type="button" :if="current.playerLeds" @click="player(current.key, 3)">Player 3</button>
-      <button type="button" :if="current.playerLeds" @click="player(current.key, 4)">Player 4</button>
-      <button type="button" :if="current.playerLeds" @click="player(current.key, 0)">LEDs off</button>
-    </footer>
+      <aside class="pad-info" aria-label="About this controller">
+        <h3>This controller</h3>
+        <dl class="info-rows">
+          <div :each="row in padInfo.identity" :key="row.label"><dt>{{ row.label }}</dt><dd>{{ row.value }}</dd></div>
+        </dl>
+        <div :if="padInfo.reader" class="info-reader" :data-info="padInfo.reader.state">
+          <p :if="padInfo.reader.state === 'offer'" class="note">
+            Sony's pads tell their firmware, board revision, colour, battery voltage and how much they were used.
+            Serial numbers and addresses are never asked for.
+            <span :if="padInfo.reader.bluetooth">Over Bluetooth, asking switches the pad to its full report until it is turned off; other apps may then not read it.</span>
+          </p>
+          <button :if="padInfo.reader.state === 'offer'" type="button" class="action" data-read-info @click="readInfo(current.key)">Read the controller info</button>
+          <p :elseif="padInfo.reader.state === 'reading'" class="note">Asking the pad… {{ padInfo.reader.text }}</p>
+          <p :elseif="padInfo.reader.text" class="note">{{ padInfo.reader.text }}</p>
+        </div>
+        <details :each="group in padInfo.groups" :key="group.title" class="info-group" :open="group.open">
+          <summary>{{ group.title }}</summary>
+          <dl :class="'info-rows' + (group.columns ? ' columns' : '')">
+            <div :each="row in group.rows" :key="row.label"><dt>{{ row.label }}</dt><dd>{{ row.value }}</dd></div>
+          </dl>
+        </details>
+      </aside>
+    </div>
+
+    <section :if="!wizardOpen" class="outputs vibration-box">
+      <h3>Vibration</h3>
+      <p :if="!current.rumble" class="note">This browser cannot vibrate this gamepad.</p>
+      <div :else class="vibration-grid">
+        <label class="level">
+          <span>Strong motor (left)</span>
+          <input type="range" min="0" max="100" step="5" data-level="strong" :value="vibration.strong" @input="(event) => setVibration('strong', event.target.value)" />
+          <output>{{ vibration.strong }}%</output>
+        </label>
+        <label class="level">
+          <span>Weak motor (right)</span>
+          <input type="range" min="0" max="100" step="5" data-level="weak" :value="vibration.weak" @input="(event) => setVibration('weak', event.target.value)" />
+          <output>{{ vibration.weak }}%</output>
+        </label>
+        <label :if="current.triggerRumble" class="level">
+          <span>Trigger motors</span>
+          <input type="range" min="0" max="100" step="5" data-level="triggers" :value="vibration.triggers" @input="(event) => setVibration('triggers', event.target.value)" />
+          <output>{{ vibration.triggers }}%</output>
+        </label>
+        <label class="pattern">
+          <span>Pattern</span>
+          <select data-pattern @change="(event) => setPattern(event.target.value)">
+            <option :each="pattern in vibration.patterns" :key="pattern.id" :value="pattern.id" :selected="pattern.id === vibration.pattern">{{ pattern.name }}</option>
+          </select>
+        </label>
+        <div class="vibration-play">
+          <button type="button" class="action" data-play="strong" @click="playVibration(current.key, 'strong')">Strong</button>
+          <button type="button" class="action" data-play="weak" @click="playVibration(current.key, 'weak')">Weak</button>
+          <button type="button" class="action" data-play="both" @click="playVibration(current.key, 'both')">Both</button>
+          <button :if="current.triggerRumble" type="button" class="action" data-play="triggers" @click="playVibration(current.key, 'triggers')">Triggers</button>
+          <button type="button" class="action" data-play="stop" @click="stopVibration(current.key)">Stop</button>
+        </div>
+        <div class="vibration-pad">
+          <label class="switch">
+            <input type="checkbox" role="switch" data-pad-buttons :checked="vibration.padButtons" @change="(event) => setPadButtons(event.target.checked)" />
+            <span class="switch-label">Play from the pad</span>
+          </label>
+          <label>
+            <span>Strong</span>
+            <select data-button="strong" :disabled="!vibration.padButtons" @change="(event) => setPadButton('strong', event.target.value)">
+              <option :each="button in vibration.buttons" :key="button.id" :value="button.id" :selected="button.id === vibration.strongButton">{{ button.name }}</option>
+            </select>
+          </label>
+          <label>
+            <span>Weak</span>
+            <select data-button="weak" :disabled="!vibration.padButtons" @change="(event) => setPadButton('weak', event.target.value)">
+              <option :each="button in vibration.buttons" :key="button.id" :value="button.id" :selected="button.id === vibration.weakButton">{{ button.name }}</option>
+            </select>
+          </label>
+          <p class="note">Holding a button repeats the pattern; a press plays it once.</p>
+        </div>
+      </div>
+    </section>
+    <section :if="(current.lightbar || current.playerLeds) && !wizardOpen" class="outputs lights-box">
+      <h3>Lights</h3>
+      <label :if="current.lightbar" class="colour">
+        <span>Light bar</span>
+        <input type="color" data-lightbar :value="lightColour" @input="(event) => setLight(current.key, event.target.value)" />
+      </label>
+      <div :if="current.playerLeds" class="segmented" role="group" aria-label="Player LEDs">
+        <span class="segmented-label">Player LEDs</span>
+        <button :each="option in playerOptions" :key="option.value" type="button" :class.on="option.value === playerLed" :data-player="option.value" @click="player(current.key, option.value)">{{ option.name }}</button>
+      </div>
+    </section>
   </section>
   <section :else class="placeholder">
     <div class="placeholder-art" aria-hidden="true"></div>
     <p>The selected gamepad shows here, drawn live as you use it.</p>
   </section>
+
+  <section class="saved-reports">
+    <h2>Saved reports</h2>
+    <p class="saved-reports-note">
+      Saved reports stay in this browser. A private window drops them when it closes, and Safari may delete them after seven days without a visit: download the ones you want to keep.
+    </p>
+    <p :if="savedReports.length === 0" class="note empty-reports">No reports saved in this browser yet.</p>
+    <ul :else class="reports">
+      <li :each="report in savedReports" :key="report.id" class="report-row">
+        <div class="report-meta">
+          <span class="report-name">{{ report.name }}</span>
+          <span class="report-facts">{{ report.fingerprint }} · {{ report.created }}</span>
+          <span :if="report.shared" class="report-shared-badge">shared</span>
+        </div>
+        <div class="report-actions">
+          <button type="button" class="action report-btn" title="Saves the report as a JSON file on this device." @click="downloadSavedReport(report.id)">Download</button>
+          <button type="button" class="action report-btn" @click="openShare(report.id)">Share</button>
+          <button type="button" class="action report-btn" @click="deleteSavedReport(report.id)">Delete</button>
+        </div>
+      </li>
+    </ul>
+  </section>
+</main>
+
+<main :elseif="mode === 'activity'" class="activity-view">
+  <section class="activity-head">
+    <div>
+      <h2>Activity log</h2>
+      <p class="note">
+        What the tester has detected since this page loaded: pads, inputs, reports and errors. It stays in this tab
+        until you download it, to share it for analysis. No serial numbers, addresses or anything about you.
+      </p>
+    </div>
+    <div class="activity-actions">
+      <button type="button" class="action primary-btn" data-download-log @click="downloadLog()">Download the activity log</button>
+    </div>
+  </section>
+  <dl class="activity-stats">
+    <div><dt>Since</dt><dd>{{ activity.since }}</dd></div>
+    <div><dt>Pad and page events</dt><dd data-activity-events>{{ activity.events }}</dd></div>
+    <div><dt>Input events</dt><dd>{{ activity.inputs }}</dd></div>
+    <div><dt>Input events dropped</dt><dd>{{ activity.dropped }}</dd></div>
+  </dl>
+  <label class="activity-filter">
+    <input type="checkbox" :checked="activity.withInputs" @change="(event) => setActivityInputs(event.target.checked)" />
+    <span>Show input events</span>
+  </label>
+  <ol class="activity-events" data-activity>
+    <li :each="event in activity.recent" :key="event.key" :class="'event ' + event.kind">
+      <span class="event-time">{{ event.time }}</span>
+      <span class="event-type">{{ event.type }}</span>
+      <span class="event-pad">{{ event.pad }}</span>
+      <code class="event-fields">{{ event.fields }}</code>
+    </li>
+  </ol>
+  <p :if="activity.recent.length === 0" class="note">Nothing yet: connect a pad.</p>
 </main>
 
 <main :else class="tester test-mode">
@@ -234,7 +275,7 @@
       <h2>WebHID</h2>
       <p>
         Tests a pad on its raw reports. PlayStation pads are decoded, touchpad, motion and battery included; over
-        Bluetooth, switch one to its full report in the <a href="/">tester</a> first, or those steps do not apply.
+        Bluetooth, switch one to its full report in the <a href="/" @click="(event) => setTab('tester', event)">Tester</a> tab first, or those steps do not apply.
       </p>
       <button type="button" class="action" @click="connectHid()">Connect a pad with WebHID</button>
       <p :if="hidMessage" class="note">{{ hidMessage }}</p>
@@ -582,9 +623,45 @@
   <span :if="environment" class="environment">
     {{ environment.browser.engine }} {{ environment.browser.major_version }} on {{ environment.os }}
   </span>
-  <nav class="site-links" aria-label="Pages">
-    <a :if="mode === 'test'" href="/">Tester</a>
-    <a :else href="/test/">Test mode</a>
-    <a href="/privacy/">Privacy</a>
-  </nav>
+  <a class="privacy-link" href="/privacy/">Privacy</a>
+  <div class="tools">
+    <div class="theme" role="group" aria-label="Theme">
+      <button
+        type="button"
+        class="icon-btn"
+        :class.on="theme === 'auto'"
+        :aria-pressed="theme === 'auto' ? 'true' : 'false'"
+        aria-label="Auto"
+        title="Theme: follow the system"
+        @click="setTheme('auto')"
+      ><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path class="solid" d="M12 4a8 8 0 0 1 0 16z" /></svg></button>
+      <button
+        type="button"
+        class="icon-btn"
+        :class.on="theme === 'light'"
+        :aria-pressed="theme === 'light' ? 'true' : 'false'"
+        aria-label="Light"
+        title="Theme: light"
+        @click="setTheme('light')"
+      ><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></svg></button>
+      <button
+        type="button"
+        class="icon-btn"
+        :class.on="theme === 'dark'"
+        :aria-pressed="theme === 'dark' ? 'true' : 'false'"
+        aria-label="Dark"
+        title="Theme: dark"
+        @click="setTheme('dark')"
+      ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" /></svg></button>
+    </div>
+    <button
+      type="button"
+      class="icon-btn settings-btn"
+      :class.on="settings.sending"
+      aria-label="Settings"
+      title="Settings"
+      aria-haspopup="dialog"
+      @click="openSettings()"
+    ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" /></svg></button>
+  </div>
 </footer>

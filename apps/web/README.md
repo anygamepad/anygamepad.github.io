@@ -35,13 +35,15 @@ cannot send headers); the dev server runs without one.
 
 | URL | Page |
 |-----|------|
-| `/` | The tester (`index.html`) |
-| `/test/` | The test mode (`test/index.html`, roadmap H4), linked from the tester's footer |
+| `/` | The tester (`index.html`); `/#activity` opens its activity tab |
+| `/test/` | The test mode (`test/index.html`, roadmap H4), the tester's third tab |
 | `/privacy/` | The privacy policy (`privacy/index.html`, roadmap P3) |
 
-The tester and the test mode are the same app (`src/main.ts`,
-`src/App.html`); `<body data-page="test">` picks the test mode, whose
-WebAssembly module only that page loads (W9).
+The tester, the activity log and the test mode are tabs of one app
+(`src/main.ts`, `src/App.html`), switched in place; `<body
+data-page="test">` opens the test mode tab. The test mode's WebAssembly
+module (W9) loads when that tab first shows, or when the tester reads a
+PlayStation pad's controller information.
 
 ## The test mode
 
@@ -66,7 +68,7 @@ WebAssembly module only that page loads (W9).
 
 ## Sending to the database
 
-The settings (the sliders icon in the header) hold a switch that sends the
+The settings (the sliders icon in the footer) hold a switch that sends the
 activity log, in parts as it grows, and each saved test report to the
 anygamepad sync server ([`apps/server`](../server/README.md), a Cloudflare
 Worker; `src/sync.ts` is the client). Each upload carries a deletion token
@@ -102,7 +104,9 @@ same name, set once the server is deployed.
 | `src/drawing.ts`, `src/layouts.ts` | Controller drawings of the canonical state, one per family |
 | `src/art/` | The owner's controller illustrations, marked up with data attributes |
 | `src/rate.ts` | Update rate meters |
-| `src/theme.ts` | Light, dark or system theme (the icons in the header) |
+| `src/theme.ts` | Light, dark or system theme (the icons in the footer) |
+| `src/vibration.ts` | The vibration test: a level per motor, patterns, and two pad buttons that play them |
+| `src/controller-info.ts` | "This controller": what the browser and, on request, a PlayStation pad tell about it |
 | `src/*.html` | jq79 components (rendering only) |
 | `src/wasm/` | wasm-pack output of the tester's module, `anygamepad-wasm` (generated, not committed) |
 | `src/wasm-testing/` | wasm-pack output of the test mode's module, `anygamepad-wasm-testing`, loaded by the test mode's page only (W9; generated, not committed) |

@@ -358,6 +358,11 @@ export class TestMode {
       });
   }
 
+  /** Whether a session runs. */
+  busy(): boolean {
+    return this.session !== undefined;
+  }
+
   /** Whether the test mode reads this pad itself (its session's pad). */
   owns(key: string): boolean {
     return this.session !== undefined && this.sessionPad?.key === key;
