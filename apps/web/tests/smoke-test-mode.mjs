@@ -180,7 +180,8 @@ try {
   await setPad(XBOX360);
   await until("detection", stage, (s) => s === "detected");
   assert.equal(await page.textContent("[data-detected]"), "Microsoft Xbox 360 Controller · XInput · USB cable");
-  assert.equal(await page.locator(".test-drawing svg.diagram").count(), 1, "the detected pad is drawn");
+  // Drawn by the next frame once the stage shows.
+  await until("the detected pad's drawing", () => page.locator(".test-drawing svg.diagram").count(), (n) => n === 1);
   assert.equal(await page.locator("[data-ids-hidden]").count(), 0, "its USB IDs show");
   // Nothing saved yet: the history is empty.
   assert.equal(await page.locator("[data-history-empty]").count(), 0, "no history while detected");
@@ -396,7 +397,7 @@ try {
       await page.textContent("[data-detected]"),
       "Generic PlayStation-compatible controller · PS5 · connection to confirm",
     );
-    assert.equal(await page.locator("[data-ids-hidden]").count(), 1, "the offer to read the USB IDs");
+    await until("the offer to read the USB IDs", () => page.locator("[data-ids-hidden]").count(), (n) => n === 1);
     await page.click(".test-detected [data-connect-hid]");
     await until("detection through WebHID", () => page.textContent("[data-detected]"), (t) => /^Sony/.test(t));
     const setButtons = (name, on) =>
@@ -416,7 +417,7 @@ try {
         [DUALSENSE_BITS[name], on],
       );
     assert.equal(await page.textContent("[data-detected]"), "Sony DualSense Wireless Controller · PS5 · Bluetooth");
-    assert.equal(await page.locator("[data-ids-hidden]").count(), 0);
+    await until("no offer any more", () => page.locator("[data-ids-hidden]").count(), (n) => n === 0);
     // The firmware check: this one answers as Sony's pads do.
     await page.evaluate(() => {
       const reply = new Uint8Array(64);
@@ -427,7 +428,11 @@ try {
       reply[25] = 0x03;
       window.__hid.firmware = [...reply];
     });
-    assert.match(await page.textContent("[data-firmware]"), /Over Bluetooth, asking switches the pad/);
+    await until(
+      "the firmware offer",
+      () => page.textContent("[data-firmware]").catch(() => ""),
+      (text) => /Over Bluetooth, asking switches the pad/.test(text),
+    );
     await page.click("[data-check-firmware]");
     const firmware = await until(
       "the firmware",
