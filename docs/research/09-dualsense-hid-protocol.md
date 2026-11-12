@@ -101,6 +101,7 @@ DualShock 4 code; check which one each pad accepts in C7.
   firmware type, software series, hardware info, main, SBL and DSP firmware
   versions. Useful for detection (D3, P1) and not personal data.
 - DualShock 4: firmware information in `0xA3`.
+- `0x22` (DualSense): Bluetooth patch version (u32 at byte 31).
 - `0x80` / `0x81` (DualSense): factory test commands (device id + action
   id, results polled from `0x81` in 56-byte pages). The tester uses them to
   read the **serial number, Bluetooth MAC address, PCBA ID, MCU unique ID,
@@ -131,9 +132,17 @@ WebHID pairing tool, after `user-none/sixaxispairer` and
 - C7 can take the offsets, output layout and CRC above as its starting
   tables (sans-IO, so the same code serves hidraw, Windows HID, IOKit and
   WebHID), checked against `hid-playstation`.
-- AGENTS.md forbids collecting serial numbers and MAC addresses. Never send
-  `0x80` test commands, in C7, W3 or reports, and never read the DualShock
-  3's `0xf2`/`0xf5`. Read only `0x20` and the calibration report.
+- AGENTS.md forbids collecting serial numbers and MAC addresses. Never read
+  the DualShock 3's `0xf2`/`0xf5`. `0x80` test commands: none in C7 or
+  reports. Since 2026-11-12 (owner request), the tester's "This controller"
+  sends a fixed list of read-only ones through
+  `protocol::playstation::info`: battery voltage, trigger motor models,
+  touchpad firmware, the usage block, and the serial number reduced at once
+  to the board revision and colour it codes. Never the commands for the
+  Bluetooth address, board or MCU IDs, or battery and motor barcodes.
+  Results are shown, not stored; only the model's facts (firmware, board,
+  colour) reach the activity log
+  (`RECORD/2026-11-12.dualsense-controller-info-and-tester-layout.completed.md`).
 - W3 must not read feature reports from a Bluetooth pad without telling the
   user: doing so switches the pad to the full report for every application
   until it is power-cycled. Generic HID readers (the Gamepad API in Chrome on

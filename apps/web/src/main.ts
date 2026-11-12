@@ -2,7 +2,7 @@ import "./style.css";
 
 import init, { version } from "./wasm/anygamepad_wasm.js";
 import App from "./App.html";
-import { emptyView, Tester, type TesterView } from "./tester";
+import { emptyView, tabOf, Tester, type TesterView } from "./tester";
 import { applyTheme, storedTheme, type Theme } from "./theme";
 
 // Before the WebAssembly loads, so the page does not show the other theme
@@ -12,8 +12,9 @@ applyTheme(theme, false);
 
 await init();
 
-// The tester at `/`, the test mode at `/test/` (test/index.html).
-const mode = document.body.dataset.page === "test" ? "test" : "tester";
+// The tester at `/`, the activity log at `/#activity`, the test mode at
+// `/test/` (test/index.html): tabs of one page, switched in place.
+const mode = tabOf(window.location, document.body.dataset.page);
 
 const tester = new Tester();
 App.mount("#app", {
@@ -30,9 +31,17 @@ App.mount("#app", {
   startWizard: tester.startWizard,
   connectHid: tester.connectHid,
   downloadLog: tester.downloadLog,
-  rumble: tester.rumble,
-  light: tester.light,
   player: tester.player,
+  setVibration: tester.setVibration,
+  setPattern: tester.setPattern,
+  setPadButtons: tester.setPadButtons,
+  setPadButton: tester.setPadButton,
+  playVibration: tester.playVibration,
+  stopVibration: tester.stopVibration,
+  setLight: tester.setLight,
+  readInfo: tester.readInfo,
+  setTab: tester.setTab,
+  setActivityInputs: tester.setActivityInputs,
   saveCurrentReport: tester.saveCurrentReport,
   downloadSavedReport: tester.downloadSavedReport,
   deleteSavedReport: tester.deleteSavedReport,

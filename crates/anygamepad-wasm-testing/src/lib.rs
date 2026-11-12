@@ -5,6 +5,9 @@
 //! [`check_choice`]), and [`TestSession`], the library's test runner
 //! (`anygamepad::testing`).
 //!
+//! The tester loads it too, on request, for [`ControllerReader`]: what a
+//! PlayStation pad tells about itself.
+//!
 //! It reads no device. The tester's module (`anygamepad-wasm`) describes
 //! each device as a [`TestDevice`] (`Gamepads.testDevice()`,
 //! `HidDevices.testDevice()`) and, once a frame, gives what it read as a
@@ -30,6 +33,11 @@
 //! ```
 
 use std::collections::BTreeMap;
+
+mod controller_info;
+pub use controller_info::{
+    ControllerFacts, ControllerReader, FirmwareFacts, ReaderStep, UsageFact,
+};
 
 use anygamepad::db::detect::{ChoiceCheck, Identification};
 use anygamepad::db::lab::Code;

@@ -76,7 +76,10 @@ export const fakeHid = () => {
         { reportId: 0x31, items: items(77) },
       ],
       outputReports: [],
-      featureReports: [{ reportId: 0x05, items: items(40) }],
+      featureReports: [
+        { reportId: 0x05, items: items(40) },
+        { reportId: 0x80, items: items(63) },
+      ],
     },
   ];
   const state = { buttons: [0x08, 0, 0], l2: 0, r2: 0, touch: null, battery: 0x15 };
@@ -127,6 +130,8 @@ export const fakeHid = () => {
       clearInterval(this.timer);
       return Promise.resolve();
     }
+    // The test command in progress, and the pages of its answer left.
+    command = undefined;
     receiveFeatureReport(reportId) {
       window.__hid.features.push(reportId);
       this.full = true;
@@ -134,14 +139,44 @@ export const fakeHid = () => {
       if (reportId === 0x20 && window.__hid.firmware) {
         return Promise.resolve(new DataView(new Uint8Array(window.__hid.firmware).buffer));
       }
+      const answers = window.__hid.answers;
+      if (reportId === 0x22 && answers) {
+        const report = new Uint8Array(64);
+        report[0] = 0x22;
+        report[31] = 0x18;
+        return Promise.resolve(new DataView(report.buffer));
+      }
+      // The answer to a test command (`__hid.answers`, keyed
+      // "device:action:parameter"), 56 bytes a page; the usage block
+      // (`open`) never says it ended, as real pads do.
+      if (reportId === 0x81 && answers) {
+        const report = new Uint8Array(64);
+        report[0] = 0x81;
+        const command = this.command;
+        if (command && command.left.length > 0) {
+          report.set([command.device, command.action], 1);
+          const page = command.left.slice(0, 56);
+          command.left = command.left.slice(56);
+          report[3] = command.left.length > 0 || command.open ? 3 : 2;
+          report.set(page, 4);
+        } else {
+          this.command = undefined;
+        }
+        return Promise.resolve(new DataView(report.buffer));
+      }
       return Promise.resolve(new DataView(new ArrayBuffer(41)));
     }
     sendReport(reportId, data) {
       window.__hid.outputs.push([reportId, ...data]);
       return Promise.resolve();
     }
-    sendFeatureReport() {
-      return Promise.reject(new Error("unexpected feature report"));
+    sendFeatureReport(reportId, data) {
+      const answers = window.__hid.answers;
+      if (reportId !== 0x80 || !answers) return Promise.reject(new Error("unexpected feature report"));
+      window.__hid.commands.push([data[0], data[1], data[2]]);
+      const answer = answers[`${data[0]}:${data[1]}:${data[2]}`] ?? answers[`${data[0]}:${data[1]}:0`];
+      this.command = answer && { device: data[0], action: data[1], left: [...answer.bytes], open: answer.open };
+      return Promise.resolve();
     }
   }
 
@@ -163,6 +198,7 @@ export const fakeHid = () => {
     state,
     fullReport: false,
     features: [],
+    commands: [],
     outputs: [],
     requests: [],
     disconnect() {

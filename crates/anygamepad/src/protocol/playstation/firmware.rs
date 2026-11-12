@@ -45,6 +45,17 @@ pub struct FirmwareInfo {
     /// The DualSense's update version, which its firmware updates show as
     /// `0x0630`.
     pub update: Option<u16>,
+    /// The DualSense's firmware type (2 and 3 on retail pads).
+    pub kind: Option<u16>,
+    /// The DualSense's software series.
+    pub series: Option<u16>,
+    /// The DualSense's bootloader (SBL), DSP and MCU DSP firmware versions,
+    /// when its answer holds them.
+    pub sbl: Option<u32>,
+    /// See `sbl`.
+    pub dsp: Option<u32>,
+    /// See `sbl`.
+    pub mcu_dsp: Option<u32>,
 }
 
 /// Reads ASCII text padded with NUL bytes; `None` for anything else.
@@ -83,6 +94,11 @@ pub fn parse(model: Model, report: &[u8]) -> Option<FirmwareInfo> {
                 hardware: u32::from(le16(report, 35)),
                 firmware: u32::from(le16(report, 41)),
                 update: None,
+                kind: None,
+                series: None,
+                sbl: None,
+                dsp: None,
+                mcu_dsp: None,
             })
         }
         Model::DualSense | Model::DualSenseEdge => {
@@ -96,6 +112,11 @@ pub fn parse(model: Model, report: &[u8]) -> Option<FirmwareInfo> {
                 hardware: le32(report, 24),
                 firmware: le32(report, 28),
                 update: Some(le16(report, 44)),
+                kind: Some(le16(report, 20)),
+                series: Some(le16(report, 22)),
+                sbl: (report.len() >= 52).then(|| le32(report, 48)),
+                dsp: (report.len() >= 56).then(|| le32(report, 52)),
+                mcu_dsp: (report.len() >= 60).then(|| le32(report, 56)),
             })
         }
     }

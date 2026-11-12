@@ -23,6 +23,7 @@ import {
   type ScrubResult,
   type Redaction,
   type Transport,
+  type Button,
 } from "./wasm/anygamepad_wasm.js";
 import { deleteReport, listReports, markReportShared, saveReport, type StoredReport } from "./storage";
 import { ActivityLog } from "./activity";
@@ -34,6 +35,50 @@ import { CountMeter, RateMeter } from "./rate";
 import { emptySettings, Sync, syncEndpoint, type SettingsView } from "./sync";
 import { emptyTestView, loadTesting, TestMode, type TestHost, type TestPad, type TestView } from "./test-mode";
 import { rawNames, WizardView } from "./wizard";
+import { emptyPadInfo, factGroups, readController, type InfoGroup, type InfoRow, type PadInfoView } from "./controller-info";
+import { emptyVibration, Vibration, type Motor, type VibrationView } from "./vibration";
+
+/** The page's views, each a tab. */
+export type Tab = "tester" | "activity" | "test";
+
+/** The activity view: the log's counts and its newest events. */
+export interface ActivityView {
+  since: string;
+  events: number;
+  inputs: number;
+  dropped: number;
+  withInputs: boolean;
+  recent: { key: number; time: string; type: string; pad: string; fields: string; kind: string }[];
+}
+
+export const emptyActivity = (): ActivityView => ({
+  since: "",
+  events: 0,
+  inputs: 0,
+  dropped: 0,
+  withInputs: false,
+  recent: [],
+});
+
+/** The player LED choices. */
+const PLAYER_OPTIONS = [
+  { value: 0, name: "Off" },
+  { value: 1, name: "1" },
+  { value: 2, name: "2" },
+  { value: 3, name: "3" },
+  { value: 4, name: "4" },
+];
+
+/** The URL of each tab. */
+export const TAB_URLS: Record<Tab, string> = { tester: "/", activity: "/#activity", test: "/test/" };
+
+/** The tab a URL shows. */
+export const tabOf = (location: Location, page: string | undefined): Tab =>
+  location.pathname.startsWith("/test") || page === "test"
+    ? "test"
+    : location.hash === "#activity"
+      ? "activity"
+      : "tester";
 
 /** One connected pad, as the page lists it. */
 export interface PadRow {
@@ -70,8 +115,9 @@ export interface ActiveShare {
 
 /** The data the page renders. */
 export interface TesterView {
-  /** The page: the tester at `/`, or the test mode (H4) at `/test/`. */
-  mode: "tester" | "test";
+  /** The tab: the tester at `/`, the activity log at `/#activity`, or the
+   * test mode (H4) at `/test/`. */
+  mode: Tab;
   test: TestView;
   settings: SettingsView;
   environment: Environment | null;
@@ -97,6 +143,15 @@ export interface TesterView {
   activeShare: ActiveShare | null;
   /** Temporary notice shown after saving a report. */
   saveNotice: string | null;
+  /** "This controller", beside the selected pad. */
+  padInfo: PadInfoView;
+  vibration: VibrationView;
+  /** The light bar colour picked last, `#rrggbb`. */
+  lightColour: string;
+  /** The player LEDs set last; -1 for none yet. */
+  playerLed: number;
+  playerOptions: { value: number; name: string }[];
+  activity: ActivityView;
 }
 
 export const emptyView = (): TesterView => ({
@@ -116,6 +171,12 @@ export const emptyView = (): TesterView => ({
   savedReports: [],
   activeShare: null,
   saveNotice: null,
+  padInfo: emptyPadInfo(),
+  vibration: emptyVibration(),
+  lightColour: "#0000ff",
+  playerLed: -1,
+  playerOptions: PLAYER_OPTIONS,
+  activity: emptyActivity(),
 });
 
 /**
@@ -132,14 +193,51 @@ export const missingGamepadHint = (environment: Environment): string | null =>
       "or try Safari, which reads it through macOS."
     : null;
 
-/** Which motors a vibration test runs. */
-export type RumbleKind = "strong" | "weak" | "both" | "triggers";
+/** The least time between two light bar writes, in milliseconds. */
+const LIGHT_MS = 50;
 
-/** How long a vibration test runs, in milliseconds. */
-export const RUMBLE_MS = 1000;
+/** How often the activity view refreshes, in milliseconds. */
+const ACTIVITY_MS = 500;
+
+/** Events the activity view lists. */
+const ACTIVITY_EVENTS = 200;
 
 /** How long a recording of WebHID reports lasts, in milliseconds. */
 export const RECORD_MS = 2000;
+
+/** The document title of each tab. */
+const TITLES: Record<Tab, string> = {
+  tester: "anygamepad: gamepad tester",
+  activity: "anygamepad: activity log",
+  test: "anygamepad: test mode",
+};
+
+const FAMILY_NAMES: Record<string, string> = {
+  dualshock3: "DualShock 3",
+  dualshock4: "DualShock 4",
+  dualsense: "DualSense",
+  dualsense_edge: "DualSense Edge",
+  switch_pro: "Switch Pro Controller",
+  xbox: "Xbox",
+};
+
+/** What the browser tells about a pad, for "This controller". */
+const identityRows = (pad: Pad): InfoRow[] => {
+  const { identity, family } = pad.info;
+  const rows: InfoRow[] = [{ label: "Read through", value: pad.source === "gamepad" ? "Gamepad API" : "WebHID" }];
+  rows.push({ label: "USB IDs", value: pad.row.ids === "–" ? "Hidden by the browser" : pad.row.ids });
+  if (family) rows.push({ label: "Family", value: FAMILY_NAMES[family] ?? family });
+  if (pad.source === "gamepad") {
+    rows.push({ label: "Mapping", value: identity.web?.mapping ? `"${identity.web.mapping}"` : "None (the browser's own layout)" });
+    rows.push({ label: "Buttons, axes", value: `${pad.info.layout.buttons.length}, ${pad.info.layout.axes.length}` });
+  } else {
+    rows.push({ label: "Connection", value: TRANSPORTS[pad.info.transport] ?? "Not told" });
+    rows.push({ label: "Reports", value: pad.info.decoded ? "Decoded by the library" : "Raw" });
+  }
+  const outputs = pad.source === "gamepad" ? pad.info.outputs : pad.info.outputs;
+  rows.push({ label: "Outputs", value: outputs.length ? outputs.join(", ").replaceAll("_", " ") : "None" });
+  return rows;
+};
 
 /** The sampler's period (browsers clamp timers to about 4 ms). */
 const SAMPLE_MS = 4;
@@ -197,29 +295,6 @@ export const hidRow = (id: number, info: HidDeviceInfo): PadRow => {
   };
 };
 
-const rumbleCommand = (kind: RumbleKind, strength: number): OutputCommand => {
-  switch (kind) {
-    case "strong":
-      return { rumble: { low_frequency: strength, high_frequency: 0 } };
-    case "weak":
-      return { rumble: { low_frequency: 0, high_frequency: strength } };
-    case "both":
-      return { rumble: { low_frequency: strength, high_frequency: strength } };
-    case "triggers":
-      return { trigger_rumble: { left: strength, right: strength } };
-  }
-};
-
-/** Light bar colours the light test offers. */
-export type LightColour = "blue" | "red" | "green" | "white";
-
-const COLOURS: Record<LightColour, { r: number; g: number; b: number }> = {
-  blue: { r: 0, g: 0, b: 255 },
-  red: { r: 255, g: 0, b: 0 },
-  green: { r: 0, g: 255, b: 0 },
-  white: { r: 255, g: 255, b: 255 },
-};
-
 /** A run of the guided wizard on a pad, kept until the pad goes. */
 interface WizardRun {
   wizard: MappingWizard;
@@ -234,7 +309,7 @@ interface GamepadPad {
   info: DeviceInfo;
   row: PadRow;
   rate: RateMeter;
-  rumbleTimer: number | undefined;
+  vibration: Vibration;
   run: WizardRun | undefined;
 }
 
@@ -252,8 +327,13 @@ interface HidPad {
   open: boolean;
   switching: boolean;
   recording: Recording | undefined;
-  rumbleTimer: number | undefined;
+  vibration: Vibration;
   run: WizardRun | undefined;
+  /** What the pad told about itself, when asked. */
+  facts: InfoGroup[];
+  reader: PadInfoView["reader"];
+  /** The light bar colour waiting for the next write, and its timer. */
+  light: { pending: OutputCommand | undefined; timer: number | undefined };
 }
 
 type Pad = GamepadPad | HidPad;
@@ -296,6 +376,8 @@ export class Tester {
   private readonly states = new Map<string, GamepadState | undefined>();
 
   private sync: Sync | undefined;
+  /** When the activity view last refreshed. */
+  private lastActivity = 0;
 
   /** The settings' actions, for App.html. */
   readonly settingsActions = {
@@ -354,7 +436,8 @@ export class Tester {
     this.sync = new Sync(
       syncEndpoint(),
       this.log,
-      { library: version(), page: view.mode, environment: () => this.view.environment },
+      // The page loaded; the activity tab is the tester's page.
+      { library: version(), page: view.mode === "test" ? "test" : "tester", environment: () => this.view.environment },
       view.settings,
     );
     try {
@@ -390,14 +473,76 @@ export class Tester {
         // Storage unavailable or blocked
       });
     this.frame = requestAnimationFrame(this.draw);
-    if (view.mode === "test") this.openTestMode();
+    window.addEventListener("popstate", () => this.showTab(tabOf(window.location, undefined)));
+    this.showTab(view.mode);
+  }
+
+  /** Shows a tab, loading the test mode's module the first time. */
+  private showTab(tab: Tab): void {
+    if (this.view.mode !== tab) this.log.event("tab", { tab });
+    this.view.mode = tab;
+    document.title = TITLES[tab];
+    if (tab === "test") this.openTestMode();
+    if (tab === "activity") this.lastActivity = 0;
+  }
+
+  /** "This controller" for the selected pad. */
+  private showInfo(): void {
+    const pad = this.view.selected ? this.pads.get(this.view.selected) : undefined;
+    if (!pad) {
+      this.view.padInfo = emptyPadInfo();
+      return;
+    }
+    this.view.padInfo = {
+      identity: identityRows(pad),
+      reader: pad.source === "webhid" && pad.reader ? { ...pad.reader } : null,
+      groups: pad.source === "webhid" ? pad.facts : [],
+    };
+  }
+
+  /** Refreshes the activity view, every so often while it shows. */
+  private showActivity(now: number): void {
+    if (this.view.mode !== "activity" || now - this.lastActivity < ACTIVITY_MS) return;
+    this.lastActivity = now;
+    const activity = this.view.activity;
+    const stats = this.log.stats();
+    activity.since = stats.since;
+    activity.events = stats.events;
+    activity.inputs = stats.inputs;
+    activity.dropped = stats.dropped;
+    activity.recent = this.log.recent(ACTIVITY_EVENTS, activity.withInputs).map((event, index) => {
+      const { t, type, pad, input, ...fields } = event;
+      return {
+        key: stats.total - index,
+        time: `${(t / 1000).toFixed(3)} s`,
+        type,
+        pad: typeof pad === "string" ? pad : "",
+        fields: Object.keys(fields).length ? JSON.stringify(fields) : "",
+        kind: type.includes("error") ? "error" : input ? "input" : "device",
+      };
+    });
+  }
+
+  /** Plays the vibration patterns of every pad, and listens to the pad
+   * buttons of the selected one when that mode is on. */
+  private vibrate(now: number): void {
+    for (const pad of this.pads.values()) {
+      const listening = this.view.vibration.padButtons && pad.row.key === this.view.selected && this.view.mode === "tester";
+      if (!listening && !pad.vibration.playing) continue;
+      const pressed = listening ? (this.states.get(pad.row.key)?.buttons ?? []) : undefined;
+      for (const command of pad.vibration.frame(now, pressed, pad.row.triggerRumble)) this.output(pad, command);
+    }
   }
 
   /** Shows a pad large. */
   readonly select = (key: string): void => {
-    if (key !== this.view.selected) this.view.wizardOpen = false;
+    if (key !== this.view.selected) {
+      this.view.wizardOpen = false;
+      this.view.playerLed = -1;
+    }
     this.view.selected = key;
     this.view.current = this.pads.get(key)?.row ?? null;
+    this.showInfo();
   };
 
   /** Opens the guided wizard on a pad: a new run, or the one in progress. */
@@ -571,36 +716,141 @@ export class Tester {
     }
   };
 
-  /** Runs a short vibration test. */
-  readonly rumble = (key: string, kind: RumbleKind): void => {
-    const pad = this.pads.get(key);
-    if (!pad) return;
-    this.log.event("vibration_test", { pad: key, kind });
-    if (!this.output(pad, rumbleCommand(kind, 1), "Vibration")) return;
-    // One timer stops every motor, including those of a test it cut short.
-    window.clearTimeout(pad.rumbleTimer);
-    pad.rumbleTimer = window.setTimeout(() => {
-      pad.rumbleTimer = undefined;
-      // The pad may have gone away; its rumble stopped with it.
-      this.output(pad, rumbleCommand("both", 0));
-      if (pad.row.triggerRumble) this.output(pad, rumbleCommand("triggers", 0));
-    }, RUMBLE_MS);
+  /** Sets a motor's level, in percent. */
+  readonly setVibration = (motor: Motor, value: string): void => {
+    this.view.vibration[motor] = Number(value);
   };
 
-  /** Sets the light bar of a pad the library drives through WebHID. */
-  readonly light = (key: string, colour: LightColour): void => {
+  /** Picks the vibration pattern. */
+  readonly setPattern = (id: string): void => {
+    this.view.vibration.pattern = id;
+  };
+
+  /** Turns the pad buttons that play the pattern on or off. */
+  readonly setPadButtons = (on: boolean): void => {
+    this.view.vibration.padButtons = on;
+    this.log.event("vibration_pad_buttons", { on });
+  };
+
+  /** Picks the pad button that plays a motor. */
+  readonly setPadButton = (motor: "strong" | "weak", button: string): void => {
+    if (motor === "strong") this.view.vibration.strongButton = button as Button;
+    else this.view.vibration.weakButton = button as Button;
+  };
+
+  /** Plays the pattern once on some motors. */
+  readonly playVibration = (key: string, which: "strong" | "weak" | "both" | "triggers"): void => {
     const pad = this.pads.get(key);
     if (!pad) return;
+    const motors: Motor[] = which === "both" ? ["strong", "weak"] : [which];
+    const { pattern, strong, weak, triggers } = this.view.vibration;
+    this.log.event("vibration_test", { pad: key, motors, pattern, levels: { strong, weak, triggers } });
+    pad.vibration.play(motors, performance.now());
+  };
+
+  /** Stops every motor of a pad. */
+  readonly stopVibration = (key: string): void => {
+    this.pads.get(key)?.vibration.stop();
+  };
+
+  /** Sets the light bar of a pad the library drives through WebHID, at
+   * most every few frames while the picker moves. */
+  readonly setLight = (key: string, colour: string): void => {
+    const pad = this.pads.get(key);
+    const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(colour);
+    if (!pad || pad.source !== "webhid" || !match) return;
+    this.view.lightColour = colour;
+    const [r, g, b] = match.slice(1).map((part) => parseInt(part, 16)) as [number, number, number];
+    pad.light.pending = { lightbar: { r, g, b } };
+    if (pad.light.timer !== undefined) return;
+    const write = (): void => {
+      const command = pad.light.pending;
+      pad.light.pending = undefined;
+      if (!command) {
+        pad.light.timer = undefined;
+        return;
+      }
+      this.output(pad, command, "Setting the light bar");
+      pad.light.timer = window.setTimeout(write, LIGHT_MS);
+    };
     this.log.event("light_test", { pad: key, colour });
-    this.output(pad, { lightbar: COLOURS[colour] }, "Setting the light bar");
+    write();
   };
 
   /** Shows a player number on a pad's LEDs; 0 turns them off. */
   readonly player = (key: string, player: number): void => {
     const pad = this.pads.get(key);
     if (!pad) return;
+    this.view.playerLed = player;
     this.log.event("player_leds_test", { pad: key, player });
     this.output(pad, { player_number: player }, "Setting the player LEDs");
+  };
+
+  /** Asks a WebHID PlayStation pad what it tells about itself. */
+  readonly readInfo = (key: string): void => {
+    const pad = this.pads.get(key);
+    const hids = this.hids;
+    const { vendor_id: vendor, product_id: product } = pad?.info.identity ?? {};
+    if (!pad || pad.source !== "webhid" || !hids || !pad.reader || vendor == null || product == null) return;
+    if (pad.reader.state === "reading") return;
+    const reader = (pad.reader = { ...pad.reader, state: "reading" as const, text: "" });
+    this.showInfo();
+    this.log.event("controller_info_asked", { pad: key });
+    const ids = { vendor, product, transport: pad.info.transport, collections: pad.info.collections };
+    // Over Bluetooth, the calibration first: the pad switches to its full
+    // report either way, and its motion then comes calibrated.
+    const switched = pad.info.transport === "bluetooth" ? hids.switchToFullReports(pad.id).catch(() => undefined) : Promise.resolve();
+    switched
+      .then(() =>
+        readController(hids, pad.id, ids, (done) => {
+          reader.text = `(${done})`;
+          this.showInfo();
+        }),
+      )
+      .then(
+        (facts) => {
+          pad.facts = factGroups(facts);
+          pad.reader = facts.firmware
+            ? { ...reader, state: "done", text: "" }
+            : {
+                ...reader,
+                state: "done",
+                text: "It does not answer with firmware information, as Sony's pads do: most likely a compatible pad.",
+              };
+          // The firmware, board and colour describe the model; the usage
+          // counters are specific to the unit and are not logged.
+          this.log.event("controller_info", {
+            pad: key,
+            firmware: facts.firmware,
+            bluetooth_patch: facts.bluetooth_patch,
+            board: facts.board,
+            colour: facts.colour_code,
+            trigger_motors: facts.trigger_motors,
+            touchpad_firmware: facts.touchpad_firmware,
+            usage_counters: facts.usage.length,
+          });
+          this.showInfo();
+        },
+        (error: unknown) => {
+          pad.reader = { ...reader, state: "failed", text: `The pad did not answer (${String(error)}).` };
+          this.log.event("controller_info_failed", { pad: key, message: String(error) });
+          this.showInfo();
+        },
+      );
+  };
+
+  /** Shows a tab; from a link's click, in place of following it. */
+  readonly setTab = (tab: Tab, event?: Event): void => {
+    event?.preventDefault();
+    if (tab === this.view.mode) return;
+    window.history.pushState(null, "", TAB_URLS[tab]);
+    this.showTab(tab);
+  };
+
+  /** Shows or hides the input events in the activity view. */
+  readonly setActivityInputs = (on: boolean): void => {
+    this.view.activity.withInputs = on;
+    this.lastActivity = 0;
   };
 
   /**
@@ -627,7 +877,7 @@ export class Tester {
     window.clearInterval(this.sampler);
     cancelAnimationFrame(this.frame);
     for (const pad of this.pads.values()) {
-      window.clearTimeout(pad.rumbleTimer);
+      if (pad.source === "webhid") window.clearTimeout(pad.light.timer);
       pad.run?.wizard.free();
     }
     this.gamepads?.free();
@@ -687,7 +937,7 @@ export class Tester {
       if (changed) this.refresh();
       const now = performance.now();
       for (const key of removed) this.testMode?.removed(key, now);
-      for (const key of added) {
+      for (const key of this.view.mode === "test" ? added : []) {
         const pad = this.testPads().find((p) => p.key === key);
         if (pad) this.testMode?.added(pad, now);
       }
@@ -714,7 +964,7 @@ export class Tester {
       info,
       row,
       rate: new RateMeter(),
-      rumbleTimer: undefined,
+      vibration: new Vibration(this.view.vibration),
       run: undefined,
     });
     this.log.event("gamepad_added", {
@@ -744,8 +994,14 @@ export class Tester {
       open: false,
       switching: false,
       recording: undefined,
-      rumbleTimer: undefined,
+      vibration: new Vibration(this.view.vibration),
       run: undefined,
+      facts: [],
+      reader:
+        info.decoded
+          ? { state: "offer", bluetooth: info.transport === "bluetooth", text: "" }
+          : null,
+      light: { pending: undefined, timer: undefined },
     };
     this.pads.set(row.key, pad);
     this.log.event("hid_added", {
@@ -817,7 +1073,7 @@ export class Tester {
   private remove(key: string): void {
     this.states.delete(key);
     const pad = this.pads.get(key);
-    window.clearTimeout(pad?.rumbleTimer);
+    if (pad?.source === "webhid") window.clearTimeout(pad.light.timer);
     pad?.run?.wizard.free();
     if (key === this.view.selected) this.view.wizardOpen = false;
     this.pads.delete(key);
@@ -894,7 +1150,10 @@ export class Tester {
       this.drainHid(now);
       const reads = this.readGamepads();
       this.drawSelected(now, reads);
-      this.testMode?.frame(now);
+      this.vibrate(now);
+      this.showActivity(now);
+      // Off its tab, the test mode only goes on with a session it runs.
+      if (this.view.mode === "test" || this.testMode?.busy()) this.testMode?.frame(now);
       this.logRates(now);
     } catch (error) {
       this.fail(`Drawing the gamepads failed (${String(error)}).`);

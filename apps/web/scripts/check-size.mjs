@@ -19,8 +19,10 @@ const BUDGETS = {
   // standard library, serde and the model (about 160 KiB, measured).
   "testing.wasm": 176 * KIB,
   // 80 KiB until sending to the database (settings, src/sync.ts) took it to
-  // 80.8 (RECORD/2026-11-02.sync-server-on-cloudflare-workers).
-  ".js": 88 * KIB,
+  // 80.8 (RECORD/2026-11-02.sync-server-on-cloudflare-workers); 88 until
+  // the tabs, the vibration patterns and the controller information took
+  // it to 90.4 (RECORD/2026-11-12.dualsense-controller-info-and-tester-layout).
+  ".js": 96 * KIB,
   ".css": 16 * KIB,
 };
 

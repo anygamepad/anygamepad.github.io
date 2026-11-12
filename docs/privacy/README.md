@@ -148,7 +148,7 @@ Device reports: not written yet. P6 writes them under the
 stores before it accepts its first report.
 
 Activity log and test reports (web, owner request of 2026-11-02). The
-settings dialog, opened from the sliders icon in the header, titled
+settings dialog, opened from the sliders icon in the footer, titled
 **Settings**:
 
 - Switch, off by default: **Send the activity and the test reports to the

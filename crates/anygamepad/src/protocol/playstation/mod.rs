@@ -43,6 +43,7 @@ use super::crc32;
 
 mod calibration;
 pub mod firmware;
+pub mod info;
 mod output;
 
 pub use calibration::{Calibration, MotionTracker};

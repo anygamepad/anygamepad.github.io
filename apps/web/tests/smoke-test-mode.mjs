@@ -1,6 +1,6 @@
 // Smoke test of the test mode (roadmap task H4) on the built site (dist/):
 //
-// - The test mode is its own page, /test/, linked from the tester's footer;
+// - The test mode is a tab of the tester, at /test/;
 //   its WebAssembly module (W9) is fetched there only.
 // - Sending (the settings), to a fake database named by the page's
 //   `anygamepad-sync` tag, as a build with ANYGAMEPAD_SYNC_URL names it:
@@ -134,13 +134,16 @@ try {
   const testingModule = () => fetched.filter((u) => /anygamepad_wasm_testing.*\.wasm/.test(u));
   assert.ok(fetched.some((u) => /anygamepad_wasm_bg.*\.wasm/.test(u)), "the tester's module loads");
   assert.deepEqual(testingModule(), [], "the tester does not load the test mode's module");
-  // The tester's footer links the test mode's page.
-  await page.click(".site >> text=Test mode");
-  await page.waitForURL(/\/test\/$/, { waitUntil: "networkidle" });
+  // The test mode is a tab: it loads its module in place.
+  await page.click("[data-tab=test]");
+  await page.waitForURL(/\/test\/$/);
   assert.equal(await page.title(), "anygamepad: test mode");
   await until("the list", stage, (s) => s === "list");
-  assert.equal(testingModule().length, 1, "the test mode's page loads its module");
-  assert.equal(await page.getAttribute(".site >> text=Tester", "href"), "/");
+  assert.equal(testingModule().length, 1, "the test mode's tab loads its module");
+  assert.equal(await page.getAttribute("[data-tab=tester]", "href"), "/");
+  // Its own address, which this test's fake database is named on.
+  await page.goto(`${url}test/`, { waitUntil: "networkidle" });
+  await until("the list", stage, (s) => s === "list");
 
   // Sending, turned on in the settings: the log so far goes at once.
   assert.deepEqual(uploads, [], "nothing is sent before the person turns it on");

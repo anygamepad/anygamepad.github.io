@@ -6,9 +6,11 @@
 // report, decode errors, the viewer's actions and page errors.
 //
 // No serial numbers, Bluetooth addresses or other personal data: the Gamepad
-// API and WebHID expose none, and the tester reads no feature report but the
-// calibration one, which is not logged. Times are milliseconds since the
-// page loaded.
+// API and WebHID expose none, and the feature reports the tester reads (the
+// calibration, the controller information on request) are not logged, but
+// for the firmware, board and colour, which describe the model. The pad's
+// usage counters, specific to the unit, are not logged. Times are
+// milliseconds since the page loaded.
 
 import type {
   Axis,
@@ -193,6 +195,36 @@ export class ActivityLog {
     this.gamepads.delete(pad);
     this.flushErrors(pad);
     this.hids.delete(pad);
+  }
+
+  /** The log's counts, for the activity view. */
+  stats(): { since: string; events: number; inputs: number; dropped: number; total: number } {
+    return {
+      since: new Date(this.startedAt).toLocaleTimeString(),
+      events: this.events.length,
+      inputs: this.inputs.length + this.dropped,
+      dropped: this.dropped,
+      total: this.events.length + this.inputs.length + this.dropped,
+    };
+  }
+
+  /** The newest events, newest first; input events only when asked. */
+  recent(limit: number, withInputs: boolean): (LogEvent & { input: boolean })[] {
+    const recent: (LogEvent & { input: boolean })[] = [];
+    let i = this.events.length - 1;
+    let j = withInputs ? this.inputs.length - 1 : -1;
+    while (recent.length < limit && (i >= 0 || j >= 0)) {
+      const a = this.events[i];
+      const b = j >= 0 ? this.inputs[j] : undefined;
+      if (b === undefined || (a !== undefined && a.t >= b.t)) {
+        recent.push({ ...(a as LogEvent), input: false });
+        i--;
+      } else {
+        recent.push({ ...b, input: true });
+        j--;
+      }
+    }
+    return recent;
   }
 
   /** The log as a JSON document: device and input events in time order. */

@@ -109,10 +109,12 @@ const readDetail = () => {
       absent: [...diagram.querySelectorAll(".absent")].map((element) => element.dataset.button),
       fingers: [...diagram.querySelectorAll(".finger")].filter((dot) => dot.getAttribute("visibility") === "visible").length,
     },
-    vibration: [...detail.querySelectorAll(".vibration button")].map(
-      (button) => `${button.textContent}${button.disabled ? " (disabled)" : ""}`,
-    ),
-    note: text(detail.querySelector(".note")),
+    vibration: [...detail.querySelectorAll("[data-play]")].map((button) => button.textContent),
+    lights: {
+      lightbar: detail.querySelector("[data-lightbar]") !== null,
+      players: [...detail.querySelectorAll("[data-player]")].map((button) => button.textContent),
+    },
+    note: text(detail.querySelector(".vibration-box > .note")),
     form: text(detail.querySelector(".report-form")),
     switchShown: detail.querySelector(".switch-box") ? !detail.querySelector(".switch-box").hidden : null,
     touch: text(detail.querySelector(".touchpad-panel .panel-text")),
@@ -297,7 +299,8 @@ try {
     absent: [],
     fingers: 0,
   });
-  assert.deepEqual(pad.vibration, ["Strong motor", "Weak motor", "Both", "Triggers"]);
+  assert.deepEqual(pad.vibration, ["Strong", "Weak", "Both", "Triggers", "Stop"]);
+  assert.deepEqual(pad.lights, { lightbar: false, players: [] });
   assert.equal(pad.note, null);
 
   await select("USB Gamepad");
@@ -307,7 +310,7 @@ try {
   assert.equal(generic.rawOpen, true);
   assert.ok(generic.buttons.every((button) => button.name === ""));
   assert.equal(generic.axes.length, 5);
-  assert.deepEqual(generic.vibration, ["Strong motor (disabled)", "Weak motor (disabled)", "Both (disabled)"]);
+  assert.deepEqual(generic.vibration, []);
   assert.equal(generic.note, "This browser cannot vibrate this gamepad.");
 
   // Raw values and the canonical drawing follow the gamepad. Raw Y grows
@@ -333,8 +336,9 @@ try {
   await page.locator(".toggle").click();
   await until("the values hidden", detail, (d) => d.diagram.values === null);
 
-  // Vibration: a one-second test, then the motors stop.
-  await page.locator(".detail").getByRole("button", { name: "Strong motor" }).click();
+  // Vibration: the constant pattern for a second at the strong motor's
+  // level, then the motors stop.
+  await page.click("[data-play=strong]");
   let calls = await until("the strong motor test", haptics, (log) => log.some((call) => call.call === "reset"));
   assert.deepEqual(
     calls.map(({ index, call, type, strongMagnitude, weakMagnitude }) => ({ index, call, type, strongMagnitude, weakMagnitude })),
@@ -343,17 +347,30 @@ try {
       { index: 0, call: "reset", type: undefined, strongMagnitude: undefined, weakMagnitude: undefined },
     ],
   );
-  // A test started during another one stops every motor at its end.
+  // Levels and patterns: the weak motor at half, in pulses that switch it
+  // on and off, and the trigger motors at the same time.
   await page.evaluate(() => (window.__haptics = []));
-  await page.locator(".detail").getByRole("button", { name: "Triggers" }).click();
-  await page.locator(".detail").getByRole("button", { name: "Strong motor" }).click();
-  calls = await until("the motors to stop", haptics, (log) => log.some((call) => call.call === "reset"));
-  assert.deepEqual(
-    calls[0],
-    { index: 0, call: "playEffect", type: "trigger-rumble", duration: 5000, startDelay: 0,
-      strongMagnitude: 0, weakMagnitude: 0, leftTrigger: 1, rightTrigger: 1 },
-  );
+  await page.locator("[data-level=weak]").fill("50");
+  await page.selectOption("[data-pattern]", "pulse");
+  await page.click("[data-play=triggers]");
+  await page.click("[data-play=weak]");
+  calls = await until("the pulses to end", haptics, (log) => log.filter((call) => call.call === "reset").length >= 3);
+  const played = calls.filter((call) => call.call === "playEffect");
+  assert.ok(played.some((call) => call.type === "trigger-rumble" && call.leftTrigger === 1 && call.rightTrigger === 1), JSON.stringify(played));
+  assert.ok(played.some((call) => call.type === "dual-rumble" && call.weakMagnitude === 0.5 && call.strongMagnitude === 0), JSON.stringify(played));
   assert.equal(calls.at(-1).call, "reset");
+  // From the pad: holding the right shoulder plays the weak motor until it
+  // is let go.
+  await page.selectOption("[data-pattern]", "constant");
+  await page.click("[data-pad-buttons]");
+  await page.evaluate(() => (window.__haptics = []));
+  await setGamepads([with_(DUALSHOCK, { buttons: { 5: 1 } }), GENERIC]);
+  await until("the weak motor from the pad", haptics, (log) => log.some((call) => call.weakMagnitude === 0.5));
+  await new Promise((resolve) => setTimeout(resolve, 1300));
+  assert.ok(!(await haptics()).some((call) => call.call === "reset"), "held: the pattern repeats");
+  await setGamepads([DUALSHOCK, GENERIC]);
+  await until("the motor to stop", haptics, (log) => log.at(-1)?.call === "reset");
+  await page.click("[data-pad-buttons]");
 
   // The guided wizard on the pad without the standard mapping: buttons by
   // index, the d-pad on axes 3 and 4, sticks on axes 0 to 2. Pressing the
@@ -375,7 +392,7 @@ try {
     results: [],
     back: "disabled",
   });
-  assert.equal(await page.locator(".vibration").count(), 0);
+  assert.equal(await page.locator(".vibration-box").count(), 0);
   const axesWith = (index, value) => GENERIC.axes.map((rest, i) => (i === index ? value : rest));
   // Uses the pad as `change` says, waits for `note`, lets go and waits for
   // the next step.
@@ -666,22 +683,11 @@ try {
   // (0x31, numbered, with the light bar and player LED flags), sending
   // nothing until asked.
   assert.deepEqual(await page.evaluate(() => window.__hid.outputs), []);
-  assert.deepEqual(pad.vibration, [
-    "Strong motor",
-    "Weak motor",
-    "Both",
-    "Blue",
-    "Red",
-    "Green",
-    "White",
-    "Player 1",
-    "Player 2",
-    "Player 3",
-    "Player 4",
-    "LEDs off",
-  ]);
-  await page.getByRole("button", { name: "Blue", exact: true }).click();
-  await page.getByRole("button", { name: "Player 2", exact: true }).click();
+  assert.deepEqual(pad.vibration, ["Strong", "Weak", "Both", "Stop"]);
+  assert.deepEqual(pad.lights, { lightbar: true, players: ["Off", "1", "2", "3", "4"] });
+  await page.locator("[data-lightbar]").fill("#0000ff");
+  await until("the light bar", () => page.evaluate(() => window.__hid.outputs.length), (n) => n === 1);
+  await page.click('[data-player="2"]');
   const outputs = await until(
     "two output reports",
     () => page.evaluate(() => window.__hid.outputs),
@@ -693,6 +699,48 @@ try {
   assert.deepEqual(blue.slice(47, 50), [0, 0, 255]);
   assert.deepEqual(player.slice(0, 5), [0x31, 0x10, 0x10, 0x00, 0x14]);
   assert.equal(player[46], 0x0a);
+
+  // The controller's information, asked for: firmware, board and colour
+  // (the serial number's two characters that tell them, and nothing
+  // else), the battery voltage and the usage counters. Only the reader's
+  // commands go out.
+  await page.evaluate(() => {
+    const ascii = (text) => [...text].map((c) => c.charCodeAt(0));
+    const firmware = new Array(64).fill(0);
+    firmware[0] = 0x20;
+    firmware.splice(1, 11, ...ascii("Jun 24 2024"));
+    firmware.splice(12, 8, ...ascii("11:16:21"));
+    firmware.splice(20, 12, 2, 0, 4, 0, 0x10, 0x04, 0, 0, 0, 0, 0x0f, 0x01);
+    firmware.splice(44, 2, 0x20, 0x05);
+    const motor = new Array(43).fill(0);
+    motor.splice(19, 8, ...ascii("M1418AB3"));
+    const usage = new Array(1 + 4 * 56).fill(0);
+    usage.splice(1, 17, ...ascii("A21600XYZ12345678"));
+    usage.splice(1 + 21, 3, 0x4e, 0xfb, 0x00); // 64334 s
+    usage.splice(1 + 130, 2, 0xb9, 0x04); // 1209 presses of Cross
+    window.__hid.firmware = firmware;
+    window.__hid.answers = {
+      "1:19:0": { bytes: [...ascii("A21600XYZ12345678"), ...new Array(15).fill(0)] },
+      "7:37:1": { bytes: motor },
+      "7:37:2": { bytes: motor },
+      "4:3:0": { bytes: [0x30, 0x0c, 0, 0] },
+      "112:1:0": { bytes: usage, open: true },
+    };
+  });
+  await page.click("[data-read-info]");
+  await until("the controller's information", () => page.getAttribute("[data-info]", "data-info"), (state) => state === "done");
+  const info = (
+    await page.evaluate(() =>
+      [...document.querySelectorAll(".pad-info dl > div")].map((row) => `${row.firstChild.textContent} ${row.lastChild.textContent}`),
+    )
+  ).join(" | ");
+  for (const fact of ["Built Jun 24 2024 11:16:21", "Update version 5.20", "Main firmware 1.15.0", "Board BDM-020",
+    "Colour White", "Trigger motors M1418AB3 (L), M1418AB3 (R)", "Battery voltage 3.12 V", "Time in use 17h 52m 14s", "Cross 1209"]) {
+    assert.ok(info.includes(fact), `${fact} in ${info}`);
+  }
+  assert.doesNotMatch(info, /XYZ|12345678/);
+  assert.deepEqual(await page.evaluate(() => window.__hid.commands), [[1, 19, 0], [7, 37, 1], [7, 37, 2], [4, 3, 0], [112, 1, 0]]);
+  await page.evaluate(() => (window.__hid.answers = undefined));
 
   // Recording: two seconds of reports, downloaded as JSON.
   await page.locator(".raw-report summary").click();
@@ -721,7 +769,12 @@ try {
   await page.waitForSelector(".message");
   await page.waitForSelector(".placeholder .diagram");
 
-  // The activity log holds the whole session, in time order.
+  // The activity tab lists the newest events, and downloads the log: the
+  // whole session, in time order.
+  await page.click("[data-tab=activity]");
+  await page.waitForURL(/#activity$/);
+  await until("the events listed", () => page.locator("[data-activity] .event").count(), (n) => n > 10);
+  assert.equal(await page.locator(".detail").count(), 0);
   const [logDownload] = await Promise.all([
     page.waitForEvent("download", { timeout: 10000 }),
     page.getByRole("button", { name: "Download the activity log" }).click(),
@@ -746,7 +799,12 @@ try {
   assert.ok(of("button").some((event) => event.pad === dualshock && event.index === 0 && event.pressed));
   assert.ok(of("axis").some((event) => event.pad === dualshock && event.index === 1 && event.value === -1));
   assert.ok(of("canonical_buttons").some((event) => event.pad === dualshock && event.pressed.join() === "south,dpad_up,right_trigger"));
-  assert.deepEqual(of("vibration_test").map((event) => event.kind), ["strong", "triggers", "strong"]);
+  assert.deepEqual(of("vibration_test").map((event) => event.motors.join()), ["strong", "triggers", "weak"]);
+  // The controller's information: the model's facts, not the counters.
+  const [controllerInfo] = of("controller_info");
+  assert.equal(controllerInfo.board, "BDM-020");
+  assert.equal(controllerInfo.usage_counters > 0, true);
+  assert.doesNotMatch(JSON.stringify(log), /XYZ12345678|64334/);
   const [hid] = of("hid_added");
   assert.equal(hid.identity.product_id, 0x0ce6);
   assert.deepEqual(of("hid_chooser").map((event) => event.picked), [1]);
@@ -791,15 +849,21 @@ try {
   const expect = (want) => until(JSON.stringify(want), theme, (have) => JSON.stringify(have) === JSON.stringify(want));
   const pick = (name) => themePage.getByRole("button", { name, exact: true }).click();
   await expect({ attribute: null, background: LIGHT, pressed: ["Auto"] });
-  // Icons only, on the title's right at every width.
+  // Icons only, in the footer; the tabs on the title's right on a wide
+  // screen, under it on a phone.
   assert.deepEqual(await themePage.locator(".theme button").allTextContents(), ["", "", ""]);
+  assert.equal(await themePage.locator(".site .tools").count(), 1);
   for (const width of [1280, 360, 320]) {
     await themePage.setViewportSize({ width, height: 800 });
-    const [title, brand, tools] = await Promise.all(
-      [".title", ".brand a > span", ".tools"].map((s) => themePage.locator(s).boundingBox()),
+    const [title, brand, tabs] = await Promise.all(
+      [".title", ".brand a > span", ".tabs"].map((s) => themePage.locator(s).boundingBox()),
     );
-    assert.ok(tools.x >= title.x + title.width && tools.y < title.y + title.height, `${width}px: ${JSON.stringify({ title, tools })}`);
-    assert.ok(brand.x + brand.width <= tools.x, `${width}px: the title fits (${JSON.stringify({ brand, tools })})`);
+    if (width > 640) {
+      assert.ok(tabs.x >= title.x + title.width && tabs.y < title.y + title.height, `${width}px: ${JSON.stringify({ title, tabs })}`);
+    } else {
+      assert.ok(tabs.y >= title.y + title.height, `${width}px: ${JSON.stringify({ title, tabs })}`);
+    }
+    assert.ok(brand.x + brand.width <= width, `${width}px: the title fits (${JSON.stringify({ brand })})`);
     const overflow = await themePage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     assert.equal(overflow, 0, `${width}px: no horizontal scroll`);
   }
