@@ -36,6 +36,23 @@ Status: **active**. Supersedes [ROADMAP/2026-11-01/](../2026-11-01/README.md).
   has 2 days of slack, the macOS chain (C6 -> A8) 15. In the same edit,
   05-desktop-app.md's upstream milestone for C6 gets the date its table
   gives (it kept 2026-11-26 from the 2026-11-01 version).
+- **Status update (2026-11-12, in place, no date moves):**
+  - H6 started: the owner's first test report (PAD-01, Chrome on macOS)
+    brought fixes and test page features, merged with C6 in PR #20 and
+    released in v0.0.6
+    ([06-hardware-testing.md](06-hardware-testing.md#h6--first-test-campaign)).
+  - Owner request: identifying the model must be transparent to the
+    person (the best identity wins, granted WebHID pads reopen by
+    themselves, the firmware is read when it changes nothing, no transport
+    question or "Confirm" step when there is no doubt). A follow-up of H10
+    and H4 with no new task ID, planned in
+    `RECORD/2026-11-12.transparent-model-identification.WIP.md` for the
+    next session
+    ([06-hardware-testing.md](06-hardware-testing.md#h10--automatic-detection)).
+  - P5: the published build names the sync server (the repository
+    variable `ANYGAMEPAD_SYNC_URL` is set; CI's build of 2026-11-11), so
+    the owner ran the deployment; left: the data processing addendum
+    ([03-collection-pipeline.md](03-collection-pipeline.md#p5--hosting-backups-monitoring)).
 - **H7**: the HID report descriptor parser (`anygamepad-hid`) was merged
   (PR #16), so generic HID pads replay through it.
 - The owner directions of 2026-10-14, 2026-10-31 and 2026-11-01 still

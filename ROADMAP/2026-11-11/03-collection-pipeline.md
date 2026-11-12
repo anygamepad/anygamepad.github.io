@@ -143,6 +143,11 @@ run of "Build" on `main`, and the data processing addendum. It no longer
 waits for P2: the workflow deploys what P2 has, and P2's device reports
 go out with one more run.
 
+Status (2026-11-12, in place): deployed. The repository variable
+`ANYGAMEPAD_SYNC_URL` is set (CI's build of 2026-11-11 named a
+`workers.dev` server), so the owner ran "Deploy server" and the published
+site can send. Left: the data processing addendum (the owner confirms).
+
 ### P6 — Report sync in the web and desktop apps
 
 Added on 2026-10-14 (ADR 0007). The web app (IndexedDB, W6) and the desktop

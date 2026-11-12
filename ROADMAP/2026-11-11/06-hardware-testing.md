@@ -514,3 +514,16 @@ Status (2026-10-31): done
 `anygamepad_db::detect` (`Catalog::identify`, `Catalog::check_choice`,
 `Inventory::proposed_units`, `transports_fit`) and
 `anygamepad::detect::PressedPad`.
+
+Status (2026-11-12, in place): owner request after the first test
+session: identification must be transparent to the person. Planned as a
+follow-up of H10 and H4 (no new ID, no date moves), in
+[`RECORD/2026-11-12.transparent-model-identification.WIP.md`](../../RECORD/2026-11-12.transparent-model-identification.WIP.md):
+the WebHID identity wins over the Gamepad API's whenever both exist,
+granted WebHID pads reopen and are detected without a click, the
+PlayStation firmware is read by itself when that changes nothing (USB, or
+Bluetooth in the full report), no transport question when WebHID tells,
+and no "Confirm" step for a single specific candidate whose firmware
+answered. The first WebHID permission (one click per pad), the Bluetooth
+full-report switch (asked once) and browsers without WebHID stay as
+limits.
