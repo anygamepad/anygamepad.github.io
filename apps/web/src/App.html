@@ -244,6 +244,7 @@
   <section class="detail test-detail" :data-stage="test.stage">
     <p :if="test.error" class="message error">{{ test.error }}</p>
 
+
     <div :if="test.stage === 'loading'" class="test-intro">
       <h2>Test mode</h2>
       <p>Loading the test mode…</p>
@@ -252,6 +253,15 @@
     <div :elseif="test.stage === 'list'" class="test-intro">
       <h2>Test mode</h2>
       <p>Pick a controller from the list to see the ways to connect it, or connect one now and press one of its buttons: it is detected.</p>
+      <div :if="webhid" class="test-connect-hid">
+        <button type="button" class="action primary-btn" data-connect-hid @click="connectHid()">Connect a pad with WebHID</button>
+        <p class="note">
+          WebHID reads the pad's USB IDs, which tell the exact model and version (DualShock 4 V1 or V2, DualSense or DualSense Edge),
+          and a PlayStation pad's firmware, which tells Sony's pads from compatible ones. On macOS, Chrome and Safari otherwise read
+          PlayStation, Xbox and Switch pads through the system, which hides those IDs.
+        </p>
+        <p :if="hidMessage" class="note">{{ hidMessage }}</p>
+      </div>
       <p class="note">
         Each session tests one controller in one mode and one connection, step by step, and writes an anonymous test report:
         no serial numbers, addresses or names, the day but not the time. It stays in this browser until you download it.
@@ -318,6 +328,22 @@
       <h2>Detected</h2>
       <p class="test-choice" data-detected>{{ test.choice?.title }}</p>
       <p class="facts">{{ test.padName }}</p>
+      <div class="test-drawing" aria-live="off"></div>
+      <div :if="test.idsHidden && webhid" class="test-connect-hid" data-ids-hidden>
+        <p>This browser does not show the pad's USB IDs, so its exact model and version cannot be told. Connect it with WebHID to read them.</p>
+        <button type="button" class="action" data-connect-hid @click="connectHid()">Connect it with WebHID</button>
+        <p :if="hidMessage" class="note">{{ hidMessage }}</p>
+      </div>
+      <p :elseif="test.idsHidden" class="note" data-ids-hidden>This browser does not show the pad's USB IDs, so its exact model and version cannot be told: pick it from the list if you know it.</p>
+      <div :if="test.firmware" class="test-firmware" :data-firmware="test.firmware.state">
+        <p :if="test.firmware.state === 'offer'">
+          Sony's pads answer a request for their firmware; many compatible pads that borrow their IDs do not.
+          <span :if="test.firmware.bluetooth">Over Bluetooth, asking switches the pad to its full report until it is turned off; other apps may then not read it.</span>
+        </p>
+        <button :if="test.firmware.state === 'offer'" type="button" class="action" data-check-firmware @click="testCheckFirmware()">Check the firmware</button>
+        <p :elseif="test.firmware.state === 'reading'" class="note">Asking the pad…</p>
+        <p :else>{{ test.firmware.text }}</p>
+      </div>
       <div :if="!test.choice?.transportKnown" class="test-transport">
         <p>This browser does not tell how it is connected. Is it:</p>
         <button :each="option in test.transports" :key="option.transport" type="button" class="action" @click="testSetTransport(option.transport)">{{ option.name }}</button>
@@ -373,6 +399,8 @@
       <p :if="test.status" class="facts">Step {{ test.status.step + 1 }} of {{ test.status.total }} · {{ test.status.step_id }}</p>
       <progress class="test-meter" max="100" :value="test.progress" aria-label="Progress">{{ test.progress }}%</progress>
       <p :if="test.status" class="test-prompt" :data-prompt="test.promptKey">{{ test.status.text }}</p>
+      <p :if="test.promptNote" class="note test-prompt-note" data-prompt-note>{{ test.promptNote }}</p>
+      <div class="test-drawing" aria-live="off"></div>
       <div :if="test.status && test.status.prompt.kind === 'touch'" class="test-corners">
         <span :class.on="test.status.prompt.corners[0]">Top left</span>
         <span :class.on="test.status.prompt.corners[1]">Top right</span>
@@ -430,6 +458,25 @@
       </div>
       <p :if="test.saved" class="note" data-saved>{{ test.saved }}</p>
     </div>
+
+    <section :if="test.stage === 'list' || test.stage === 'connect' || test.stage === 'summary'" class="test-history">
+      <h3>Tests done in this browser</h3>
+      <p :if="test.history.length === 0" class="note" data-history-empty>No test saved in this browser yet.</p>
+      <ul :else class="reports" data-history>
+        <li :each="entry in test.history" :key="entry.id" class="report-row" :class.failed="entry.failed">
+          <div class="report-meta">
+            <span class="report-name">{{ entry.title }}</span>
+            <span class="report-facts">{{ entry.date }} · {{ entry.facts }}</span>
+            <span class="report-result" :class.failed="entry.failed">{{ entry.summary }}</span>
+          </div>
+          <div class="report-actions">
+            <button type="button" class="action report-btn" @click="testDownloadSaved(entry.id)">Download</button>
+            <button type="button" class="action report-btn" @click="testDeleteSaved(entry.id)">Delete</button>
+          </div>
+        </li>
+      </ul>
+      <p class="note">Saved test reports stay in this browser: a private window drops them when it closes, and Safari may delete them after seven days without a visit.</p>
+    </section>
   </section>
 </main>
 

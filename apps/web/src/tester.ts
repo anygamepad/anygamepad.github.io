@@ -334,6 +334,9 @@ export class Tester {
     testSave: (): void => void this.testMode?.save(),
     testDownload: (): void => this.testMode?.download(),
     testNext: (): void => this.testMode?.next(),
+    testDownloadSaved: (id: number): void => this.testMode?.downloadSaved(id),
+    testDeleteSaved: (id: number): void => this.testMode?.deleteSaved(id),
+    testCheckFirmware: (): void => this.testMode?.checkFirmware(),
   };
 
   /** Starts reading gamepads into `view` (a component's reactive data). */

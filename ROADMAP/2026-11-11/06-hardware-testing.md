@@ -429,6 +429,16 @@ committed yet), so it starts at the new baseline. The first row closes
 the most tasks per hour (C15, W3 and C7 on the web) and needs only the
 published site at <https://anygamepad.github.io/test/> and a DualSense.
 
+Status (2026-11-12, in place): started. The owner's first report (PAD-01,
+a PlayStation-compatible pad over Bluetooth, Chrome on macOS, Gamepad
+API, Full plan) brought fixes to the test mode and the library: the
+touchpad click of PlayStation pads in the standard layout, a PS5 mode for
+the generic PlayStation model, the identity a pad comes back with in the
+hotplug step, Home on macOS, WebHID from the test view, the firmware
+check of PlayStation pads, the drawing and the history
+([`RECORD/2026-11-12.test-mode-feedback-pad01.completed.md`](../../RECORD/2026-11-12.test-mode-feedback-pad01.completed.md)).
+No report committed yet.
+
 ### H7 — Replay tests
 
 Every test report in `data/test-reports/` becomes a regression test:

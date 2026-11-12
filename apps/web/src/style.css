@@ -1516,3 +1516,44 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+/* The pad under test, drawn live; the step's control marked. */
+.test-drawing .diagram {
+  max-width: 26rem;
+  margin: 0.5rem auto 1rem;
+}
+
+.test-connect-hid,
+.test-firmware {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--card);
+}
+
+.test-connect-hid p,
+.test-firmware p {
+  margin: 0.5rem 0;
+}
+
+.test-firmware[data-firmware="silent"] {
+  border-color: var(--error);
+}
+
+.test-prompt-note {
+  margin-top: -0.5rem;
+}
+
+.test-history {
+  margin-top: 2rem;
+}
+
+.report-result {
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+.report-result.failed {
+  color: var(--error);
+}

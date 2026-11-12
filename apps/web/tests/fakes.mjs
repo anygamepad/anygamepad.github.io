@@ -130,6 +130,10 @@ export const fakeHid = () => {
     receiveFeatureReport(reportId) {
       window.__hid.features.push(reportId);
       this.full = true;
+      // The firmware information, when the page set one.
+      if (reportId === 0x20 && window.__hid.firmware) {
+        return Promise.resolve(new DataView(new Uint8Array(window.__hid.firmware).buffer));
+      }
       return Promise.resolve(new DataView(new ArrayBuffer(41)));
     }
     sendReport(reportId, data) {
