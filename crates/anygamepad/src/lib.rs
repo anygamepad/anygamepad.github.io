@@ -19,14 +19,18 @@
 //! - `web` (default): the browser provider ([`web`]), active on
 //!   `wasm32-unknown-unknown`.
 //! - `native` (default): anygamepad's own OS backends ([`native`]); on
-//!   Linux, the evdev and hidraw providers.
+//!   Linux, the evdev and hidraw providers; on macOS, the IOKit HID and
+//!   GameController providers.
 //! - `testing`: the test runner of the apps' test modes (`testing`), which
 //!   writes test reports.
 //!
 //! # Unsafe code
 //!
-//! Denied everywhere but one function: the hidraw provider's feature
-//! report ioctl (`HIDIOCGFEATURE`), which has no safe wrapper.
+//! Denied everywhere but in two places: the hidraw provider's feature
+//! report ioctl (`HIDIOCGFEATURE`), which has no safe wrapper, and the
+//! macOS providers (`native::macos`), whose IOKit and GameController
+//! calls are all `unsafe` in their bindings. Each block says why it is
+//! sound.
 #![deny(unsafe_code)]
 
 pub mod detect;

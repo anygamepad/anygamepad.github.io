@@ -281,6 +281,16 @@ fn selection(pad: &Pad) -> Selection {
 /// Runs `plan` on `pad` with the simulated person; returns the report and
 /// the output commands the session sent.
 fn run(pad: &Pad, plan: &str) -> (TestReport, Vec<OutputCommand>) {
+    run_with(pad, plan, None)
+}
+
+/// [`run`], with the identity the pad comes back with after the hotplug
+/// step's unplug (its own when `None`).
+fn run_with(
+    pad: &Pad,
+    plan: &str,
+    back_as: Option<&DeviceIdentity>,
+) -> (TestReport, Vec<OutputCommand>) {
     let configuration = Configuration {
         start: SessionStart::Connecting,
         confirmed: selection(pad),
@@ -322,7 +332,10 @@ fn run(pad: &Pad, plan: &str) -> (TestReport, Vec<OutputCommand>) {
         pad.act(prompt, k, &mut raw);
         match prompt {
             Prompt::Unplug if k == 5 => session.removed(now),
-            Prompt::Reconnect if k == 5 => session.added(&pad.identity(), now),
+            Prompt::Reconnect if k == 5 => match back_as {
+                Some(identity) => session.added(identity, now),
+                None => session.added(&pad.identity(), now),
+            },
             _ => {}
         }
         state = pad.canonical(&raw, &state);
@@ -404,6 +417,27 @@ fn full_plan_on_a_standard_pad() {
         rumble.answer,
         Some(anygamepad_report::test_report::Answer::Yes)
     );
+}
+
+#[test]
+fn hotplug_keeps_the_identity_the_pad_came_back_with() {
+    let pad = Pad::standard();
+    let mut other = pad.identity();
+    other.product_name = Some("Wireless Controller".into());
+    let (report, _) = run_with(&pad, "full", Some(&other));
+    let hotplug = report
+        .results
+        .iter()
+        .find(|result| result.step == "hotplug")
+        .unwrap();
+    assert_eq!(hotplug.status, StepStatus::Fail);
+    assert_eq!(
+        hotplug.observed.as_deref(),
+        Some("another identity, views[1]")
+    );
+    assert_eq!(report.device.views.len(), 2);
+    assert_eq!(report.device.views[1].identity, other);
+    report.validate().unwrap();
 }
 
 #[test]

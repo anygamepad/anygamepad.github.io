@@ -268,14 +268,15 @@ try {
   assert.equal(pad.rawOpen, false);
   assert.equal(pad.buttons.length, 18);
   assert.equal(pad.normalized.open, true);
-  assert.equal(pad.normalized.badge, "Gamepad API standard layout");
+  // PlayStation pads: Chromium's button 17 is the touchpad click.
+  assert.equal(pad.normalized.badge, "PlayStation pad, Gamepad API standard layout");
   assert.equal(pad.normalized.buttons.length, 18);
   assert.equal(pad.normalized.axes.length, 6);
   assert.deepEqual(
     pad.buttons.slice(0, 4).map((button) => button.name),
     ["south", "east", "west", "north"],
   );
-  assert.equal(pad.buttons[17].name, "extra_0");
+  assert.equal(pad.buttons[17].name, "touchpad_click");
   assert.deepEqual(
     pad.axes.map((axis) => axis.name),
     ["left_stick_x", "left_stick_y", "right_stick_x", "right_stick_y"],

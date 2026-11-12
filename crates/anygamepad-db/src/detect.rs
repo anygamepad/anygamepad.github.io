@@ -20,7 +20,7 @@
 //! calls.
 
 use anygamepad_model::identity::DeviceIdentity;
-use anygamepad_model::{Family, Transport};
+use anygamepad_model::{ControllerMode, Family, Transport};
 
 use crate::catalog::{Catalog, Connection, Mode, Model};
 use crate::lab::{Code, Inventory, Unit};
@@ -99,6 +99,19 @@ pub fn generic_model_id(family: Option<Family>) -> &'static str {
     }
 }
 
+/// The mode of a generic model for a family: the PlayStation generation the
+/// pad imitates (a DualSense is a PS5 pad), else the model's first mode.
+fn generic_mode(model: &Model, family: Option<Family>) -> Option<&Mode> {
+    let kind = match family {
+        Some(Family::DualShock3) => Some(ControllerMode::Ps3),
+        Some(Family::DualShock4) => Some(ControllerMode::Ps4),
+        Some(Family::DualSense | Family::DualSenseEdge) => Some(ControllerMode::Ps5),
+        _ => None,
+    };
+    kind.and_then(|kind| model.modes.iter().find(|mode| mode.kind == kind))
+        .or_else(|| model.modes.first())
+}
+
 /// The transport of a candidate from the connections of its mode that
 /// matched: the device's when it tells, else the one they share.
 fn candidate_transport(device: Transport, matched: &[&Connection]) -> Option<Transport> {
@@ -170,12 +183,13 @@ impl Catalog {
                 generic: false,
             };
         }
+        let family = Family::from_identity(identity);
         let generic = self
-            .get(generic_model_id(Family::from_identity(identity)))
+            .get(generic_model_id(family))
             .or_else(|| self.get(generic_model_id(None)));
         let candidates = generic
             .and_then(|model| {
-                let mode = model.modes.first()?;
+                let mode = generic_mode(model, family)?;
                 let matched: Vec<&Connection> = mode
                     .connections
                     .iter()
@@ -397,6 +411,25 @@ mod tests {
             assert!(found.generic);
             assert_eq!(found.best().unwrap().model.id, generic);
             assert_eq!(found.best().unwrap().specificity, 0);
+        }
+    }
+
+    #[test]
+    fn generic_playstation_mode_follows_the_family() {
+        let catalog = Catalog::embedded();
+        // Chrome on macOS reads these pads through GameController: names,
+        // no USB IDs.
+        for (name, mode) in [
+            ("DualSense Wireless Controller (STANDARD GAMEPAD)", "ps5"),
+            ("DUALSHOCK 4 Wireless Controller (STANDARD GAMEPAD)", "ps4"),
+        ] {
+            let found = catalog.identify(&chrome(name), None);
+            assert!(found.generic);
+            assert_eq!(
+                ids(&found),
+                one("generic/playstation", mode, None),
+                "{name}"
+            );
         }
     }
 

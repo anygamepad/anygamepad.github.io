@@ -14,9 +14,15 @@
 //   saving in the browser, the "Tested here" mark, the unit's code (proposed
 //   for a pad this browser does not know, checked, kept), and the downloaded report
 //   (format, configuration, results, evidence).
-// - WebHID (Chromium only): a Bluetooth DualSense, already in its full
-//   report, picked in the test mode's chooser is detected, and the Quick
-//   plan runs on its decoded reports, which the report keeps as evidence.
+// - The pad drawn live in the detected and running stages, the control
+//   each step asks for marked; the history of the tests saved in this
+//   browser, with download and delete.
+// - WebHID (Chromium only): a DualSense whose Gamepad API name hides its
+//   USB IDs (as on macOS) is detected as the generic model, with an offer
+//   to connect it through WebHID; picked in the chooser, the Bluetooth
+//   DualSense, already in its full report, is detected again as itself;
+//   its firmware check answers as Sony's pads do; the Quick plan runs on
+//   its decoded reports, which the report keeps as evidence.
 //
 // BROWSER and CHROME_PATH as in smoke.mjs.
 
@@ -174,6 +180,11 @@ try {
   await setPad(XBOX360);
   await until("detection", stage, (s) => s === "detected");
   assert.equal(await page.textContent("[data-detected]"), "Microsoft Xbox 360 Controller · XInput · USB cable");
+  // Drawn by the next frame once the stage shows.
+  await until("the detected pad's drawing", () => page.locator(".test-drawing svg.diagram").count(), (n) => n === 1);
+  assert.equal(await page.locator("[data-ids-hidden]").count(), 0, "its USB IDs show");
+  // Nothing saved yet: the history is empty.
+  assert.equal(await page.locator("[data-history-empty]").count(), 0, "no history while detected");
   // A pad this browser does not know yet gets a new unit code (F4).
   assert.equal(await page.inputValue("[data-unit]"), "X360-01");
   await page.fill("[data-unit]", "not a code!");
@@ -201,6 +212,11 @@ try {
     }
     seen.add(key.split(":")[0]);
     const [kind, detail] = key.split(":");
+    if (kind === "press" && !seen.has("drawn")) {
+      // The drawing marks the control the step asks for.
+      seen.add("drawn");
+      await until("the marked control", () => page.locator(".test-drawing .target").count(), (n) => n === 1);
+    }
     if (kind === "press") {
       await press(STANDARD.indexOf(detail));
       await sleep(150);
@@ -267,6 +283,13 @@ try {
   await page.click("[data-save]");
   const saved = await until("the saved note", () => page.textContent("[data-saved]").catch(() => ""), (t) => /Sent/.test(t));
   assert.match(saved, /^Saved in this browser as \S+\.json\. Sent to the anygamepad database\.$/);
+  assert.ok(seen.has("drawn"), "the session drew the pad");
+  // The history lists it.
+  const history = () => page.locator("[data-history] .report-row").allTextContents();
+  const rows = await until("the history", history, (h) => h.length === 1);
+  assert.match(rows[0], /Microsoft Xbox 360 Controller · XInput · USB cable/);
+  assert.match(rows[0], /X360-01 · Full · \w+ \w+ Gamepad API/);
+  assert.match(rows[0], /\d+ passed, 0 failed/);
   const [download] = await Promise.all([page.waitForEvent("download"), page.click("[data-download]")]);
   assert.match(download.suggestedFilename(), /^x360-01-xinput-usb-\w+-web-gamepad_api-\d{4}-\d{2}-\d{2}-1\.json$/);
   const report = JSON.parse(await readFile(await download.path(), "utf8"));
@@ -328,6 +351,16 @@ try {
   );
   assert.equal(next[0].body.part, 0);
   assert.notEqual(next[0].body.session, firstPart.body.session);
+  // The history stays: downloaded as saved, then deleted after asking.
+  await until("the history after a reload", history, (h) => h.length === 1);
+  const [again] = await Promise.all([
+    page.waitForEvent("download"),
+    page.click("[data-history] .report-row >> text=Download"),
+  ]);
+  assert.deepEqual(JSON.parse(await readFile(await again.path(), "utf8")), report);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.click("[data-history] .report-row >> text=Delete");
+  await until("the empty history", () => page.locator("[data-history-empty]").count(), (n) => n === 1);
   assert.notEqual(bearer(next[0]), bearer(firstPart));
   assert.equal(next[0].body.events[0].type, "session");
 
@@ -356,8 +389,17 @@ try {
     await page.evaluate(() => {
       window.__hid.fullReport = true;
     });
-    await page.click(".test-mode >> text=Connect a pad with WebHID");
-    await until("detection", stage, (s) => s === "detected");
+    // Its Gamepad API twin, as Chrome on macOS names it: no USB IDs, so the
+    // generic model, in the mode of the family the name tells.
+    await setPad({ ...XBOX360, id: "DualSense Wireless Controller (STANDARD GAMEPAD)", buttons: Array.from({ length: 18 }, () => 0) });
+    await until("detection of the twin", stage, (s) => s === "detected");
+    assert.equal(
+      await page.textContent("[data-detected]"),
+      "Generic PlayStation-compatible controller · PS5 · connection to confirm",
+    );
+    await until("the offer to read the USB IDs", () => page.locator("[data-ids-hidden]").count(), (n) => n === 1);
+    await page.click(".test-detected [data-connect-hid]");
+    await until("detection through WebHID", () => page.textContent("[data-detected]"), (t) => /^Sony/.test(t));
     const setButtons = (name, on) =>
       page.evaluate(
         ([bits, on]) => {
@@ -374,6 +416,31 @@ try {
         },
         [DUALSENSE_BITS[name], on],
       );
+    assert.equal(await page.textContent("[data-detected]"), "Sony DualSense Wireless Controller · PS5 · Bluetooth");
+    await until("no offer any more", () => page.locator("[data-ids-hidden]").count(), (n) => n === 0);
+    // The firmware check: this one answers as Sony's pads do.
+    await page.evaluate(() => {
+      const reply = new Uint8Array(64);
+      reply[0] = 0x20;
+      reply.set([..."Jun 12 2023"].map((c) => c.charCodeAt(0)), 1);
+      reply.set([..."10:44:25"].map((c) => c.charCodeAt(0)), 12);
+      reply[24] = 0x13;
+      reply[25] = 0x03;
+      window.__hid.firmware = [...reply];
+    });
+    await until(
+      "the firmware offer",
+      () => page.textContent("[data-firmware]").catch(() => ""),
+      (text) => /Over Bluetooth, asking switches the pad/.test(text),
+    );
+    await page.click("[data-check-firmware]");
+    const firmware = await until(
+      "the firmware",
+      () => page.getAttribute("[data-firmware]", "data-firmware"),
+      (state) => state === "answered" || state === "silent",
+    );
+    assert.equal(firmware, "answered");
+    assert.match((await page.textContent("[data-firmware]")).trim(), /^Firmware built Jun 12 2023 10:44:25 \(hardware 0x0313, firmware 0x0000, update 0x0000\): it answers as Sony's pads do\.$/);
     assert.equal(await page.textContent("[data-detected]"), "Sony DualSense Wireless Controller · PS5 · Bluetooth");
     await page.click(".test-detected >> text=Confirm");
     await page.click('[data-plan="quick"]');

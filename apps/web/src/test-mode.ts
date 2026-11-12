@@ -22,17 +22,22 @@ import type {
   Transport,
 } from "./wasm/anygamepad_wasm.js";
 import type {
+  Axis,
+  Button,
   CatalogModel,
   ChoiceResult,
   DetectedCandidate,
   Detection,
+  GamepadState as TestState,
   PlanInfo,
   TestDevice,
   TestSelection,
   TestSession,
   TestStatus,
 } from "./wasm-testing/anygamepad_wasm_testing.js";
-import { listTestReports, saveTestReport, type StoredTestReport } from "./storage";
+import { ControllerDrawing } from "./drawing";
+import { layoutFor } from "./layouts";
+import { deleteTestReport, listTestReports, saveTestReport, type StoredTestReport } from "./storage";
 
 /** The test mode's WebAssembly module. */
 export type TestingModule = typeof import("./wasm-testing/anygamepad_wasm_testing.js");
@@ -118,6 +123,27 @@ export interface ReviewRow {
   flagged: boolean;
 }
 
+/** A test report saved in this browser, in the history. */
+export interface HistoryRow {
+  id: number;
+  /** When it was saved, in the person's locale. */
+  date: string;
+  title: string;
+  /** Unit, plan and environment. */
+  facts: string;
+  summary: string;
+  failed: boolean;
+}
+
+/** The firmware check of a PlayStation pad connected through WebHID. */
+export interface FirmwareView {
+  state: "offer" | "reading" | "answered" | "silent";
+  /** Reading switches a Bluetooth pad to its full report. */
+  bluetooth: boolean;
+  /** What it answered. */
+  text: string;
+}
+
 export interface TestView {
   stage: Stage;
   search: string;
@@ -156,6 +182,15 @@ export interface TestView {
   notes: string;
   saved: string | null;
   error: string | null;
+  /** The test reports saved in this browser, newest first. */
+  history: HistoryRow[];
+  /** The detected pad's API hides its USB IDs (macOS's GameController
+   * path): WebHID can tell the exact model. */
+  idsHidden: boolean;
+  /** The firmware check, for a PlayStation pad read through WebHID. */
+  firmware: FirmwareView | null;
+  /** A note on the prompt for this environment (macOS takes Home). */
+  promptNote: string;
 }
 
 export const emptyTestView = (): TestView => ({
@@ -186,6 +221,10 @@ export const emptyTestView = (): TestView => ({
   notes: "",
   saved: null,
   error: null,
+  history: [],
+  idsHidden: false,
+  firmware: null,
+  promptNote: "",
 });
 
 const TRANSPORT_NAMES: Record<Transport, string> = {
@@ -203,6 +242,25 @@ const STATUS_NAMES: Record<string, string> = {
   not_applicable: "Not applicable",
   error: "Error",
 };
+
+/** The controls a prompt asks for, to mark on the drawing. */
+const promptTargets = (status: TestStatus | null): (Button | Axis)[] => {
+  const prompt = status?.prompt;
+  switch (prompt?.kind) {
+    case "press":
+      return [prompt.button];
+    case "circle":
+      return [prompt.side === "right" ? "right_stick_x" : "left_stick_x"];
+    case "pull":
+      return [prompt.side === "right" ? "right_trigger" : "left_trigger"];
+    default:
+      return [];
+  }
+};
+
+const OS_NAMES: Record<string, string> = { linux: "Linux", windows: "Windows", macos: "macOS", android: "Android", ios: "iOS" };
+const BROWSER_NAMES: Record<string, string> = { blink: "Chromium", gecko: "Firefox", webkit: "Safari" };
+const API_NAMES: Record<string, string> = { gamepad_api: "Gamepad API", webhid: "WebHID" };
 
 /** A prompt as `kind[:detail]`, for the page's tests. */
 const promptKey = (status: TestStatus): string => {
@@ -264,6 +322,13 @@ export class TestMode {
   private readonly pressed = new Map<string, boolean>();
   /** In the detected stage: answers from the pad count once it was released. */
   private armed = false;
+  /** A pad connected through WebHID while the page detects: detected again
+   * with its WebHID identity once it is open. */
+  private upgrade: string | null = null;
+  /** The pad's drawing in the detected and running stages. */
+  private drawing: { key: string; drawing: ControllerDrawing; targets: string } | undefined;
+  /** The state the drawing shows for the pad under test (read by `feed`). */
+  private sessionState: TestState | undefined;
 
   constructor(
     private readonly testing: TestingModule,
@@ -286,6 +351,7 @@ export class TestMode {
       .then((reports) => {
         this.reports = reports;
         this.refreshCards();
+        this.refreshHistory();
       })
       .catch(() => {
         // Storage unavailable: nothing shows as tested.
@@ -484,6 +550,7 @@ export class TestMode {
         fail: outcome.summary.fail,
       });
       this.reports.unshift(saved);
+      this.refreshHistory();
       this.savedName = saved.fileName;
       note = `Saved in this browser as ${saved.fileName}.`;
     } catch (error) {
@@ -510,6 +577,74 @@ export class TestMode {
     window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   };
 
+  /** Downloads a saved test report of the history. */
+  readonly downloadSaved = (id: number): void => {
+    const saved = this.reports.find((report) => report.id === id);
+    if (!saved) return;
+    let text = saved.report;
+    try {
+      text = JSON.stringify(JSON.parse(saved.report), null, 2);
+    } catch {
+      // Saved as written: download it as it is.
+    }
+    const blob = new Blob([`${text}\n`], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = saved.fileName;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  };
+
+  /** Deletes a saved test report of the history, after asking. */
+  readonly deleteSaved = (id: number): void => {
+    const saved = this.reports.find((report) => report.id === id);
+    if (!saved || !window.confirm(`Delete ${saved.fileName} from this browser?`)) return;
+    deleteTestReport(id)
+      .then(() => {
+        this.reports = this.reports.filter((report) => report.id !== id);
+        this.refreshHistory();
+        this.refreshCards();
+      })
+      .catch((error: unknown) => {
+        this.view.error = `This browser did not delete it (${String(error)}).`;
+      });
+  };
+
+  /** Reads the firmware information of the detected WebHID PlayStation pad:
+   * Sony's pads answer it, many compatible pads do not. */
+  readonly checkFirmware = (): void => {
+    const firmware = this.view.firmware;
+    const pad = this.host.pads().find((p) => p.key === this.padKey);
+    const info = pad?.source === "webhid" ? this.host.hids()?.info(pad.id) : undefined;
+    const vendor = info?.identity.vendor_id;
+    const product = info?.identity.product_id;
+    if (!firmware || firmware.state === "reading" || !pad || vendor == null || product == null) return;
+    const report = this.testing.firmwareReport(vendor, product);
+    const hids = this.host.hids();
+    if (report === undefined || !hids) return;
+    firmware.state = "reading";
+    const silent = (): void => {
+      firmware.state = "silent";
+      firmware.text = "It does not answer with firmware information, as Sony's pads do: most likely a compatible pad.";
+      this.preferGeneric();
+    };
+    (hids.receiveFeatureReport(pad.id, report) as Promise<DataView>).then(
+      (data) => {
+        const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+        const answer = this.testing.parseFirmware(vendor, product, bytes);
+        if (!answer) {
+          silent();
+          return;
+        }
+        firmware.state = "answered";
+        const hex = (value: number): string => `0x${value.toString(16).padStart(4, "0")}`;
+        const update = answer.update === undefined ? "" : `, update ${hex(answer.update)}`;
+        firmware.text = `Firmware built ${answer.build} (hardware ${hex(answer.hardware)}, firmware ${hex(answer.firmware)}${update}): it answers as Sony's pads do.`;
+      },
+      silent,
+    );
+  };
+
   /** After a session: the same model's ways to connect, to test the next. */
   readonly next = (): void => {
     const model = this.view.model?.id;
@@ -526,6 +661,11 @@ export class TestMode {
     if (this.session && this.sessionPad === null) {
       this.reconnected(pad, now);
       return;
+    }
+    // Connected through WebHID from the list or the detected stage: its
+    // WebHID identity tells more (USB IDs), so it is detected once open.
+    if (pad.source === "webhid" && (this.view.stage === "list" || this.view.stage === "detected")) {
+      this.upgrade = pad.key;
     }
     this.answeredBy(pad);
   }
@@ -548,8 +688,11 @@ export class TestMode {
   frame(now: number): void {
     if (this.session && this.view.stage === "running") {
       this.feed(now);
+      this.draw();
       return;
     }
+    this.upgradeToHid();
+    this.draw();
     for (const pad of this.host.pads()) {
       const down = (pad.state?.buttons.length ?? 0) > 0;
       const was = this.pressed.get(pad.key) ?? true;
@@ -575,6 +718,55 @@ export class TestMode {
     else if (stage === "list" && !this.padKey) this.detect(pad);
   }
 
+  /** Detects the pad connected through WebHID once it is open. */
+  private upgradeToHid(): void {
+    if (!this.upgrade) return;
+    const stage = this.view.stage;
+    const pad = this.host.pads().find((p) => p.key === this.upgrade);
+    if (!pad || (stage !== "list" && stage !== "detected")) {
+      this.upgrade = null;
+      return;
+    }
+    if (!pad.open || pad.key === this.padKey) return;
+    this.upgrade = null;
+    this.padKey = null;
+    this.detection = undefined;
+    this.detect(pad);
+  }
+
+  /** Draws the pad of the detected or running stage, marking what the
+   * step asks for. */
+  private draw(): void {
+    const stage = this.view.stage;
+    const container = document.querySelector<HTMLElement>(".test-drawing");
+    const key = stage === "running" ? this.sessionPad?.key : this.padKey;
+    const model = this.view.model && this.model(this.view.model.id);
+    if (!container || !key || !model || (stage !== "detected" && stage !== "running")) return;
+    // A generic model is drawn as the pad its mode imitates (a PS5 mode
+    // imitates a DualSense).
+    const modeId = stage === "running" ? this.plan?.confirmed.mode : this.detection?.candidates[this.view.candidate]?.mode;
+    const kind = model.modes.find((mode) => mode.id === modeId)?.kind;
+    const family = model.generic && kind === "ps5" ? "dualsense" : model.family;
+    const drawingKey = `${key} ${model.id} ${family}`;
+    if (this.drawing?.key !== drawingKey) {
+      this.drawing = {
+        key: drawingKey,
+        drawing: new ControllerDrawing(layoutFor(family), model.face_layout),
+        targets: "",
+      };
+    }
+    const { drawing } = this.drawing;
+    if (drawing.element.parentElement !== container) container.replaceChildren(drawing.element);
+    const targets = stage === "running" ? promptTargets(this.view.status) : [];
+    if (targets.join() !== this.drawing.targets) {
+      this.drawing.targets = targets.join();
+      drawing.highlight(targets);
+    }
+    const state =
+      stage === "running" ? this.sessionState : this.host.pads().find((pad) => pad.key === key)?.state;
+    if (state) drawing.update(state, false);
+  }
+
   private detect(pad: TestPad): void {
     const detection = this.identify(pad);
     const best = detection?.candidates[0];
@@ -582,6 +774,19 @@ export class TestMode {
     this.padKey = pad.key;
     this.detection = detection;
     this.view.padName = pad.name;
+    this.view.idsHidden = false;
+    this.view.firmware = null;
+    if (pad.source === "gamepad") {
+      const info = this.host.gamepads()?.info(pad.id);
+      this.view.idsHidden = info !== undefined && info.identity.vendor_id == null;
+    } else {
+      const info = this.host.hids()?.info(pad.id);
+      const vendor = info?.identity.vendor_id;
+      const product = info?.identity.product_id;
+      if (vendor != null && product != null && this.testing.firmwareReport(vendor, product) !== undefined) {
+        this.view.firmware = { state: "offer", bluetooth: info?.transport === "bluetooth", text: "" };
+      }
+    }
     this.view.candidates = detection.candidates.map((candidate, index) => ({
       index,
       title: this.describe(candidate.model, candidate.mode, candidate.transport),
@@ -636,6 +841,30 @@ export class TestMode {
     }
   }
 
+  /** Puts the generic PlayStation model first: the pad does not answer as
+   * Sony's pads do. */
+  private preferGeneric(): void {
+    const detection = this.detection;
+    const best = detection?.candidates[0];
+    if (!detection || !best || this.view.stage !== "detected") return;
+    const generic = "generic/playstation";
+    const mode = best.kind === "ps5" ? "ps5" : "ps4";
+    if (best.model === generic) return;
+    const index = detection.candidates.findIndex((c) => c.model === generic && c.mode === mode);
+    const candidate: DetectedCandidate =
+      index >= 0
+        ? (detection.candidates.splice(index, 1)[0] as DetectedCandidate)
+        : { model: generic, mode, kind: mode, transport: best.transport, specificity: 0, units: [] };
+    detection.candidates.unshift(candidate);
+    this.view.candidates = detection.candidates.map((c, i) => ({
+      index: i,
+      title: this.describe(c.model, c.mode, c.transport),
+    }));
+    this.view.candidate = 0;
+    this.showCandidate(candidate);
+    this.filter();
+  }
+
   private showCandidate(candidate: DetectedCandidate): void {
     const model = this.model(candidate.model);
     const mode = model?.modes.find((m) => m.id === candidate.mode);
@@ -672,9 +901,11 @@ export class TestMode {
       if (pad && this.sessionPad?.source === "gamepad") {
         const input = this.host.gamepads()?.testInput(pad.id);
         if (input) session.feed(input, now);
+        this.sessionState = input?.state;
       } else if (pad?.open) {
         const input = this.host.hids()?.testInput(pad.id);
         if (input) session.feed(input, now);
+        this.sessionState = input?.state;
       }
     } catch {
       // Unplugged since the last sample: its removal comes with the next one.
@@ -683,6 +914,12 @@ export class TestMode {
     const status = session.status();
     this.view.status = status;
     this.view.promptKey = promptKey(status);
+    // macOS takes the Home (PS, Xbox) button: it opens the Games app or
+    // Launchpad, and the page stops seeing the pad while it is not in front.
+    this.view.promptNote =
+      this.view.promptKey === "press:home" && this.host.environment()?.os === "macos"
+        ? "macOS may take this button: it opens the Games app (or Launchpad), and this page stops seeing the pad. If it does, come back to this tab and skip this step."
+        : "";
     this.view.progress = status.total === 0 ? 100 : Math.round((status.step / status.total) * 100);
     if (status.step !== this.lastStep) {
       this.lastStep = status.step;
@@ -775,6 +1012,7 @@ export class TestMode {
     this.session?.free();
     this.session = undefined;
     this.sessionPad = null;
+    this.sessionState = undefined;
   }
 
   private reset(): void {
@@ -792,6 +1030,10 @@ export class TestMode {
     this.view.check = null;
     this.view.status = null;
     this.view.error = null;
+    this.view.idsHidden = false;
+    this.view.firmware = null;
+    this.view.promptNote = "";
+    this.drawing = undefined;
     this.view.stage = "list";
     this.filter();
   }
@@ -869,6 +1111,25 @@ export class TestMode {
     this.view.units = this.unitList.filter(
       (unit) => !text || `${unit.title} ${unit.notes}`.toLowerCase().includes(text),
     );
+  }
+
+  /** The history: the saved test reports, newest first. */
+  private refreshHistory(): void {
+    this.view.history = this.reports.map((report) => {
+      const facts = [
+        report.unit,
+        this.view.plans.find((plan) => plan.id === report.plan)?.name ?? report.plan,
+        [OS_NAMES[report.os] ?? report.os, BROWSER_NAMES[report.browser] ?? report.browser, API_NAMES[report.api] ?? report.api].join(" "),
+      ].filter((part): part is string => !!part);
+      return {
+        id: report.id,
+        date: new Date(report.savedAt).toLocaleString(),
+        title: this.describe(report.model, report.mode, report.transport as Transport),
+        facts: facts.join(" · "),
+        summary: `${report.pass} passed, ${report.fail} failed`,
+        failed: report.fail > 0,
+      };
+    });
   }
 
   /** The picked model's ways to connect, marked tested in this environment. */

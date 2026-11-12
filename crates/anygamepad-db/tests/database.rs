@@ -37,10 +37,10 @@ fn embedded_database_contains_curated_and_sdl() {
     let db = Database::embedded();
     assert!(!db.is_empty());
 
-    // On native with embedded-sdl, contains 1 curated + 2,279 SDL entries.
+    // On native with embedded-sdl, contains 2 curated + 2,279 SDL entries.
     #[cfg(all(feature = "embedded-sdl", not(target_arch = "wasm32")))]
     {
-        assert_eq!(db.len(), 2280);
+        assert_eq!(db.len(), 2281);
         let match_ds4 = db.best_match(&linux_dualshock4_identity());
         assert!(match_ds4.is_some());
         assert_eq!(match_ds4.unwrap().name, "PS4 Controller");
@@ -55,13 +55,45 @@ fn embedded_database_contains_curated_and_sdl() {
 #[test]
 fn embedded_curated_only_contains_curated_profiles() {
     let db = Database::embedded_curated();
-    assert_eq!(db.len(), 1);
+    assert_eq!(db.len(), 2);
     let profile = db.best_match(&chrome_standard_pad()).unwrap();
     assert_eq!(profile.name, "Gamepad API standard layout");
     assert_eq!(profile.source, ProfileSource::Curated);
 
     // SDL device is not matched in curated-only db
     assert!(db.best_match(&linux_dualshock4_identity()).is_none());
+}
+
+#[test]
+fn playstation_pads_in_the_standard_layout_get_their_touchpad() {
+    let db = Database::embedded_curated();
+    let browser = Browser {
+        engine: BrowserEngine::Blink,
+        major_version: Some(148),
+    };
+    // Chrome on macOS reads the pad through GameController: no USB IDs.
+    let macos = DeviceIdentity::from_gamepad_api(
+        "DualSense Wireless Controller (STANDARD GAMEPAD)",
+        "standard",
+        browser,
+        Os::MacOs,
+    );
+    let windows = DeviceIdentity::from_gamepad_api(
+        "Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)",
+        "standard",
+        browser,
+        Os::Windows,
+    );
+    for identity in [macos, windows] {
+        let profile = db.best_match(&identity).unwrap();
+        assert_eq!(profile.name, "PlayStation pad, Gamepad API standard layout");
+        let mapping = profile.mapping_for(&identity);
+        assert!(
+            mapping
+                .buttons
+                .contains_key(&anygamepad_model::Button::TouchpadClick)
+        );
+    }
 }
 
 #[test]

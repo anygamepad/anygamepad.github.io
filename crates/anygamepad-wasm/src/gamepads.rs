@@ -200,7 +200,8 @@ impl Gamepads {
                 .as_ref()
                 .is_some_and(|web| web.mapping == standard::MAPPING);
             if standard {
-                for i in 0..buttons {
+                // Extra buttons the profile does not map itself.
+                for i in (0..buttons).filter(|&i| !mapper.reads_button(i)) {
                     if let Some(b) = standard::button(i) {
                         capabilities.buttons.insert(b);
                     }
@@ -483,6 +484,9 @@ impl Gamepads {
             mapper.apply(raw, &mut state);
             if standard {
                 for (index, &value) in raw.buttons.iter().enumerate().skip(17) {
+                    if mapper.reads_button(index) {
+                        continue;
+                    }
                     if let Some(b) = standard::button(index) {
                         state.set_pressed(b, value >= anygamepad::mapping::PRESS_THRESHOLD);
                     }
@@ -511,7 +515,8 @@ impl Gamepads {
             let mut capabilities = mapper.capabilities().clone();
             capabilities.outputs = info.outputs;
             if standard {
-                for i in 0..info.layout.buttons.len() {
+                let extras = (0..info.layout.buttons.len()).filter(|&i| !mapper.reads_button(i));
+                for i in extras {
                     if let Some(b) = standard::button(i) {
                         capabilities.buttons.insert(b);
                     }

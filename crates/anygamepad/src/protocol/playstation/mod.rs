@@ -5,7 +5,8 @@
 //! sticks, triggers, touchpad and battery, plus the motion sensors as raw
 //! counts ([`RawImu`]). [`Calibration`] and [`MotionTracker`] turn those
 //! into SI units, and [`OutputReport`] writes rumble, light bar and LEDs
-//! (C7).
+//! (C7). [`firmware`] reads the firmware information, which Sony's pads
+//! answer and many compatible pads do not.
 //!
 //! # Report forms
 //!
@@ -41,6 +42,7 @@ use anygamepad_model::{
 use super::crc32;
 
 mod calibration;
+pub mod firmware;
 mod output;
 
 pub use calibration::{Calibration, MotionTracker};

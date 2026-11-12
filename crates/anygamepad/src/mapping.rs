@@ -411,6 +411,18 @@ impl Mapper {
         }
     }
 
+    /// Whether the mapping reads the layout's button at `index`, for a
+    /// button or an axis. Lets a backend that names extra buttons itself
+    /// (the browser's standard layout) skip the ones the profile maps.
+    pub fn reads_button(&self, index: usize) -> bool {
+        let reads = |source: &Source| matches!(source, Source::Button(i) if *i == index);
+        self.buttons.iter().any(|(_, source)| reads(source))
+            || self.axes.iter().any(|binding| match &binding.drive {
+                Drive::Whole(source) => reads(source),
+                Drive::Halves { negative, positive } => negative.iter().chain(positive).any(&reads),
+            })
+    }
+
     /// Writes the canonical state of `raw` into `state`.
     ///
     /// Controls the mapping does not drive are at rest. `state.motion`

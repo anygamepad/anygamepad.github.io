@@ -43,6 +43,27 @@ The tester and the test mode are the same app (`src/main.ts`,
 `src/App.html`); `<body data-page="test">` picks the test mode, whose
 WebAssembly module only that page loads (W9).
 
+## The test mode
+
+- Detection: a pad connected without picking one is detected (H10). When
+  its API hides the USB IDs (on macOS, Chrome and Safari read PlayStation,
+  Xbox and Switch pads through GameController, which gives names only),
+  the page says the exact model and version cannot be told, and offers
+  WebHID; a pad connected through WebHID from the list or the detected
+  stage is detected again with its WebHID identity once it opens.
+- Firmware: a PlayStation pad read through WebHID can be asked for its
+  firmware information (`0xA3` on the DualShock 4, `0x20` on the
+  DualSense), which Sony's pads answer and many compatible pads do not, as
+  `daidr/dualsense-tester` checks; a pad that does not answer gets the
+  generic PlayStation model first. Asked only on a click: over Bluetooth
+  it switches the pad to its full report until it is turned off.
+- The pad is drawn live in the detected and running stages, the control
+  each step asks for marked.
+- On macOS, the prompt for Home warns that the system may take the button
+  (it opens the Games app): the page then stops seeing the pad.
+- The history lists the test reports saved in this browser, with download
+  and delete.
+
 ## Sending to the database
 
 The settings (the sliders icon in the header) hold a switch that sends the
@@ -87,6 +108,6 @@ same name, set once the server is deployed.
 | `src/wasm-testing/` | wasm-pack output of the test mode's module, `anygamepad-wasm-testing`, loaded by the test mode's page only (W9; generated, not committed) |
 | `scripts/check-size.mjs` | Bundle size budget |
 | `tests/smoke.mjs` | Smoke test of the built site (Chromium, Firefox, WebKit) |
-| `tests/smoke-test-mode.mjs` | Smoke test of the test mode at `/test/`: a Full session on a Gamepad API pad, a Quick one on a WebHID DualSense (Chromium), and sending to a fake database |
+| `tests/smoke-test-mode.mjs` | Smoke test of the test mode at `/test/`: a Full session on a Gamepad API pad (drawing, history), a Quick one on a WebHID DualSense connected from a pad without USB IDs, with its firmware check (Chromium), and sending to a fake database |
 | `tests/smoke-sync.mjs` | End-to-end test of sending, against the sync server's Worker on a local D1 |
 | `tests/fakes.mjs` | The fake gamepads and WebHID device both smoke tests use |

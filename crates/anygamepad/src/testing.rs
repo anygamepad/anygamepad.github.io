@@ -706,14 +706,30 @@ impl Session {
         let expected = self.report.device.views[0].fingerprint;
         let same = identity.fingerprint() == expected;
         let (status, observed) = if same {
-            (StepStatus::Pass, "the same identity")
+            (StepStatus::Pass, "the same identity".to_owned())
         } else {
-            (StepStatus::Fail, "another identity")
+            // The identity it came back with, as a view of its own: what
+            // changed (name, IDs, API) is the finding.
+            let views = &mut self.report.device.views;
+            let index = views.len();
+            if index < anygamepad_report::MAX_VIEWS {
+                views.push(anygamepad_report::View::new(
+                    identity.clone(),
+                    RawLayout::default(),
+                    OutputSet::EMPTY,
+                ));
+                (
+                    StepStatus::Fail,
+                    format!("another identity, views[{index}]"),
+                )
+            } else {
+                (StepStatus::Fail, "another identity".to_owned())
+            }
         };
         self.end(
             status,
             Some("the same identity".into()),
-            Some(observed.into()),
+            Some(observed),
             None,
             Vec::new(),
         );
