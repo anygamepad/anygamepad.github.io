@@ -41,6 +41,7 @@ use anygamepad::model::{
     Button, ButtonSet, ControllerMode, FaceLayout, Family, GamepadState, Output, OutputCommand,
     OutputSet, Transport,
 };
+use anygamepad::protocol::playstation::{self, firmware};
 use anygamepad::testing::{Prompt, Session, SessionSetup};
 use anygamepad_report::Report;
 use anygamepad_report::test_report::{
@@ -349,6 +350,51 @@ pub fn identify(
         .identify(device.identity()?, Some(Inventory::embedded()))
         .into();
     to_js(&detection)
+}
+
+/// A PlayStation pad's firmware information ([`parse_firmware`]).
+#[derive(Clone, Debug, Serialize, Tsify)]
+pub struct Firmware {
+    /// Build date and time as the firmware writes them
+    /// (`Sep 21 2018 04:50:51`).
+    pub build: String,
+    /// Hardware version.
+    pub hardware: u32,
+    /// Main firmware version.
+    pub firmware: u32,
+    /// The DualSense's update version (`0x0630`).
+    #[tsify(optional)]
+    pub update: Option<u16>,
+}
+
+/// The feature report that holds the firmware information of the
+/// PlayStation pad with these USB IDs (`0xA3` on the DualShock 4, `0x20` on
+/// the DualSense); `undefined` for other pads. Read it with
+/// `HidDevices.receiveFeatureReport()`: over Bluetooth, that switches the
+/// pad to its full report until it is turned off, so tell the person
+/// first.
+#[wasm_bindgen(js_name = firmwareReport)]
+pub fn firmware_report(vendor_id: u16, product_id: u16) -> Option<u8> {
+    playstation::Model::from_ids(vendor_id, product_id).map(firmware::report_id)
+}
+
+/// The firmware information in a PlayStation pad's answer to
+/// [`firmware_report`] (report ID first), or `null` when the answer holds
+/// none: Sony's pads answer with it, many compatible pads that borrow
+/// their USB IDs do not.
+#[wasm_bindgen(js_name = parseFirmware, unchecked_return_type = "Firmware | null")]
+pub fn parse_firmware(vendor_id: u16, product_id: u16, report: &[u8]) -> Result<JsValue, JsError> {
+    let info = playstation::Model::from_ids(vendor_id, product_id)
+        .and_then(|model| firmware::parse(model, report));
+    match info {
+        Some(info) => to_js(&Firmware {
+            build: info.build,
+            hardware: info.hardware,
+            firmware: info.firmware,
+            update: info.update,
+        }),
+        None => Ok(JsValue::NULL),
+    }
 }
 
 /// Whether a device is the model, mode and transport picked from the

@@ -28,3 +28,16 @@ transport = "usb"
 
 [[modes.connections]]
 transport = "bluetooth"
+
+# Pads that imitate a DualSense, or name themselves after it (macOS's
+# GameController called PAD-01 a "DualSense Wireless Controller", 2026-11-11).
+[[modes]]
+id = "ps5"
+name = "PS5"
+kind = "ps5"
+
+[[modes.connections]]
+transport = "usb"
+
+[[modes.connections]]
+transport = "bluetooth"

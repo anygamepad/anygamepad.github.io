@@ -11,7 +11,7 @@ use objc2::{AllocAnyThread, available};
 use objc2_game_controller::{
     GCColor, GCController, GCControllerButtonInput, GCControllerDirectionPad,
     GCControllerPlayerIndex, GCDevice, GCDeviceBattery, GCDeviceLight, GCDualSenseGamepad,
-    GCDualShockGamepad, GCExtendedGamepad, GCMotion, GCXboxGamepad,
+    GCDualShockGamepad, GCExtendedGamepad, GCMotion, GCSystemGestureState, GCXboxGamepad,
 };
 
 use super::iohid::RESCAN_INTERVAL;
@@ -221,7 +221,8 @@ fn probe(controller: Retained<GCController>) -> Option<Entry> {
     }
 }
 
-/// Turns off the sensors the provider turned on.
+/// Turns off the sensors the provider turned on, and gives the system
+/// buttons back to macOS.
 fn deactivate(entry: &Entry) {
     if let Some(motion) = &entry.elements.motion {
         // SAFETY: documented GCMotion properties (macOS 11.0).
@@ -229,6 +230,27 @@ fn deactivate(entry: &Entry) {
             if motion.sensorsRequireManualActivation() {
                 motion.setSensorsActive(false);
             }
+        }
+    }
+    system_gestures(&entry.elements, GCSystemGestureState::Enabled);
+}
+
+/// Sets whether macOS acts on the buttons it uses itself: Home opens the
+/// Games app (or Launchpad), the share buttons take screenshots. Disabled
+/// while an app reads the controller, so that the app gets those presses;
+/// macOS applies it while the app is the active one.
+fn system_gestures(elements: &Elements, state: GCSystemGestureState) {
+    // SAFETY: documented properties of the extended gamepad profile and of
+    // GCControllerElement (`preferredSystemGestureState`, macOS 11.0),
+    // available from macOS 11.3 (checked by the provider's constructor).
+    unsafe {
+        let gamepad = &elements.gamepad;
+        let share = elements.xbox.as_ref().and_then(|xbox| xbox.buttonShare());
+        for button in [gamepad.buttonHome(), gamepad.buttonOptions(), share]
+            .into_iter()
+            .flatten()
+        {
+            button.setPreferredSystemGestureState(state);
         }
     }
 }
@@ -364,8 +386,10 @@ impl Provider for GameControllerProvider {
     }
 
     /// Opens a controller: GameController reads it already, so this turns
-    /// on its motion sensors when they need it. [`Access::Exclusive`] is
-    /// unsupported: GameController cannot hide a controller.
+    /// on its motion sensors when they need it, and, unless observing,
+    /// asks macOS to leave Home and the share buttons to the app.
+    /// [`Access::Exclusive`] is unsupported: GameController cannot hide a
+    /// controller.
     fn open(&mut self, device: DeviceId, access: Access) -> Result<(), ProviderError> {
         if access == Access::Exclusive {
             return Err(ProviderError::Unsupported);
@@ -379,6 +403,13 @@ impl Provider for GameControllerProvider {
                 }
             }
         }
+        // Observing changes nothing for the person: macOS keeps its buttons.
+        let state = if access == Access::ObserveOnly {
+            GCSystemGestureState::Enabled
+        } else {
+            GCSystemGestureState::Disabled
+        };
+        system_gestures(&entry.elements, state);
         entry.access = Some(access);
         Ok(())
     }

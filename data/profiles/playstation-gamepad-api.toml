@@ -1,0 +1,89 @@
+#:schema ./schema.json
+
+# PlayStation pads in the W3C "standard" layout. Chromium appends the
+# touchpad click as button 17 (seen on a PlayStation-compatible pad in Chrome
+# 148 on macOS, which names it "DualSense Wireless Controller" and hides its
+# USB IDs: test report of PAD-01, 2026-11-11). Safari reports 17 buttons, so
+# the touchpad click is missing there.
+#
+# The rest mirrors gamepad-api-standard.toml, which this profile replaces
+# for these pads.
+
+schema_version = 1
+name = "PlayStation pad, Gamepad API standard layout"
+source = "curated"
+verified = true
+
+# Chromium on Windows and Linux shows the USB IDs.
+[[match]]
+backend = "gamepad_api"
+gamepad_mapping = "standard"
+vendor_id = 0x054c
+product_id = 0x05c4
+
+[[match]]
+backend = "gamepad_api"
+gamepad_mapping = "standard"
+vendor_id = 0x054c
+product_id = 0x09cc
+
+[[match]]
+backend = "gamepad_api"
+gamepad_mapping = "standard"
+vendor_id = 0x054c
+product_id = 0x0ce6
+
+[[match]]
+backend = "gamepad_api"
+gamepad_mapping = "standard"
+vendor_id = 0x054c
+product_id = 0x0df2
+
+# Chromium and Safari on macOS read these pads through GameController, which
+# gives names and no USB IDs.
+[[match]]
+backend = "gamepad_api"
+gamepad_mapping = "standard"
+name = "DualSense Wireless Controller"
+
+[[match]]
+backend = "gamepad_api"
+gamepad_mapping = "standard"
+name = "DualSense Edge Wireless Controller"
+
+[[match]]
+backend = "gamepad_api"
+gamepad_mapping = "standard"
+name = "DUALSHOCK 4 Wireless Controller"
+
+[[mapping]]
+
+[mapping.buttons]
+south = "b0"
+east = "b1"
+west = "b2"
+north = "b3"
+left_shoulder = "b4"
+right_shoulder = "b5"
+# Analog buttons: also the trigger axes below.
+left_trigger = "b6"
+right_trigger = "b7"
+select = "b8"
+start = "b9"
+left_stick = "b10"
+right_stick = "b11"
+dpad_up = "b12"
+dpad_down = "b13"
+dpad_left = "b14"
+dpad_right = "b15"
+home = "b16"
+touchpad_click = "b17"
+
+[mapping.axes]
+left_stick_x = "a0"
+# The Gamepad API's Y axes grow downwards; canonical Y is up.
+left_stick_y = "a1~"
+right_stick_x = "a2"
+right_stick_y = "a3~"
+left_trigger = "b6"
+right_trigger = "b7"
